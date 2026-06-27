@@ -17,7 +17,10 @@ function defaultData() {
     weeks: [],
     currentWeekId: null,
     dailyData: {},
-    vpsList: []
+    vpsList: [],
+    prompts: [],
+    assets: [],
+    library: []
   };
 }
 
@@ -77,6 +80,24 @@ function read() {
     }
   } catch (e) {
     console.error('数据库读取失败:', e.message);
+    // 尝试从最新备份恢复
+    const backupDir = path.join(DATA_DIR, "backups")
+    if (fs.existsSync(backupDir)) {
+      const backups = fs.readdirSync(backupDir).sort().reverse()
+      for (const b of backups) {
+        try {
+          let raw = fs.readFileSync(path.join(backupDir, b), "utf-8")
+          if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1)
+          const data = JSON.parse(raw)
+          // 恢复数据并重新写入主文件
+          const def = defaultData()
+          for (const key of Object.keys(def)) { if (!(key in data)) data[key] = def[key] }
+          write(data)
+          console.error("已从备份恢复数据库:", b)
+          return data
+        } catch (_) {}
+      }
+    }
   }
   return defaultData();
 }
@@ -252,8 +273,93 @@ function deleteVps(id) {
   return true;
 }
 
+// ==================== 通用CRUD工厂 ====================
+// collection: data key name
+// defaults: 对象，新增时合并的默认字段
+// sorter:   排序函数，默认按id降序
+function makeCrud(collection, defaults = {}, sorter) {
+  return {
+    list() {
+      const data = read();
+      const arr = data[collection] || [];
+      return sorter ? arr.sort(sorter) : arr.sort((a, b) => (b.id || 0) - (a.id || 0));
+    },
+    get(id) {
+      const data = read();
+      return (data[collection] || []).find(item => item.id === id) || null;
+    },
+    add(item) {
+      const data = read();
+      if (!Array.isArray(data[collection])) data[collection] = [];
+      const record = { id: Date.now(), ...defaults, ...item, createdAt: new Date().toISOString() };
+      data[collection].push(record);
+      write(data);
+      return record;
+    },
+    update(id, updates) {
+      const data = read();
+      const idx = (data[collection] || []).findIndex(item => item.id === id);
+      if (idx === -1) return null;
+      data[collection][idx] = { ...data[collection][idx], ...updates, id };
+      write(data);
+      return data[collection][idx];
+    },
+    delete(id) {
+      const data = read();
+      const found = (data[collection] || []).find(item => item.id === id);
+      data[collection] = (data[collection] || []).filter(item => item.id !== id);
+      write(data);
+      return found;
+    }
+  };
+}
+
+const promptsDb = makeCrud('prompts', { title: '', step: '未分类', sortOrder: 0, content: '', tags: [] },
+  (a, b) => {
+    if (a.step !== b.step) return (a.step || '').localeCompare(b.step || '');
+    return (a.sortOrder || 0) - (b.sortOrder || 0);
+  }
+);
+
+const assetsDb = makeCrud('assets', { name: '', type: 'character', fileName: '', originalName: '', fileSize: 0, tags: [] });
+const libraryDb = makeCrud('library', { name: '', fileName: '', originalName: '', fileSize: 0, tags: [] });
+
+function getPrompts() { return promptsDb.list(); }
+function getPrompt(id) { return promptsDb.get(id); }
+function addPrompt(item) { return promptsDb.add(item); }
+function updatePrompt(id, updates) { return promptsDb.update(id, updates); }
+function deletePrompt(id) { return promptsDb.delete(id); }
+function reorderPrompts(orderedIds) {
+  const data = read();
+  if (!Array.isArray(data.prompts)) return false;
+  orderedIds.forEach((id, i) => {
+    const p = data.prompts.find(p => p.id === id);
+    if (p) p.sortOrder = i + 1;
+  });
+  write(data);
+  return true;
+}
+
+function getAssets(type) {
+  const all = assetsDb.list();
+  return type ? all.filter(a => a.type === type) : all;
+}
+function getAsset(id) { return assetsDb.get(id); }
+function addAsset(item) { return assetsDb.add({ ...item, gridOverlay: item.gridOverlay !== undefined ? item.gridOverlay : (item.type === 'character') }); }
+function updateAsset(id, updates) { return assetsDb.update(id, updates); }
+function deleteAsset(id) { return assetsDb.delete(id); }
+
+function getLibrary() { return libraryDb.list(); }
+function getLibraryItem(id) { return libraryDb.get(id); }
+function addLibraryItem(item) { return libraryDb.add(item); }
+function updateLibraryItem(id, updates) { return libraryDb.update(id, updates); }
+function deleteLibraryItem(id) { return libraryDb.delete(id); }
+
 module.exports = {
   getWeeks, getCurrentWeek, addWeek, updateWeek, deleteWeek, restoreWeek, permanentlyDeleteWeek, setCurrentWeek,
   getDailyData, getAllDailyData, saveDailyData, deleteDailyData,
-  getVpsList, addVps, updateVps, deleteVps
+  getVpsList, addVps, updateVps, deleteVps,
+  getPrompts, getPrompt, addPrompt, updatePrompt, deletePrompt, reorderPrompts,
+  getAssets, getAsset, addAsset, updateAsset, deleteAsset,
+  getLibrary, getLibraryItem, addLibraryItem, updateLibraryItem, deleteLibraryItem
 };

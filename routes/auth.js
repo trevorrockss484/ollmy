@@ -18,10 +18,13 @@ router.post('/login', (req, res) => {
 router.post('/verify', (req, res) => {
   const { token } = req.body || {};
   if (token) {
-    const decoded = Buffer.from(token, 'base64').toString();
-    if (decoded.startsWith(VALID_USER + ':')) {
-      return res.json({ success: true });
-    }
+    try {
+      const decoded = Buffer.from(token, 'base64').toString();
+      const parts = decoded.split(':');
+      if (parts[0] === VALID_USER && parts.length >= 2 && Date.now() - Number(parts[parts.length-1]) < 7 * 86400_000) {
+        return res.json({ success: true });
+      }
+    } catch {}
   }
   res.status(401).json({ success: false, error: '未授权' });
 });

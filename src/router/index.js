@@ -3,12 +3,15 @@ import { useAuthStore } from '../stores/auth'
 
 const routes = [
   { path: '/login', name: 'login', component: () => import('../views/LoginView.vue'), meta: { public: true } },
-  { path: '/', name: 'plan', component: () => import('../views/PlanView.vue') },
+  { path: '/', name: 'dashboard', component: () => import('../views/DashboardView.vue') },
+  { path: '/plan', name: 'plan', component: () => import('../views/PlanView.vue') },
   { path: '/report', name: 'report', component: () => import('../views/ReportView.vue') },
   { path: '/history', name: 'history', component: () => import('../views/HistoryView.vue') },
-  { path: '/monthly', name: 'monthly', component: () => import('../views/MonthlyView.vue') },
   { path: '/monitor', name: 'monitor', component: () => import('../views/MonitorView.vue') },
-  { path: '/calculator', name: 'calculator', component: () => import('../views/CalculatorView.vue') },
+  { path: '/clock', name: 'clock', component: () => import('../views/ClockView.vue') },
+  { path: '/prompts', name: 'prompts', component: () => import('../views/PromptsView.vue') },
+  { path: '/assets', name: 'assets', component: () => import('../views/AssetsView.vue') },
+  { path: '/library', name: 'library', component: () => import('../views/LibraryView.vue') },
 ]
 
 const router = createRouter({ history: createWebHistory(), routes })

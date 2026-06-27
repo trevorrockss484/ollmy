@@ -1,6 +1,11 @@
 node_modules/
 dist/
 database/data/
+uploads/
 *.log
 .DS_Store
 Thumbs.db
+ngrok.exe
+ngrok.zip
+*.png
+screenshot-*

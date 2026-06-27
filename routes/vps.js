@@ -8,7 +8,7 @@ router.get('/', (req, res) => {
     const list = db.getVpsList();
     res.json({ success: true, data: list });
   } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
+    res.status(500).json({ success: false, error: "服务器内部错误" });
   }
 });
 
@@ -18,7 +18,7 @@ router.post('/', (req, res) => {
     const vps = db.addVps(req.body);
     res.json({ success: true, data: vps });
   } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
+    res.status(500).json({ success: false, error: "服务器内部错误" });
   }
 });
 
@@ -29,7 +29,7 @@ router.put('/:id', (req, res) => {
     if (!vps) return res.status(404).json({ success: false, error: 'VPS不存在' });
     res.json({ success: true, data: vps });
   } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
+    res.status(500).json({ success: false, error: "服务器内部错误" });
   }
 });
 
@@ -39,7 +39,7 @@ router.delete('/:id', (req, res) => {
     db.deleteVps(Number(req.params.id));
     res.json({ success: true });
   } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
+    res.status(500).json({ success: false, error: "服务器内部错误" });
   }
 });
 

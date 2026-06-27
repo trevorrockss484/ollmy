@@ -78,6 +78,27 @@ export const api = {
     add: (data) => request('/vps', { method: 'POST', body: JSON.stringify(data) }),
     update: (id, data) => request('/vps/' + id, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id) => request('/vps/' + id, { method: 'DELETE' }),
+  },
+  prompts: {
+    list: () => request('/prompts'),
+    get: (id) => request('/prompts/' + id),
+    add: (data) => request('/prompts', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request('/prompts/' + id, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id) => request('/prompts/' + id, { method: 'DELETE' }),
+    reorder: (ids) => request('/prompts/reorder/batch', { method: 'PUT', body: JSON.stringify({ ids }) }),
+  },
+  assets: {
+    list: (type) => request('/assets' + (type ? '?type=' + encodeURIComponent(type) : '')),
+    update: (id, data) => request('/assets/' + id, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id) => request('/assets/' + id, { method: 'DELETE' }),
+    getUrl: (fileName) => '/uploads/assets/original/' + encodeURIComponent(fileName),
+    downloadUrl: (id) => '/api/assets/' + id + '/download',
+  },
+  library: {
+    list: () => request('/library'),
+    update: (id, data) => request('/library/' + id, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id) => request('/library/' + id, { method: 'DELETE' }),
+    downloadUrl: (id) => '/api/library/' + id + '/download',
   }
 }
 
@@ -100,7 +121,7 @@ export function formatDateCN(str) {
 }
 
 export function daysBetween(d1, d2) {
-  return Math.ceil((new Date(d2) - new Date(d1)) / 86400000)
+  return Math.ceil((new Date(d2 + "T00:00:00") - new Date(d1 + "T00:00:00")) / 86400000)
 }
 
 export function getDayName(dateStr) {
@@ -117,4 +138,11 @@ export function getDateRange(start, end) {
     curr.setDate(curr.getDate()+1)
   }
   return dates
+}
+
+export function formatSize(bytes) {
+  if (!bytes) return '0 B'
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / 1048576).toFixed(1) + ' MB'
 }

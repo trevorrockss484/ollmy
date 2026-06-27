@@ -42,6 +42,8 @@ export const useAuthStore = defineStore('auth', () => {
       const data2 = await res2.json()
       if (data2.success) {
         token.value = data2.data.token
+        username.value = data2.data.username
+        localStorage.setItem("pan_user", data2.data.username)
         localStorage.setItem('pan_token', data2.data.token)
         return true
       }
