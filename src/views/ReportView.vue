@@ -316,11 +316,16 @@ async function saveData() {
  } catch(e) { saveMsg.value = '❌ 网络错误: ' + e.message; saveOk.value = false }
 }
 
-function clearForm() {
- Object.keys(fb).forEach(k => { fb[k] = (typeof fb[k] === 'number' || fb[k] === null) ? null : '' })
- reportText.value = ''
- saveMsg.value = ''
- ElMessage.success('表单已清空')
+async function clearForm() {
+  try {
+    await ElMessageBox.confirm('确定清空表单？未保存的数据将丢失。', '确认清空', {
+      confirmButtonText: '确认清空', cancelButtonText: '取消', type: 'warning'
+    })
+  } catch { return }
+  Object.keys(fb).forEach(k => { fb[k] = (typeof fb[k] === 'number' || fb[k] === null) ? null : '' })
+  reportText.value = ''
+  saveMsg.value = ''
+  ElMessage.success('表单已清空')
 }
 
 // ====== 粘贴识别 ======
