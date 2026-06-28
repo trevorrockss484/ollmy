@@ -6,12 +6,6 @@
           <h2><el-icon :size="22"><DataAnalysis /></el-icon> 数据查询</h2>
           <p class="sub">{{ pageSub }}</p>
         </div>
-        <div class="header-right">
-          <el-radio-group v-model="groupMode" size="small" @change="onGroupChange">
-            <el-radio-button value="date">按日期</el-radio-button>
-            <el-radio-button value="country">按国家</el-radio-button>
-          </el-radio-group>
-        </div>
       </div>
     </div>
 
@@ -59,30 +53,40 @@
     </div>
 
     <!-- ====== 统计卡片 ====== -->
-    <div class="summary-row">
-      <div class="summary-card">
-        <div class="sc-icon" style="background:#eef2ff;color:#6366f1;"><el-icon :size="18"><Calendar /></el-icon></div>
-        <div class="sc-info"><div class="sc-val">{{ list.length }}</div><div class="sc-label">记录数</div></div>
+    <div class="summary-section">
+      <div class="summary-top">
+        <span class="summary-title">📊 数据汇总</span>
+        <el-button size="small" round @click="copySummary">一键复制汇总数据</el-button>
       </div>
-      <div class="summary-card">
-        <div class="sc-icon" style="background:#fff7ed;color:#ea580c;"><el-icon :size="18"><Money /></el-icon></div>
-        <div class="sc-info"><div class="sc-val">¥{{ fmtNum(totals.fbBudget) }}</div><div class="sc-label">FB总消耗</div></div>
-      </div>
-      <div class="summary-card">
-        <div class="sc-icon" style="background:#ecfdf5;color:#059669;"><el-icon :size="18"><UserFilled /></el-icon></div>
-        <div class="sc-info"><div class="sc-val">{{ totals.fbCustomer }}</div><div class="sc-label">FB新客户</div></div>
-      </div>
-      <div class="summary-card">
-        <div class="sc-icon" style="background:#ecfdf5;color:#059669;"><el-icon :size="18"><ChatDotRound /></el-icon></div>
-        <div class="sc-info"><div class="sc-val success">{{ totals.fbGrouped }}</div><div class="sc-label">FB拉群</div></div>
-      </div>
-      <div class="summary-card">
-        <div class="sc-icon" style="background:#eef2ff;color:#6366f1;"><el-icon :size="18"><TrendCharts /></el-icon></div>
-        <div class="sc-info"><div class="sc-val">¥{{ avgCostStr }}</div><div class="sc-label">客均成本</div></div>
-      </div>
-      <div class="summary-card">
-        <div class="sc-icon" style="background:#fef2f2;color:#ef4444;"><el-icon :size="18"><TrendCharts /></el-icon></div>
-        <div class="sc-info"><div class="sc-val" style="color:#ef4444;">{{ conversion }}%</div><div class="sc-label">拉群转化率</div></div>
+      <div class="summary-row">
+        <div class="summary-card">
+          <div class="sc-icon" style="background:#eef2ff;color:#6366f1;"><el-icon :size="20"><Calendar /></el-icon></div>
+          <div class="sc-info"><div class="sc-val">{{ list.length }}</div><div class="sc-label">记录数</div></div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-icon" style="background:#fff7ed;color:#ea580c;"><el-icon :size="20"><Money /></el-icon></div>
+          <div class="sc-info"><div class="sc-val">¥{{ fmtNum(totals.fbBudget) }}</div><div class="sc-label">总消耗</div></div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-icon" style="background:#ecfdf5;color:#059669;"><el-icon :size="20"><UserFilled /></el-icon></div>
+          <div class="sc-info"><div class="sc-val">{{ totals.fbCustomer }}</div><div class="sc-label">总询盘客户</div></div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-icon" style="background:#ecfdf5;color:#059669;"><el-icon :size="20"><ChatDotRound /></el-icon></div>
+          <div class="sc-info"><div class="sc-val success">{{ totals.fbGrouped }}</div><div class="sc-label">已拉群客户</div></div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-icon" style="background:#fef2f2;color:#ef4444;"><el-icon :size="20"><TrendCharts /></el-icon></div>
+          <div class="sc-info"><div class="sc-val" style="color:#ef4444;">¥{{ effectiveCost }}</div><div class="sc-label">有效客户成本</div></div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-icon" style="background:#f3e8ff;color:#9333ea;"><el-icon :size="20"><DataAnalysis /></el-icon></div>
+          <div class="sc-info"><div class="sc-val">¥{{ dailyAvgCost }}</div><div class="sc-label">日均成本</div></div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-icon" style="background:#e0f2fe;color:#0284c7;"><el-icon :size="20"><CollectionTag /></el-icon></div>
+          <div class="sc-info"><div class="sc-val">¥{{ costPerInquiry }}</div><div class="sc-label">询盘客户成本</div></div>
+        </div>
       </div>
     </div>
 
@@ -206,21 +210,18 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as echarts from 'echarts'
-import { api, formatDateCN, todayStr, formatDate } from '../api'
+import { api, formatDateCN, todayStr } from '../api'
 
 const route = useRoute()
 const router = useRouter()
 
 const countries = ['综合', '印度尼西亚', '越南', '埃塞俄比亚', '尼日利亚', '南非']
 
-const LIST_KEY = 'history_filter'
-const GROUP_KEY = 'history_group'
 
 // ====== 筛选状态 — URL 优先 ======
 const dateRange = ref(null)
 const filterCountry = ref('')
 const monthPicked = ref(todayStr().substring(0, 7))
-const groupMode = ref('date')
 const searchText = ref('')
 
 // 最近 12 个月
@@ -286,6 +287,7 @@ async function doQuery() {
         }
       })
       if (list.value.length) {
+        await nextTick()
         updateChart()
       }
     }
@@ -293,33 +295,13 @@ async function doQuery() {
   loading.value = false
 }
 
-// ====== 分组切换 ======
-const groupByCountry = computed(() => groupMode.value === 'country')
-
-const groupedList = computed(() => {
-  if (!groupByCountry.value) return list.value
-  const map = {}
-  list.value.forEach(r => {
-    const c = r.country || '—'
-    if (!map[c]) map[c] = { key: c, rawDate: '', label: c, country: c, fbBudget: 0, fbCustomer: 0, fbGrouped: 0, _fb: null, _work: null, _data: null }
-    map[c].fbBudget += r.fbBudget
-    map[c].fbCustomer += r.fbCustomer
-    map[c].fbGrouped += r.fbGrouped
-  })
-  return Object.values(map).map(r => ({
-    ...r,
-    avgCost: r.fbCustomer > 0 ? (r.fbBudget / r.fbCustomer).toFixed(0) : '—',
-    conversion: r.fbCustomer > 0 ? Math.round(r.fbGrouped / r.fbCustomer * 100) : -1
-  }))
-})
-
 // ====== 分页 ======
 const pageSize = 20
 const curPage = ref(1)
-const totalPages = computed(() => Math.ceil(groupedList.value.length / pageSize))
+const totalPages = computed(() => Math.ceil(list.value.length / pageSize))
 const pagedList = computed(() => {
   const start = (curPage.value - 1) * pageSize
-  return groupedList.value.slice(start, start + pageSize)
+  return list.value.slice(start, start + pageSize)
 })
 
 // ====== 展开行 ======
@@ -335,15 +317,45 @@ const totals = computed(() => {
   return t
 })
 
-const avgCostStr = computed(() =>
-  totals.value.fbCustomer > 0 ? (totals.value.fbBudget / totals.value.fbCustomer).toFixed(0) : '—'
+const effectiveCost = computed(() =>
+  totals.value.fbGrouped > 0 ? (totals.value.fbBudget / totals.value.fbGrouped).toFixed(0) : '—'
 )
-
+const dailyAvgCost = computed(() =>
+  list.value.length > 0 ? Math.round(totals.value.fbBudget / list.value.length) : '—'
+)
+const costPerInquiry = computed(() =>
+  totals.value.fbCustomer > 0 ? (totals.value.fbBudget / totals.value.fbCustomer).toFixed(1) : '—'
+)
 const conversion = computed(() =>
   totals.value.fbCustomer > 0 ? Math.round(totals.value.fbGrouped / totals.value.fbCustomer * 100) : 0
 )
 
 function fmtNum(n) { return Math.round(n).toLocaleString() }
+
+async function copySummary() {
+  if (!list.value.length) { ElMessage.warning('暂无数据可复制'); return }
+  const t = totals.value
+  const rangeLabel = dateRange.value?.[0]
+    ? dateRange.value[0] + ' — ' + dateRange.value[1]
+    : '全部'
+  const days = list.value.length
+  const text = `⭐${rangeLabel}数据汇总：
+1. 总询盘客户：${t.fbCustomer} 个
+2. 已拉群客户：${t.fbGrouped} 个
+3. 总消耗：¥${fmtNum(t.fbBudget)}
+4. 有效客户成本：¥${effectiveCost.value}/个
+5. 日均成本：¥${dailyAvgCost.value}
+6. 询盘客户成本：¥${costPerInquiry.value}
+7. 统计天数：${days} 天`
+  try {
+    await navigator.clipboard.writeText(text)
+    ElMessage.success('汇总数据已复制')
+  } catch {
+    const ta = document.createElement('textarea'); ta.value = text
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy')
+    document.body.removeChild(ta); ElMessage.success('已复制')
+  }
+}
 
 // ====== ECharts ======
 const chartRef = ref(null)
@@ -459,21 +471,10 @@ function editRow(row) {
   if (row._data) {
     sessionStorage.setItem('editDaily', JSON.stringify({ date: row.rawDate, data: row._data }))
     router.push('/report')
-  } else if (row.country && list.value.length) {
-    // 国家分组模式 — 跳第一个匹配的
-    const first = list.value.find(r => r.country === row.country && r._data)
-    if (first) {
-      sessionStorage.setItem('editDaily', JSON.stringify({ date: first.rawDate, data: first._data }))
-      router.push('/report')
-    }
   }
 }
 
 async function delRow(row) {
-  if (groupByCountry.value) {
-    ElMessage.warning('按国家分组下不支持删除，请切换到按日期模式')
-    return
-  }
   try { await ElMessageBox.confirm('确定删除该日报？', '确认', { type: 'warning' }) } catch { return }
   await api.daily.delete(row.rawDate)
   ElMessage.success('已删除')
@@ -505,30 +506,31 @@ function exportCSV() {
 // ====== URL 状态持久化 ======
 function onDateChange() { doQuery() }
 function onFilterChange() { doQuery() }
-function onGroupChange() { doQuery() }
 
 function restoreFromURL() {
-  const q = route.query
-  if (q.start) dateRange.value = [q.start, q.end || q.start]
-  if (q.country) filterCountry.value = q.country
-  if (q.month) monthPicked.value = q.month
-  if (q.group) groupMode.value = q.group
+  const q = new URLSearchParams(window.location.search)
+  if (q.get('start')) dateRange.value = [q.get('start'), q.get('end') || q.get('start')]
+  if (q.get('country')) filterCountry.value = q.get('country')
+  if (q.get('month')) monthPicked.value = q.get('month')
 }
 
-watch([dateRange, filterCountry, groupMode], () => {
+watch([dateRange, filterCountry], () => {
   const q = {}
   if (dateRange.value?.[0]) { q.start = dateRange.value[0]; q.end = dateRange.value[1] }
   if (filterCountry.value) q.country = filterCountry.value
-  if (groupMode.value !== 'date') q.group = groupMode.value
-  router.replace({ query: q })
 }, { deep: true })
 
 // ====== 初始化 ======
 onMounted(() => {
   restoreFromURL()
-  if (dateRange.value) doQuery()
-  if (monthPicked.value) loadMonthly()
   window.addEventListener('resize', handleResize)
+  // 确保有默认日期并自动查询
+  if (!dateRange.value) {
+    const now = new Date()
+    dateRange.value = [now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01', todayStr()]
+  }
+  nextTick(() => doQuery())
+  if (monthPicked.value) loadMonthly()
 })
 
 onUnmounted(() => {
@@ -571,17 +573,28 @@ function handleResize() { chartInstance?.resize() }
 .chart-body { height:260px; }
 
 /* ====== 统计卡 ====== */
-.summary-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+.summary-section { margin-bottom:20px; }
+.summary-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.summary-title { font-size:15px; font-weight:700; color:#111827; }
+.summary-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; }
 .summary-card {
-  display:flex; align-items:center; gap:10px;
-  background:#fff; border-radius:12px; padding:14px 18px;
-  border:1px solid #e5e7eb; flex:1; min-width:150px;
+  display:flex; align-items:center; gap:14px;
+  background:#fff; border-radius:16px; padding:18px 20px;
+  border:1px solid #e5e7eb;
   box-shadow:0 1px 3px rgba(0,0,0,.03);
+  transition:all 0.2s;
 }
-.sc-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.sc-val { font-size:20px; font-weight:800; color:#1f2937; line-height:1.1; }
+.summary-card:hover {
+  box-shadow:0 4px 16px rgba(0,0,0,.06);
+  transform:translateY(-2px);
+}
+.sc-icon {
+  width:48px; height:48px; border-radius:14px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.sc-val { font-size:24px; font-weight:800; color:#1f2937; line-height:1.2; }
 .sc-val.success { color:#059669; }
-.sc-label { font-size:11px; color:#9ca3af; font-weight:600; letter-spacing:.3px; }
+.sc-label { font-size:12px; color:#9ca3af; font-weight:600; margin-top:3px; }
 
 /* ====== 月报提示条 ====== */
 .report-snack {

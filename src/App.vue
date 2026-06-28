@@ -40,28 +40,35 @@
  </el-menu-item>
  <el-menu-item index="/monitor">
  <el-icon><Monitor /></el-icon>
- <template #title>
- <span class="menu-item-title">
- 监控中心
- <span v-if="vpsAlert > 0" class="menu-item-badge">{{ vpsAlert }}</span>
- </span>
- </template>
+ <template #title>监控中心</template>
  </el-menu-item>
  <el-menu-item index="/clock">
  <el-icon><Clock /></el-icon>
  <template #title>世界时钟</template>
  </el-menu-item>
- <el-menu-item index="/prompts">
- <el-icon><Document /></el-icon>
- <template #title>提示词模板</template>
- </el-menu-item>
  <el-menu-item index="/assets">
  <el-icon><PictureFilled /></el-icon>
- <template #title>资产管理</template>
+ <template #title>AI资产管理</template>
  </el-menu-item>
- <el-menu-item index="/library">
- <el-icon><Folder /></el-icon>
- <template #title>资料库</template>
+ <el-menu-item index="/media">
+ <el-icon><PictureFilled /></el-icon>
+ <template #title>图片素材库</template>
+ </el-menu-item>
+ <el-menu-item index="/video-library">
+ <el-icon><VideoCameraFilled /></el-icon>
+ <template #title>视频素材库</template>
+ </el-menu-item>
+ <el-menu-item index="/scripts">
+ <el-icon><ChatDotRound /></el-icon>
+ <template #title>话术库</template>
+ </el-menu-item>
+ <el-menu-item index="/compress">
+ <el-icon><Scissor /></el-icon>
+ <template #title>图片压缩</template>
+ </el-menu-item>
+ <el-menu-item index="/video-compress">
+ <el-icon><VideoCameraFilled /></el-icon>
+ <template #title>视频压缩</template>
  </el-menu-item>
  </el-menu>
 
@@ -76,6 +83,9 @@
  <el-header class="app-topbar">
  <el-button text @click="isCollapse = !isCollapse">
  <el-icon :size="20"><Fold v-if="!isCollapse" /><Expand v-else /></el-icon>
+ </el-button>
+ <el-button text @click="goBack" class="topbar-back" :disabled="!hasHistory">
+ <el-icon :size="18"><ArrowLeft /></el-icon>
  </el-button>
  <span class="topbar-info" v-if="route.path === '/plan'">{{ weekTitle }}</span>
  <span class="topbar-info" v-else>{{ pageTitle }}</span>
@@ -108,9 +118,9 @@
 
  <el-main class="app-main">
  <router-view v-slot="{ Component, route }">
- <transition name="fade" mode="out-in">
- <component :is="Component" :key="route.fullPath" />
- </transition>
+ <keep-alive :include="['compress','video-compress']">
+ <component :is="Component" :key="route.name" />
+ </keep-alive>
  </router-view>
  </el-main>
  </el-container>
@@ -118,22 +128,30 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useWeekStore } from './stores/week'
 import { useAuthStore } from './stores/auth'
 import { ElMessage } from 'element-plus'
 import { api, formatDateCN, formatDate, todayStr, daysBetween } from './api'
 
 const route = useRoute()
+const r = useRouter()
 const weekStore = useWeekStore()
 const authStore = useAuthStore()
 
 const isCollapse = ref(false)
+// 返回按钮
+const hasHistory = computed(() => {
+  if (typeof window === 'undefined') return false
+  try { return window.history.length > 1 } catch { return false }
+})
+function goBack() { r.go(-1) }
 const selectedWeekId = ref(null)
 const vpsAlert = ref(0)
 const vpsAlerts = ref([]) // [{name, days, severity, expireShort}]
 const alertDismissed = ref(false)
+let vpsTimer = null
 
 const activeMenu = computed(() => route.path)
 
@@ -154,9 +172,12 @@ const pageTitles = {
   '/history': '数据查询',
   '/monitor': '监控中心',
   '/clock': '世界时钟',
-  '/prompts': '提示词模板',
-  '/assets': '资产管理',
-  '/library': '资料库',
+  '/assets': 'AI资产管理',
+  '/media': '图片素材库',
+  '/video-library': '视频素材库',
+  '/video-compress': '视频压缩',
+  '/scripts': '话术库',
+  '/compress': '图片压缩',
 }
 const pageTitle = computed(() => pageTitles[route.path] || 'Pan助手')
 
@@ -176,8 +197,9 @@ onMounted(async () => {
  await weekStore.load()
  if (!weekStore.currentWeek) await weekStore.createWeek()
  checkVps()
- setInterval(checkVps, 120000)
+ vpsTimer = setInterval(checkVps, 120000)
 })
+onUnmounted(() => { if (vpsTimer) clearInterval(vpsTimer) })
 
 async function checkVps() {
  try {
@@ -260,6 +282,9 @@ async function checkVps() {
  padding: 0 16px;
 }
 .topbar-info { font-size: 12px; color: #9ca3af; }
+.topbar-back { margin-right: 6px; color: #6b7280; }
+.topbar-back:hover { color: #6366f1; }
+.topbar-back.is-disabled { opacity: .25; cursor: default; }
 
 .app-main {
  background: #f3f4f6;

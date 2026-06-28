@@ -20,7 +20,9 @@ function defaultData() {
     vpsList: [],
     prompts: [],
     assets: [],
-    library: []
+    library: [],
+    compressed: [],
+    scripts: []
   };
 }
 
@@ -28,9 +30,9 @@ function defaultData() {
 function defaultWeek() {
   const now = new Date();
   const day = now.getDay() || 7;
-  // 下周一
+  // 本周一
   const monday = new Date(now);
-  monday.setDate(now.getDate() - day + 8);
+  monday.setDate(now.getDate() - day + 1);
   const friday = new Date(monday);
   friday.setDate(monday.getDate() + 4);
 
@@ -130,18 +132,43 @@ function getWeeks() {
 
 function getCurrentWeek() {
   const data = read();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isExpired = (w) => {
+    if (!w?.endDate) return true;
+    const end = new Date(w.endDate + 'T00:00:00');
+    const start = new Date(w.startDate + 'T00:00:00');
+    if (start > today) return true;
+    return (today - end) / 86400000 > 7;
+  };
+  // 有手动切换的周，直接返回（不过期检查——切换是用户主动行为）
   if (data.currentWeekId) {
     const w = data.weeks.find(w => w.id === data.currentWeekId);
-    if (w) return w;
+    if (w && !w.hidden) return w;
   }
-  // fallback: 返回最近一周
-  if (data.weeks.length > 0) return data.weeks[data.weeks.length - 1];
-  // 创建默认周
+  // 自动选择：找最近未过期的一周
+  const recent = data.weeks.filter(w => !w.hidden && !isExpired(w)).pop();
+  if (recent) {
+    data.currentWeekId = recent.id;
+    write(data);
+    return recent;
+  }
   const dw = defaultWeek();
   data.weeks.push(dw);
   data.currentWeekId = dw.id;
   write(data);
   return dw;
+}
+
+function hasOverlap(data, start, end) {
+  const s = new Date(start + 'T00:00:00')
+  const e = new Date(end + 'T00:00:00')
+  return data.weeks.some(w => {
+    if (w.hidden) return false
+    const ws = new Date(w.startDate + 'T00:00:00')
+    const we = new Date(w.endDate + 'T00:00:00')
+    return ws <= e && we >= s
+  })
 }
 
 function addWeek(weekData) {
@@ -323,6 +350,7 @@ const promptsDb = makeCrud('prompts', { title: '', step: '未分类', sortOrder:
 
 const assetsDb = makeCrud('assets', { name: '', type: 'character', fileName: '', originalName: '', fileSize: 0, tags: [] });
 const libraryDb = makeCrud('library', { name: '', fileName: '', originalName: '', fileSize: 0, tags: [] });
+const compressedDb = makeCrud('compressed', { originalName: '', compressedName: '', originalSize: 0, compressedSize: 0, width: 0, height: 0, format: 'webp', quality: 80, name: '', category: '' });
 
 function getPrompts() { return promptsDb.list(); }
 function getPrompt(id) { return promptsDb.get(id); }
@@ -355,11 +383,31 @@ function addLibraryItem(item) { return libraryDb.add(item); }
 function updateLibraryItem(id, updates) { return libraryDb.update(id, updates); }
 function deleteLibraryItem(id) { return libraryDb.delete(id); }
 
+function getCompressed() { return compressedDb.list(); }
+function getCompressedItem(id) { return compressedDb.get(id); }
+function addCompressed(item) { return compressedDb.add(item); }
+function updateCompressed(id, updates) { return compressedDb.update(id, updates); }
+function deleteCompressed(id) { return compressedDb.delete(id); }
+
+const scriptsDb = makeCrud('scripts', { title: '', content: '', contentCn: '', category: '开场白', tags: [], usageCount: 0 });
+
 module.exports = {
   getWeeks, getCurrentWeek, addWeek, updateWeek, deleteWeek, restoreWeek, permanentlyDeleteWeek, setCurrentWeek,
   getDailyData, getAllDailyData, saveDailyData, deleteDailyData,
   getVpsList, addVps, updateVps, deleteVps,
   getPrompts, getPrompt, addPrompt, updatePrompt, deletePrompt, reorderPrompts,
   getAssets, getAsset, addAsset, updateAsset, deleteAsset,
-  getLibrary, getLibraryItem, addLibraryItem, updateLibraryItem, deleteLibraryItem
+  getLibrary, getLibraryItem, addLibraryItem, updateLibraryItem, deleteLibraryItem,
+  hasOverlap,
+  getCompressed, getCompressedItem, addCompressed, updateCompressed, deleteCompressed,
+  getScripts() { return scriptsDb.list(); },
+  getScript(id) { return scriptsDb.get(id); },
+  addScript(item) { return scriptsDb.add(item); },
+  updateScript(id, u) { return scriptsDb.update(id, u); },
+  deleteScript(id) { return scriptsDb.delete(id); },
+  incScriptUsage(id) {
+    const s = scriptsDb.get(id);
+    if (!s) return null;
+    return scriptsDb.update(id, { usageCount: (s.usageCount || 0) + 1 });
+  },
 };

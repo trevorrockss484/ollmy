@@ -99,6 +99,11 @@ export const api = {
     update: (id, data) => request('/library/' + id, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id) => request('/library/' + id, { method: 'DELETE' }),
     downloadUrl: (id) => '/api/library/' + id + '/download',
+  },
+  tools: {
+    compressUrl: '/api/tools/compress',
+    downloadUrl: (filename) => '/api/tools/download/' + encodeURIComponent(filename),
+    downloadAllUrl: (sessionId) => '/api/tools/download-all/' + encodeURIComponent(sessionId),
   }
 }
 

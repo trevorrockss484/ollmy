@@ -311,7 +311,7 @@ async function initMap() {
  color: (p) => flatCities[p.dataIndex]?.color || '#6366f1',
  },
  label: {
- show: true,
+ show: false,
  position: 'right',
  formatter: '{b}',
  color: '#6b7280',

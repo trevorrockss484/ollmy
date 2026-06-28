@@ -17,6 +17,7 @@ export const useWeekStore = defineStore('week', () => {
     await api.config.switchWeek(id)
     const cur = await api.config.current()
     if (cur.success) currentWeek.value = cur.data
+    return cur.success ? cur.data : null
   }
 
   async function createWeek(data = {}) {

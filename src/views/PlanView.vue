@@ -14,39 +14,13 @@
           >
             <span class="wc-dates">{{ shortDate(w.startDate) }} – {{ shortDate(w.endDate) }}</span>
             <span class="wc-meta">询{{ w.inquiryGoal }} · 拉{{ w.groupGoal }}</span>
-            <span v-if="visibleWeeks.length > 1" class="wc-close" @click.stop="closeWeekTab(w)">
-              <el-icon :size="12"><Close /></el-icon>
-            </span>
           </button>
         </div>
       </div>
       <div class="plan-top-actions">
         <el-button size="small" @click="openCreateWeek"><el-icon :size="14"><Plus /></el-icon> 新增周</el-button>
         <el-button size="small" type="primary" @click="openSettings"><el-icon :size="14"><Setting /></el-icon> 设置</el-button>
-      </div>
-    </div>
-
-    <!-- 已关闭的周 -->
-    <div v-if="hiddenWeeks.length" class="hidden-section">
-      <div class="hidden-section-hd" @click="hiddenExpanded = !hiddenExpanded">
-        <div class="hidden-hd-left">
-          <el-icon :size="14"><Folder /></el-icon>
-          <span>已关闭的周</span>
-          <span class="hidden-count">{{ hiddenWeeks.length }}</span>
-        </div>
-        <el-icon :size="14" class="hidden-chevron" :class="{ flipped: hiddenExpanded }"><ArrowDown /></el-icon>
-      </div>
-      <div v-if="hiddenExpanded" class="hidden-list">
-        <div v-for="w in hiddenWeeks" :key="w.id" class="hidden-row">
-          <div class="hidden-row-info">
-            <span class="hidden-row-dates">{{ shortDate(w.startDate) }} – {{ shortDate(w.endDate) }}</span>
-            <span class="hidden-row-meta">询盘{{ w.inquiryGoal }} · 拉群{{ w.groupGoal }} · ¥{{ w.weekBudget }}</span>
-          </div>
-          <div class="hidden-row-actions">
-            <el-button size="small" text type="primary" @click="restoreWeekTab(w.id)"><el-icon :size="14"><RefreshLeft /></el-icon> 恢复</el-button>
-            <el-button size="small" text type="danger" @click="permDeleteWeek(w)"><el-icon :size="14"><Delete /></el-icon></el-button>
-          </div>
-        </div>
+        <el-button size="small" @click="manageOpen = true">管理周计划</el-button>
       </div>
     </div>
 
@@ -105,8 +79,20 @@
           <div class="donut-wrap">
             <div ref="donutRef" class="donut-chart"></div>
             <div class="donut-label">
-              <div class="dl-val">{{ animatedPct }}%</div>
-              <div class="dl-sub">{{ s.fbGrouped }} / {{ week.groupGoal }}</div>
+              <div class="dl-val">{{ s.fbGrouped }}</div>
+              <div class="dl-sub">/ {{ week.groupGoal }} 拉群</div>
+            </div>
+          </div>
+          <div class="donut-footer">
+            <div class="df-item">
+              <span class="df-dot" style="background:#10b981;"></span>
+              <span class="df-val">{{ animatedPct }}%</span>
+              <span class="df-label">达成率</span>
+            </div>
+            <div class="df-item">
+              <span class="df-dot" style="background:#f3f4f6;"></span>
+              <span class="df-val">{{ Math.max(0, (week.groupGoal||0) - s.fbGrouped) }}</span>
+              <span class="df-label">剩余</span>
             </div>
           </div>
         </div>
@@ -148,7 +134,7 @@
       <div class="daily-section">
         <div class="daily-hd">
           <b><el-icon :size="16"><List /></el-icon> 每日完成情况</b>
-          <span style="font-size:12px;color:#9ca3af;"><el-icon :size="13"><InfoFilled /></el-icon> 点击跳转日报编辑</span>
+          <span style="font-size:12px;color:#9ca3af;"><el-icon :size="13"><InfoFilled /></el-icon> 点击编辑或填写日报</span>
         </div>
         <div class="daily-table">
           <div class="dt-head">
@@ -203,6 +189,23 @@
         </template>
       </el-dialog>
 
+      <!-- ====== 管理周计划弹窗 ====== -->
+      <el-dialog v-model="manageOpen" title="管理周计划" width="600px" destroy-on-close>
+        <div class="manage-list">
+          <div v-for="w in allWeeks" :key="w.id" class="manage-row" :class="{ current: w.id === week?.id }">
+            <div class="manage-info">
+              <span class="manage-dates">{{ shortDate(w.startDate) }} – {{ shortDate(w.endDate) }}</span>
+              <span class="manage-meta">询{{ w.inquiryGoal }} · 拉{{ w.groupGoal }} · ¥{{ w.weekBudget }}</span>
+              <el-tag v-if="w.id === week?.id" size="small" type="primary" effect="light">当前</el-tag>
+            </div>
+            <div class="manage-actions">
+              <el-button v-if="w.id !== week?.id" size="small" text type="primary" @click="switchToWeek(w.id); manageOpen = false">切换到此周</el-button>
+              <el-button size="small" text type="danger" @click="permDeleteWeek(w); manageOpen = false">删除</el-button>
+            </div>
+          </div>
+        </div>
+      </el-dialog>
+
       <!-- ====== 新增周弹窗 ====== -->
       <el-dialog v-model="newWeekOpen" title="新增周计划" width="560px" destroy-on-close>
         <div style="margin-bottom:14px;">
@@ -219,7 +222,7 @@
             <div><label>询盘/拉群</label><b>{{ newWeekForm.inquiryGoal }} / {{ newWeekForm.groupGoal }}</b></div>
           </div>
           <div style="margin-top:8px;"><label>覆盖国家</label><div class="chip-row"><el-tag v-for="c in newWeekForm.countries" :key="c" size="small">{{ c }}</el-tag></div></div>
-          <el-alert style="margin-top:12px;" title="继承当前周全部设置，日期自动设为下一周" type="info" :closable="false" show-icon />
+          <el-alert style="margin-top:12px;" title="继承当前周全部设置，日期自动计算为下周" type="info" :closable="false" show-icon />
         </div>
         <el-form v-else label-width="80px" size="default">
           <el-row :gutter="12">
@@ -254,14 +257,16 @@ import { api, formatDate, formatDateCN, getDateRange, getDayName, todayStr } fro
 const weekStore = useWeekStore()
 const router = useRouter()
 const week = computed(() => weekStore.currentWeek)
+const donutRef = ref(null)
+let donutChart = null
 
 function shortDate(str) { return str ? formatDate(str) : '' }
 function formatDayOnly(str) { if (!str) return ''; return parseInt(str.split('-')[2]) + '日' }
 
 // ====== 周切换 ======
 const visibleWeeks = computed(() => weekStore.weeks.filter(w => !w.hidden))
-const hiddenWeeks = computed(() => weekStore.weeks.filter(w => w.hidden))
-const hiddenExpanded = ref(false)
+const allWeeks = computed(() => [...weekStore.weeks].sort((a, b) => b.id - a.id))
+const manageOpen = ref(false)
 
 // ====== 国家树 ======
 const countryTreeData = [
@@ -330,23 +335,28 @@ function animateNumber(from, to, duration) {
 }
 
 function initDonut() {
-  if (!donutRef.value) return
+  const el = donutRef.value
+  if (!el || el.offsetWidth === 0 || el.offsetHeight === 0) return
   const prevVal = animatedPct.value
-  if (!donutChart) donutChart = echarts.init(donutRef.value)
+  if (donutChart) { donutChart.dispose(); donutChart = null }
+  donutChart = echarts.init(el, null, { devicePixelRatio: 2 })
   donutChart.setOption({
-    animationDuration: 1200,
-    animationEasing: 'cubicOut',
+    animation: true,
+    animationDuration: 1400,
+    animationEasing: 'cubicInOut',
+    animationDelay(idx) { return idx * 200 },
     series: [{
-      type: 'pie', radius: ['75%', '95%'], silent: true,
+      type: 'pie', radius: ['72%', '92%'], silent: true,
       animationType: 'scale',
-      animationDelay: 200,
+      animationDelay: 300,
+      itemStyle: { borderColor: 'transparent', borderWidth: 0 },
       data: [
         { value: s.fbGrouped, itemStyle: { color: '#10b981' } },
         { value: Math.max(0, (week.value?.groupGoal || 0) - s.fbGrouped), itemStyle: { color: '#f3f4f6' } }
       ]
     }]
   })
-  animateNumber(prevVal || 0, groupPct.value, 1200)
+  animateNumber(prevVal || 0, groupPct.value, 1400)
 }
 
 // ====== 加载 ======
@@ -361,7 +371,17 @@ async function loadWeekData(w) {
   } catch { ElMessage.error('加载本周数据失败') }
 }
 
-function goToReport(d) { sessionStorage.setItem('targetDate', d.date); router.push('/report') }
+function goToReport(d) {
+  sessionStorage.setItem('targetDate', d.date)
+  // 如果已有数据，传过去预填表单（修正模式）
+  if (d.completed) {
+    const existing = dailyData.value[d.date]
+    if (existing) {
+      sessionStorage.setItem('editDaily', JSON.stringify({ date: d.date, data: existing }))
+    }
+  }
+  router.push({ path: '/report', query: { t: Date.now() } })
+}
 
 // ====== 设置 ======
 const settingsOpen = ref(false)
@@ -398,45 +418,40 @@ function openCreateWeek() { newWeekForm.value = getNextWeekDefaults(); newWeekMo
 
 async function doCreateWeek() {
   const res = await weekStore.createWeek(newWeekForm.value)
-  if (res.success) { newWeekOpen.value = false; ElMessage.success('新周计划已创建') }
+  if (res.success) {
+    newWeekOpen.value = false
+    ElMessage.success('新周计划已创建')
+    const w = week.value || res.data
+    if (w && w.startDate && w.endDate) {
+      form.value = { startDate:w.startDate,endDate:w.endDate,dailyBudget:w.dailyBudget,weekBudget:w.weekBudget,inquiryGoal:w.inquiryGoal,groupGoal:w.groupGoal,countries:[...(w.countries||[])] }
+      await loadWeekData(w)
+      await nextTick(); initDonut()
+    }
+  } else {
+    ElMessage.error(res.error || '创建失败')
+  }
 }
 
 // ====== 切换 / 删除 ======
 async function switchToWeek(id) {
   try {
     await weekStore.switchWeek(id)
-    const w = week.value
-    if (!w) return
-    form.value = {
-      startDate: w.startDate, endDate: w.endDate, dailyBudget: w.dailyBudget,
-      weekBudget: w.weekBudget, inquiryGoal: w.inquiryGoal, groupGoal: w.groupGoal,
-      countries: [...(w.countries || [])]
-    }
-    await nextTick()
-    if (treeRef.value) treeRef.value.setCheckedKeys(w?.countries || [])
+    // 确保用最新 store 值，手动重新读
+    const cur = await api.config.current()
+    if (!cur.success || !cur.data) return ElMessage.error('切换失败')
+    const w = cur.data
+    form.value = { startDate:w.startDate,endDate:w.endDate,dailyBudget:w.dailyBudget,weekBudget:w.weekBudget,inquiryGoal:w.inquiryGoal,groupGoal:w.groupGoal,countries:[...(w.countries||[])] }
     await loadWeekData(w)
+    await nextTick()
+    initDonut()
+    ElMessage.success('已切换')
   } catch { ElMessage.error("切换失败") }
 }
 
 async function closeWeekTab(w) {
   if (visibleWeeks.value.length <= 1) return
-  try {
-    await ElMessageBox.confirm(
-      '关闭「' + shortDate(w.startDate) + ' – ' + shortDate(w.endDate) + '」周计划？',
-      '关闭周计划',
-      {
-        confirmButtonText: '确认关闭',
-        cancelButtonText: '取消',
-        type: 'warning',
-        message: '关闭后可在下方「已关闭的周」中恢复，日报数据不会丢失。'
-      }
-    )
-  } catch { return }
   await weekStore.deleteWeek(w.id)
-  ElMessage.success('周计划已关闭')
 }
-
-async function restoreWeekTab(id) { await weekStore.restoreWeek(id); ElMessage.success('已恢复') }
 
 async function permDeleteWeek(w) {
   try {
@@ -465,24 +480,16 @@ watch([() => s.fbGrouped, () => week.value?.groupGoal], () => {
 
 onMounted(async () => {
   window.addEventListener('resize', () => { donutChart?.resize() })
-
-  // 1. 确保 store 加载
   if (!weekStore.weeks.length) await weekStore.load()
   if (!week.value) await weekStore.createWeek()
   const w = week.value
   if (!w) return
-
-  // 2. 同步表单
   form.value = {
     startDate: w.startDate, endDate: w.endDate, dailyBudget: w.dailyBudget,
     weekBudget: w.weekBudget, inquiryGoal: w.inquiryGoal, groupGoal: w.groupGoal,
     countries: [...(w.countries || [])]
   }
-
-  // 3. 加载数据
   await loadWeekData(w)
-
-  // 4. 渲染图表（DOM 已就绪）
   await nextTick()
   initDonut()
 })
@@ -504,7 +511,9 @@ onUnmounted(() => { donutChart?.dispose(); donutChart = null })
 .plan-top-actions { display:flex; gap:6px; flex-shrink:0; padding-top:4px; }
 
 /* 周 chips */
-.week-selector { display:flex; gap:6px; flex-wrap:wrap; }
+.week-selector { display:flex; gap:6px; flex-wrap:wrap; max-height:84px; overflow-y:auto; }
+.week-selector::-webkit-scrollbar { width:3px; }
+.week-selector::-webkit-scrollbar-thumb { background:#e5e7eb; border-radius:3px; }
 .week-chip {
   display:inline-flex; align-items:center; gap:8px;
   padding:7px 14px; border-radius:10px;
@@ -518,49 +527,21 @@ onUnmounted(() => { donutChart?.dispose(); donutChart = null })
 .week-chip.active .wc-dates { color:#fff; }
 .wc-meta { font-size:10px; color:#9ca3af; }
 .week-chip.active .wc-meta { color:rgba(255,255,255,.65); }
-.wc-close {
-  width:18px; height:18px; border-radius:4px;
-  display:flex; align-items:center; justify-content:center;
-  color:#9ca3af; opacity:0; transition:opacity .15s;
-}
-.week-chip:hover .wc-close { opacity:1; }
-.wc-close:hover { background:rgba(0,0,0,.08); color:#ef4444; }
-.week-chip.active .wc-close { color:rgba(255,255,255,.5); }
-.week-chip.active .wc-close:hover { color:#fff; background:rgba(255,255,255,.2); }
 
-/* 已关闭的周 */
-.hidden-section {
-  border:1px solid #e5e7eb; border-radius:14px;
-  margin-bottom:16px; overflow:hidden;
-  background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.03);
-}
-.hidden-section-hd {
-  display:flex; justify-content:space-between; align-items:center;
-  padding:12px 18px; cursor:pointer; user-select:none;
-  transition:background .15s;
-}
-.hidden-section-hd:hover { background:#f9fafb; }
-.hidden-hd-left { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:#6b7280; }
-.hidden-count {
-  display:inline-flex; align-items:center; justify-content:center;
-  min-width:20px; height:20px; padding:0 6px;
-  border-radius:10px; background:#f3f4f6; color:#9ca3af;
-  font-size:11px; font-weight:700;
-}
-.hidden-chevron { color:#9ca3af; transition:transform .2s; }
-.hidden-chevron.flipped { transform:rotate(180deg); }
-.hidden-list { border-top:1px solid #f3f4f6; }
-.hidden-row {
+/* ====== 管理弹窗 ====== */
+.manage-list { display:flex; flex-direction:column; gap:8px; }
+.manage-row {
   display:flex; align-items:center; justify-content:space-between;
-  padding:12px 18px; border-bottom:1px solid #f9fafb;
-  transition:background .12s;
+  padding:14px 16px; border-radius:12px;
+  border:1px solid #e5e7eb; background:#fff;
+  transition:all .15s;
 }
-.hidden-row:last-child { border-bottom:none; }
-.hidden-row:hover { background:#fafaff; }
-.hidden-row-info { display:flex; align-items:center; gap:12px; min-width:0; }
-.hidden-row-dates { font-size:13px; font-weight:700; color:#374151; }
-.hidden-row-meta { font-size:11px; color:#9ca3af; font-weight:500; }
-.hidden-row-actions { display:flex; gap:4px; flex-shrink:0; }
+.manage-row:hover { border-color:#c7d2fe; }
+.manage-row.current { border-color:#6366f1; background:#eef2ff; }
+.manage-info { display:flex; align-items:center; gap:12px; }
+.manage-dates { font-size:14px; font-weight:700; color:#111827; }
+.manage-meta { font-size:12px; color:#6b7280; }
+.manage-actions { display:flex; gap:6px; }
 
 .empty-page { text-align:center; padding:60px; color:#9ca3af; }
 
@@ -585,24 +566,30 @@ onUnmounted(() => { donutChart?.dispose(); donutChart = null })
 .ov-sub-done { font-size:10px; color:#059669; font-weight:700; margin-top:4px; }
 
 /* ====== 中部三栏 ====== */
-.mid-layout { display:grid; grid-template-columns:220px 1fr 260px; gap:14px; margin-bottom:20px; }
+.mid-layout { display:grid; grid-template-columns:260px 1fr 260px; gap:14px; margin-bottom:20px; }
 
 .mid-card {
-  background:#fff; border:1px solid #e5e7eb; border-radius:16px;
-  padding:18px 20px; box-shadow:0 1px 3px rgba(0,0,0,.03);
+  background:#fff; border-radius:16px;
+  padding:18px 20px; box-shadow: 0 0 0 1px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.06);
 }
 .mid-card-hd { font-size:14px; font-weight:700; color:#374151; margin-bottom:14px; }
 
 /* 环形图 */
-.mid-donut { display:flex; flex-direction:column; }
-.donut-wrap { position:relative; display:flex; justify-content:center; flex:1; }
+.mid-donut { display:flex; flex-direction:column; align-items:center; }
+.donut-wrap { position:relative; display:flex; justify-content:center; align-items:center; }
 .donut-chart { width:180px; height:180px; }
 .donut-label {
   position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
   text-align:center; pointer-events:none;
 }
-.dl-val { font-size:30px; font-weight:800; color:#059669; }
-.dl-sub { font-size:11px; color:#9ca3af; margin-top:2px; }
+.dl-val { font-size:38px; font-weight:800; color:#10b981; line-height:1; }
+.dl-sub { font-size:12px; color:#9ca3af; margin-top:4px; font-weight:600; }
+
+.donut-footer { display:flex; gap:20px; margin-top:14px; }
+.df-item { display:flex; align-items:center; gap:6px; }
+.df-dot { width:10px; height:10px; border-radius:50%; }
+.df-val { font-size:16px; font-weight:700; color:#1f2937; }
+.df-label { font-size:11px; color:#9ca3af; }
 
 /* 消耗计量 */
 .mid-spend { display:flex; flex-direction:column; }

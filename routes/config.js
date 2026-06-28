@@ -26,8 +26,13 @@ router.get('/week/:id', (req, res) => {
 
 // 新增周计划
 router.post('/week', (req, res) => {
-  try { res.json({ success: true, data: db.addWeek(req.body) }); }
-  catch (e) { res.status(500).json({ success: false, error: "服务器内部错误" }); }
+  try {
+    const { startDate, endDate } = req.body || {};
+    if (db.hasOverlap({ weeks: db.getWeeks() }, startDate, endDate)) {
+      return res.status(400).json({ success: false, error: '该日期范围与已有周重叠，不能重复创建' });
+    }
+    res.json({ success: true, data: db.addWeek(req.body) });
+  } catch (e) { res.status(500).json({ success: false, error: "服务器内部错误" }); }
 });
 
 // 更新周计划

@@ -3,8 +3,8 @@
     <!-- 顶部概览 -->
     <div class="page-top">
       <div class="top-left">
-        <h2><el-icon :size="24"><DataBoard /></el-icon> 运营仪表盘</h2>
-        <p class="top-sub">{{ todayCN }} · {{ weekRange }} <span class="week-num">第 {{ weekNum }} 周</span></p>
+        <h2><el-icon :size="24"><DataBoard /></el-icon> 仪表盘</h2>
+        <p class="top-sub">{{ todayCN }} · {{ weekRange }}</p>
       </div>
       <div class="top-right">
         <el-button type="primary" class="btn-hero" @click="$router.push('/report')">
@@ -12,6 +12,20 @@
           写日报
         </el-button>
       </div>
+    </div>
+
+    <!-- ====== 昨日数据修正提醒 ====== -->
+    <div v-if="yesterdayData" class="yesterday-banner">
+      <div class="yb-left">
+        <el-icon :size="20"><WarningFilled /></el-icon>
+        <span class="yb-title">昨日数据可能需要修正</span>
+        <span class="yb-detail">
+          昨日填报 · 消耗 <b>¥{{ fmtK(yesterdayData.budget) }}</b> ·
+          新客户 <b>{{ yesterdayData.customer }}</b> ·
+          拉群 <b>{{ yesterdayData.grouped }}</b>
+        </span>
+      </div>
+      <el-button type="primary" round size="small" @click="fixYesterday">修正昨日数据</el-button>
     </div>
 
     <!-- ====== 今日快照 ====== -->
@@ -151,6 +165,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   DataBoard, Edit, WarningFilled, Money, UserFilled, ChatDotRound,
   Monitor, DataAnalysis, TrendCharts, Calendar, PictureFilled, Document,
@@ -161,9 +176,11 @@ import { useWeekStore } from '../stores/week'
 import { api, formatDateCN, todayStr, daysBetween, formatDate, getDateRange } from '../api'
 
 const weekStore = useWeekStore()
+const router = useRouter()
 const week = computed(() => weekStore.currentWeek)
 
 const todayData = ref(null)
+const yesterdayData = ref(null)
 const weekStats = reactive({ fbBudget: 0, fbCustomer: 0, fbGrouped: 0 })
 const vpsAlerts = ref([])
 const trendData = ref([])
@@ -173,19 +190,13 @@ const weekRange = computed(() => {
   if (!week.value) return ''
   return formatDate(week.value.startDate) + ' — ' + formatDate(week.value.endDate)
 })
-const weekNum = computed(() => {
-  if (!week.value?.startDate) return ''
-  const d = new Date(week.value.startDate + 'T00:00:00')
-  const start = new Date(d.getFullYear(), 0, 1)
-  return Math.ceil(((d - start) / 86400000 + start.getDay() + 1) / 7)
-})
+// weekNum computed removed - unused
 
 function todayVal(key) {
-  if (!todayData.value) return '—'
-  if (key === 'budget') return Math.round(todayData.value.fb?.budget || 0)
-  if (key === 'newCustomer') return todayData.value.fb?.newCustomer || 0
-  if (key === 'grouped') return todayData.value.fb?.grouped || 0
-  return '—'
+  if (key === 'budget') return Math.round(todayData.value?.fb?.budget || 0)
+  if (key === 'newCustomer') return todayData.value?.fb?.newCustomer || 0
+  if (key === 'grouped') return todayData.value?.fb?.grouped || 0
+  return 0
 }
 
 const avgCost = computed(() => {
@@ -283,6 +294,13 @@ function initTrend() {
   })
 }
 
+function fixYesterday() {
+  if (!yesterdayData.value) return
+  sessionStorage.setItem('targetDate', yesterdayData.value.date)
+  sessionStorage.setItem('editDaily', JSON.stringify({ date: yesterdayData.value.date, data: yesterdayData.value.data }))
+  router.push({ path: '/report', query: { t: Date.now() } })
+}
+
 // ====== 加载 ======
 async function load() {
   // 本周
@@ -297,6 +315,18 @@ async function load() {
     const r = await api.daily.get(todayStr())
     if (r.success && r.data) todayData.value = r.data
   } catch { }
+
+  // 昨日（修正提醒）
+  try {
+    const d = new Date(); d.setDate(d.getDate() - 1)
+    const yStr = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
+    const r = await api.daily.get(yStr)
+    if (r.success && r.data) {
+      const fb = r.data.fb || {}
+      yesterdayData.value = { date: yStr, budget: fb.budget || 0, customer: fb.newCustomer || 0, grouped: fb.grouped || 0, data: r.data }
+    }
+  } catch { }
+
 
   // 本周汇总
   try {
@@ -383,17 +413,24 @@ onUnmounted(() => {
 }
 .page-top h2 { font-size:22px; font-weight:700; display:flex; align-items:center; gap:8px; }
 .top-sub { font-size:13px; color:#6b7280; margin-top:4px; }
-.week-num {
-  display:inline-block; padding:1px 8px; margin-left:8px;
-  background:#eef2ff; color:#6366f1; border-radius:4px;
-  font-size:11px; font-weight:700;
-}
 .btn-hero {
   display:inline-flex !important; align-items:center; gap:6px;
   font-weight:700 !important; border-radius:10px !important;
   padding:10px 22px !important; font-size:14px !important;
 }
 .btn-hero:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(99,102,241,.3); }
+
+/* ====== 昨日修正提醒 ====== */
+.yesterday-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 14px 20px; margin-bottom: 16px;
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border: 1px solid #fde68a; border-radius: 14px;
+}
+.yb-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.yb-title { font-size: 14px; font-weight: 700; color: #92400e; }
+.yb-detail { font-size: 13px; color: #a16207; }
+.yb-detail b { color: #92400e; }
 
 /* ====== 今日快照条 ====== */
 .hero-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }

@@ -9,9 +9,14 @@ const routes = [
   { path: '/history', name: 'history', component: () => import('../views/HistoryView.vue') },
   { path: '/monitor', name: 'monitor', component: () => import('../views/MonitorView.vue') },
   { path: '/clock', name: 'clock', component: () => import('../views/ClockView.vue') },
-  { path: '/prompts', name: 'prompts', component: () => import('../views/PromptsView.vue') },
+  { path: '/prompts', redirect: '/assets' },
   { path: '/assets', name: 'assets', component: () => import('../views/AssetsView.vue') },
-  { path: '/library', name: 'library', component: () => import('../views/LibraryView.vue') },
+  { path: '/library', redirect: '/assets' },
+  { path: '/scripts', name: 'scripts', component: () => import('../views/ScriptsView.vue') },
+  { path: '/compress', name: 'compress', component: () => import('../views/ImageCompressView.vue') },
+  { path: '/video-compress', name: 'video-compress', component: () => import('../views/VideoCompressView.vue') },
+  { path: '/video-library', name: 'video-library', component: () => import('../views/VideoLibraryView.vue') },
+  { path: '/media', name: 'media', component: () => import('../views/MediaLibraryView.vue') },
 ]
 
 const router = createRouter({ history: createWebHistory(), routes })

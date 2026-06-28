@@ -77,16 +77,6 @@
  </el-form>
  </el-card>
 
- <!-- 工作内容 -->
- <el-card shadow="never" style="margin-bottom:16px;">
- <template #header><span style="font-weight:700;"><el-icon :size="16"><List /></el-icon> 工作内容（不填则使用默认）</span></template>
- <el-row :gutter="12">
- <el-col :span="8"><el-form-item label="今日工作"><el-input v-model="work.today" type="textarea" :rows="3" :placeholder="defaultWork.today" /></el-form-item></el-col>
- <el-col :span="8"><el-form-item label="第二天工作"><el-input v-model="work.tomorrow" type="textarea" :rows="3" :placeholder="defaultWork.tomorrow" /></el-form-item></el-col>
- <el-col :span="8"><el-form-item label="每日工作(常规)"><el-input v-model="work.daily" type="textarea" :rows="3" :placeholder="defaultWork.daily" /></el-form-item></el-col>
- </el-row>
- </el-card>
-
  <!-- 日报预览 -->
  <el-card v-if="reportText" shadow="never" style="margin-bottom:16px;">
  <template #header>
@@ -151,20 +141,6 @@ const reportDate = ref(todayStr())
 const reportCountry = ref('综合')
 
 // 将日期对齐到当前周的年份
-function alignToCurrentWeekYear(dateStr) {
- const ws = useWeekStore()
- if (!ws.currentWeek) return dateStr
- const weekYear = parseInt(ws.currentWeek.startDate.substring(0,4))
- const parts = dateStr.split('-')
- // 如果年份已经是周年份，不用改
- if (parseInt(parts[0]) === weekYear) return dateStr
- const candidate = weekYear + '-' + parts[1] + '-' + parts[2]
- // 只有在周范围内才改
- if (candidate >= ws.currentWeek.startDate && candidate <= ws.currentWeek.endDate) {
- return candidate
- }
- return dateStr
-}
 const reportText = ref('')
 const saveMsg = ref('')
 const saveOk = ref(true)
@@ -337,8 +313,6 @@ async function copyReport() {
 
 // ====== 保存 ======
 async function saveData() {
- // 保存前对齐周年份，防跨年保存
- reportDate.value = alignToCurrentWeekYear(reportDate.value)
  const date = reportDate.value
  if (!date) { ElMessage.warning('请选择日期'); return }
  const data = {
@@ -426,7 +400,6 @@ onMounted(async () => {
  } else {
  // 非跳转进入：把今天对齐到当前周年份
  const d = reportDate.value
- if (d) { const aligned = alignToCurrentWeekYear(d); if (aligned !== d) reportDate.value = aligned }
  }
  const e = sessionStorage.getItem('editDaily')
  if (e) {
