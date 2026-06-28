@@ -204,7 +204,7 @@ const avgCost = computed(() => {
   const b = todayData.value.fb?.budget || 0, c = todayData.value.fb?.newCustomer || 0
   return c > 0 ? b / c : 0
 })
-const avgCostStr = computed(() => avgCost.value > 0 ? '¥' + avgCost.value.toFixed(0) : '—')
+const avgCostStr = computed(() => avgCost.value > 0 ? avgCost.value.toFixed(0) : '—')
 
 const budgetOver = computed(() => {
   if (!todayData.value || !week.value) return false
