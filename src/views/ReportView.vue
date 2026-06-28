@@ -148,12 +148,6 @@ const existingData = ref(false)
 
 // null=未填, 填入后会变成数字; 保存/生成时 null→0
 const fb = reactive({ budget:null, newCustomer:null, catNoReply:null, msgIgnore:null, grouped:null, lowBudget:null, competitor:null, harass:null, visitPending:null, groupDetail:'', summary:'', optimize:'' })
-const work = reactive({ today:'', tomorrow:'', daily:'' })
-
-const defaultWork = {
- today: '发布4个账号作品，调整投流计划，监控广告数据',
- tomorrow: '继续监控投流，优化广告素材，跟进客户询盘',
- daily: '日常账号维护，回复客户消息，提升客户精准度',
 }
 
 // 辅助：取值时 null→0
@@ -260,7 +254,6 @@ watch(reportDate, async (d) => {
  const payload = res.data
  reportCountry.value = payload.country || '综合'
  if (payload.fb) Object.keys(fb).forEach(k => { if (k in payload.fb) fb[k] = payload.fb[k] ?? null })
- if (payload.work) Object.keys(work).forEach(k => { if (k in payload.work) work[k] = payload.work[k] })
  }
  } catch(e) { existingData.value = false }
 }, { immediate: true })
@@ -285,12 +278,6 @@ ${gd}
 7计划参观未定：${n(fb.visitPending)}
 ${fb.summary ? '\n总结：\n' + fb.summary : ''}
 ${fb.optimize ? '\n优化方向：' + fb.optimize : ''}
-今日工作，
-${work.today || defaultWork.today}
-第二天工作
-${work.tomorrow || defaultWork.tomorrow}
-每日工作，
-${work.daily || defaultWork.daily}`
 }
 
 async function copyReport() {
@@ -318,7 +305,6 @@ async function saveData() {
  const data = {
  country: reportCountry.value,
  fb: { budget:n(fb.budget), newCustomer:n(fb.newCustomer), catNoReply:n(fb.catNoReply), msgIgnore:n(fb.msgIgnore), grouped:n(fb.grouped), lowBudget:n(fb.lowBudget), competitor:n(fb.competitor), harass:n(fb.harass), visitPending:n(fb.visitPending), groupDetail:fb.groupDetail, summary:fb.summary, optimize:fb.optimize },
- work: { today:work.today, tomorrow:work.tomorrow, daily:work.daily }
  }
  saveMsg.value = '保存中...'; saveOk.value = true
  try {
@@ -332,7 +318,6 @@ async function saveData() {
 
 function clearForm() {
  Object.keys(fb).forEach(k => { fb[k] = (typeof fb[k] === 'number' || fb[k] === null) ? null : '' })
- Object.keys(work).forEach(k => { work[k] = '' })
  reportText.value = ''
  saveMsg.value = ''
  ElMessage.success('表单已清空')
@@ -376,10 +361,6 @@ function parsePasted() {
  const optM = fbSec.match(/优化方向\s*[:](.+?)(?:\n|$)/)
  if (optM) { fb.optimize = optM[1].trim(); parseDetail.value.push('优化方向: '+fb.optimize.substring(0,25)) }
 
- const todayI = text.search(/今日工作[，,\s]*\n?/), tomorrowI = text.search(/第二天工作/), dailyI = text.search(/每日工作[，,\s]*\n?/)
- if (todayI>=0) { const end=tomorrowI>=0?tomorrowI:(dailyI>=0?dailyI:text.length); work.today=text.substring(todayI,end).replace(/^今日工作[，,\s]*\n?/,'').replace(/[\s\n]+$/,'').trim(); if(work.today)parseDetail.value.push('今日工作: '+work.today.substring(0,25)) }
- if (tomorrowI>=0) { const end=dailyI>=0?dailyI:text.length; work.tomorrow=text.substring(tomorrowI,end).replace(/^第二天工作\s*\n?/,'').replace(/[\s\n]+$/,'').trim(); if(work.tomorrow)parseDetail.value.push('第二天工作: '+work.tomorrow.substring(0,25)) }
- if (dailyI>=0) { work.daily=text.substring(dailyI).replace(/^每日工作[，,\s]*\n?/,'').replace(/[\s\n]+$/,'').trim(); if(work.daily)parseDetail.value.push('每日工作: '+work.daily.substring(0,25)) }
 
  pasteVisible.value = false
  parseDetail.value.length ? ElMessage.success('识别 '+parseDetail.value.length+' 个字段') : ElMessage.warning('未识别到数据')
@@ -388,7 +369,6 @@ function parsePasted() {
 function extractBetween(text, startRe) {
  const sm = text.match(startRe); if (!sm) return ''
  const rest = text.substring(sm.index+sm[0].length)
- const endM = rest.match(/—————————|优化方向|腾讯广告|今日工作|第二天工作|每日工作|\n\n/)
  return (endM?rest.substring(0,endM.index):rest).replace(/^[\s\n]+/,'').replace(/[\s\n]+$/,'').replace(/—————————\s*$/,'').trim()
 }
 
@@ -408,7 +388,6 @@ onMounted(async () => {
  reportDate.value = date
  reportCountry.value = d.country || '综合'
  if (d.fb) Object.keys(fb).forEach(k => { if (k in d.fb) fb[k] = d.fb[k] ?? null })
- if (d.work) Object.keys(work).forEach(k => { if (k in d.work) work[k] = d.work[k] })
  } catch {}
  sessionStorage.removeItem('editDaily')
  }
