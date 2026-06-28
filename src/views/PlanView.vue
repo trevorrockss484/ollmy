@@ -134,7 +134,10 @@
       <div class="daily-section">
         <div class="daily-hd">
           <b><el-icon :size="16"><List /></el-icon> 每日完成情况</b>
-          <span style="font-size:12px;color:#9ca3af;"><el-icon :size="13"><InfoFilled /></el-icon> 点击编辑或填写日报</span>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:12px;color:#9ca3af;"><el-icon :size="13"><InfoFilled /></el-icon> 点击编辑或填写日报</span>
+            <el-button size="small" round @click="copyWeekSummary">复制本周汇总</el-button>
+          </div>
         </div>
         <div class="daily-table">
           <div class="dt-head">
@@ -305,6 +308,34 @@ function goalLabel(key) {
 const flagMap = { 印度尼西亚:"id", 印尼:"id", 越南:"vn", 泰国:"th", 菲律宾:"ph", 马来西亚:"my", 新加坡:"sg", 缅甸:"mm", 柬埔寨:"kh", 尼日利亚:"ng", 埃塞俄比亚:"et", 南非:"za", 肯尼亚:"ke", 加纳:"gh", 埃及:"eg", 阿联酋:"ae", 沙特阿拉伯:"sa", 沙特:"sa", 土耳其:"tr", 卡塔尔:"qa", 印度:"in", 巴基斯坦:"pk", 孟加拉国:"bd", 孟加拉:"bd", 日本:"jp", 韩国:"kr", 巴西:"br", 墨西哥:"mx", 哥伦比亚:"co", 阿根廷:"ar", 美国:"us", 英国:"gb", 德国:"de", 法国:"fr", 澳大利亚:"au", 俄罗斯:"ru" }
 function flagCode(name) { return flagMap[name] || "" }
 
+async function copyWeekSummary() {
+  if (!week.value) { ElMessage.warning('暂无数据'); return }
+  const w = week.value
+  const start = formatDate(w.startDate), end = formatDate(w.endDate)
+  const daysCnt = days.value.length
+  const t = s // reactive stats
+  const effCost = t.fbGrouped > 0 ? (t.fbBudget / t.fbGrouped).toFixed(1) : '—'
+  const avgDaily = t.fbBudget > 0 ? Math.round(t.fbBudget / daysCnt) : '—'
+  const inquiryCost = t.fbCustomer > 0 ? (t.fbBudget / t.fbCustomer).toFixed(0) : '—'
+  const countries = (w.countries||[]).join('-')
+  const text = `⭐${start} — ${end}（${Math.floor(daysCnt)}天）：
+国家：${countries}
+1.总询盘客户：${t.fbCustomer}个
+2.已拉群客户：${t.fbGrouped}个
+3.总消耗：${t.fbBudget}元
+4.有效客户成本：${effCost}元
+5.日均成本：${avgDaily}元
+6.询盘客户成本：${inquiryCost}元`
+  try {
+    await navigator.clipboard.writeText(text)
+    ElMessage.success('周报汇总已复制')
+  } catch {
+    const ta = document.createElement('textarea'); ta.value = text
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy')
+    document.body.removeChild(ta); ElMessage.success('周报汇总已复制')
+  }
+}
+
 function fmtK(n) {
   const v = Math.round(n || 0)
   return v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(v)
@@ -389,15 +420,20 @@ const form = ref({ startDate: '', endDate: '', dailyBudget: 300, weekBudget: 150
 
 function openSettings() {
   if (week.value) {
-    form.value = { startDate: week.value.startDate, endDate: week.value.endDate, dailyBudget: week.value.dailyBudget, weekBudget: week.value.weekBudget, inquiryGoal: week.value.inquiryGoal, groupGoal: week.value.groupGoal, countries: [...(week.value.countries || [])] }
-    nextTick(() => { if (treeRef.value) treeRef.value.setCheckedKeys(week.value.countries || []) })
+    // 确保从 store 拿到最新的当前周数据
+    const w = weekStore.currentWeek
+    if (!w) return
+    form.value = { startDate: w.startDate, endDate: w.endDate, dailyBudget: w.dailyBudget, weekBudget: w.weekBudget, inquiryGoal: w.inquiryGoal, groupGoal: w.groupGoal, countries: [...(w.countries || [])] }
+    nextTick(() => { if (treeRef.value) treeRef.value.setCheckedKeys(w.countries || []) })
   }
   settingsOpen.value = true
 }
 
 async function saveSettings() {
+  if (!week.value?.id) { ElMessage.error('未找到当前周计划'); return }
   const res = await weekStore.updateWeek(week.value.id, form.value)
   if (res.success) { settingsOpen.value = false; ElMessage.success('已保存') }
+  else { ElMessage.error(res.error || '保存失败') }
 }
 
 // ====== 新增周 ======

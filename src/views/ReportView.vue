@@ -148,7 +148,6 @@ const existingData = ref(false)
 
 // null=未填, 填入后会变成数字; 保存/生成时 null→0
 const fb = reactive({ budget:null, newCustomer:null, catNoReply:null, msgIgnore:null, grouped:null, lowBudget:null, competitor:null, harass:null, visitPending:null, groupDetail:'', summary:'', optimize:'' })
-}
 
 // 辅助：取值时 null→0
 const n = v => v ?? 0
@@ -180,14 +179,14 @@ const presetTemplates = {
  '【菲律宾x2，中间商】，【泰国x1，工厂采购】'
  ],
  summary: [
+ '调整广告出价后客户成本下降，继续优化。减少低效广告预算，加大高转化地区投放力度',
   "平均客户单价0元一个，继续去测试新素材，调整高消耗无效广告组，高预算重点跑东南亚，小预算测试非洲市场",
  '今日东南亚投放效果较好，印尼越南客户质量偏高，非洲市场尼日利亚询盘量上升持续观察',
- '调整广告出价后客户成本下降，继续优化。减少低效广告预算，加大高转化地区投放力度',
  '今天整体效果不错，新客户数量达标。部分素材CTR偏低需要更换，明日测试新创意方向',
  '东南亚市场稳定投放，非洲市场测试阶段。尼日利亚询盘质量提升，埃塞俄比亚广告展示偏低需调整'
  ],
  optimize: [
- '提高询盘数量，调整客户精准度，减少无效客户，优化广告素材和落地页',
+ '提高询盘数量，调整客户精准度，减少无效客户，尽量多点时间回信息',
  '重点优化东南亚高转化市场，逐步加大非洲预算测试，持续AB测试广告创意',
  '降低客单价，提高广告CTR，优化表单内容减少无效填写，跟进老客户转化',
  '增加视频素材占比，定向优化高消费力人群，排除非目标国家流量',
@@ -278,6 +277,7 @@ ${gd}
 7计划参观未定：${n(fb.visitPending)}
 ${fb.summary ? '\n总结：\n' + fb.summary : ''}
 ${fb.optimize ? '\n优化方向：' + fb.optimize : ''}
+	`
 }
 
 async function copyReport() {
