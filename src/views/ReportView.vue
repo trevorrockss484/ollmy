@@ -132,7 +132,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useWeekStore } from '../stores/week'
 import { api, formatDateCN, todayStr } from '../api'
 
