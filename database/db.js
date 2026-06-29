@@ -165,28 +165,39 @@ function getCurrentWeek() {
   const isExpired = (w) => {
     if (!w?.endDate) return true;
     const end = new Date(w.endDate + 'T00:00:00');
-    const start = new Date(w.startDate + 'T00:00:00');
-    if (start > today) return true;
     return (today - end) / 86400000 > 7;
   };
-  // 用户手动切换的周：直接返回，不过期检查
+  const isActive = (w) => {
+    const s = new Date(w.startDate + 'T00:00:00');
+    const e = new Date(w.endDate + 'T00:00:00');
+    return s <= today && e >= today;
+  };
+
+  // 用户手动切换：直接返回，不检查过期
   if (data.currentWeekId && data.manualWeek) {
     const w = data.weeks.find(w => w.id === data.currentWeekId);
     if (w && !w.hidden) return w;
+    // 手动周被删/隐藏了 → 退回到自动选择
   }
-  // 系统自动选的周：需检查过期
-  if (data.currentWeekId) {
-    const w = data.weeks.find(w => w.id === data.currentWeekId);
-    if (w && !w.hidden && !isExpired(w)) return w;
+
+  // 自动选择：活跃周 > 未来周 > 历史周
+  const candidates = data.weeks.filter(w => !w.hidden && !isExpired(w));
+  candidates.sort((a, b) => {
+    const rank = (w) => isActive(w) ? 0 : new Date(w.startDate + 'T00:00:00') > today ? 1 : 2;
+    const ra = rank(a), rb = rank(b);
+    if (ra !== rb) return ra - rb;
+    return new Date(b.endDate + 'T00:00:00') - new Date(a.endDate + 'T00:00:00');
+  });
+  const best = candidates[0];
+  if (best) {
+    if (data.currentWeekId !== best.id || data.manualWeek) {
+      data.currentWeekId = best.id;
+      data.manualWeek = false;
+      write(data);
+    }
+    return best;
   }
-  // 自动选择：找最近未过期的一周
-  const recent = data.weeks.filter(w => !w.hidden && !isExpired(w)).pop();
-  if (recent) {
-    data.currentWeekId = recent.id;
-    data.manualWeek = false;
-    write(data);
-    return recent;
-  }
+  // 无有效周：创建新周
   const dw = defaultWeek();
   data.weeks.push(dw);
   data.currentWeekId = dw.id;
@@ -215,6 +226,7 @@ function addWeek(weekData) {
   const w = { ...defaultWeek(), ...clean, id: uid() };
   data.weeks.push(w);
   data.currentWeekId = w.id;
+  data.manualWeek = true;           // 用户创建新周 = 主动操作，不过期检查
   write(data);
   return w;
 }
