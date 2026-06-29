@@ -235,8 +235,9 @@ async function doUpdate() {
 
 async function doDelete(d) {
   try { await ElMessageBox.confirm(`确定删除「${d.name}」？`, '确认删除', { type: 'warning', confirmButtonText: '删除' }) } catch { return }
-  await api.library.delete(d.id)
-  ElMessage.success('已删除'); load()
+  const res = await api.library.delete(d.id)
+  if (res.success) { ElMessage.success('已删除'); load() }
+  else { ElMessage.error(res.error || '删除失败') }
 }
 
 async function load() { const res = await api.library.list(); if (res.success) items.value = res.data }

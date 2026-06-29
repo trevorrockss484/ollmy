@@ -299,7 +299,7 @@ async function deleteDetail() {
 
 function downloadSaved(item) { window.open(item.downloadUrl, '_blank') }
 async function shareImage(item) {
-  const url = window.location.protocol + '//' + window.location.hostname + ':3456/share/image/' + item.id
+  const url = window.location.origin + '/share/image/' + item.id
   try {
     await navigator.clipboard.writeText(url)
     ElMessage.success('分享链接已复制，粘贴到微信即可预览')

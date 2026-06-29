@@ -4,6 +4,11 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3456;
 
+// HTML 转义（防 XSS）
+function htmlEscape(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // body-parser
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
@@ -15,26 +20,15 @@ app.use('/api', (req, res, next) => {
 });
 
 // 认证路由（无需验证）
-app.use('/api/auth', require('./routes/auth'));
+const authRoutes = require('./routes/auth');
+app.use('/api/auth', authRoutes);
 
 // API 认证中间件
 app.use('/api', (req, res, next) => {
   if (req.path === '/auth/login' || req.path === '/auth/verify') return next();
-  // 资产/资料库下载和静态文件不需要认证
-  if (req.path.startsWith('/assets/') && req.path.endsWith('/download')) return next();
-  if (req.path.startsWith('/library/') && (req.path.endsWith('/download') || req.path.endsWith('/preview'))) return next();
-  if (req.path.startsWith('/uploads/')) return next();
-  if (req.path.startsWith('/tools/') && (req.path.includes('/download'))) return next();
   const token = req.headers['x-auth-token'] || '';
-  if (token) {
-    try {
-      const decoded = Buffer.from(token, 'base64').toString();
-      const parts = decoded.split(':');
-      // format: username:timestamp，过期 7 天，需校验用户名
-      if (parts.length >= 2 && parts[0] === '15377581454' && Date.now() - Number(parts[parts.length-1]) < 7 * 86400_000) {
-        return next();
-      }
-    } catch {}
+  if (token && authRoutes.verifyToken(token)) {
+    return next();
   }
   res.status(401).json({ success: false, error: '未登录' });
 });
@@ -51,22 +45,19 @@ app.use('/api/assets', require('./routes/assets'));
 app.use('/api/library', require('./routes/library'));
 app.use('/api/tools', require('./routes/tools'));
 
-// 静态资源 - 上传文件
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
 // ===== 分享预览页（微信/社交 OG 卡片） =====
 const ogPage = ({ title, image, desc, type, width, height }) => `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<meta property="og:title" content="${title}">
-<meta property="og:image" content="${image}">
-<meta property="og:description" content="${desc}">
+<meta property="og:title" content="${htmlEscape(title)}">
+<meta property="og:image" content="${htmlEscape(image)}">
+<meta property="og:description" content="${htmlEscape(desc)}">
 <meta property="og:type" content="${type === 'video' ? 'video' : 'image'}">
-${type === 'video' ? '<meta property="og:video" content="' + image + '">' : ''}
-${width && height ? '<meta property="og:image:width" content="' + width + '"><meta property="og:image:height" content="' + height + '">' : ''}
-<title>${title}</title>
+${type === 'video' ? '<meta property="og:video" content="' + htmlEscape(image) + '">' : ''}
+${width && height ? '<meta property="og:image:width" content="' + htmlEscape(String(width)) + '"><meta property="og:image:height" content="' + htmlEscape(String(height)) + '">' : ''}
+<title>${htmlEscape(title)}</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
   body{background:#0a0a0a;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'PingFang SC','Microsoft YaHei',sans-serif;}
@@ -81,12 +72,12 @@ ${width && height ? '<meta property="og:image:width" content="' + width + '"><me
 <body>
 <div class="card">
   ${type === 'video'
-    ? '<video src="' + image + '" controls autoplay poster=""/>'
-    : '<img src="' + image + '" alt="' + title + '"/>'}
+    ? '<video src="' + htmlEscape(image) + '" controls autoplay poster=""/>'
+    : '<img src="' + htmlEscape(image) + '" alt="' + htmlEscape(title) + '"/>'}
   <div class="card-body">
-    <h2>${title}</h2>
-    <p>${desc}</p>
-    <div class="meta">${width}×${height} · 来自 Pan助手素材库</div>
+    <h2>${htmlEscape(title)}</h2>
+    <p>${htmlEscape(desc)}</p>
+    <div class="meta">${htmlEscape(String(width))}×${htmlEscape(String(height))} · 来自 Pan助手素材库</div>
   </div>
 </div>
 </body>
@@ -138,6 +129,11 @@ if (fs.existsSync(distDir)) {
   app.use(express.static(distDir));
 }
 
+// 未匹配API返回404 JSON
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ success: false, error: 'API not found' });
+});
+
 // SPA fallback
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) return;
@@ -147,11 +143,6 @@ app.get('*', (req, res) => {
     return res.sendFile(distIndex);
   }
   res.status(200).send('Pan助手');
-});
-
-// 未匹配API返回404 JSON
-app.use('/api/*', (req, res) => {
-  res.status(404).json({ success: false, error: 'API not found' });
 });
 
 // 错误处理

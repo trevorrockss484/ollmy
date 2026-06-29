@@ -1,6 +1,7 @@
 /**
- * JSON文件数据库层 — UTF8安全 + 多周计划
+ * JSON文件数据库层 — UTF8安全 + 多周计划 + 原子写入 + UUID
  */
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -9,6 +10,30 @@ const DB_FILE = path.join(DATA_DIR, 'database.json');
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+// 生成唯一 ID（优先 crypto.randomUUID，降级时间戳+随机数）
+function uid() {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+  }
+}
+
+// 写锁：防止并发读改写覆盖
+let writeQueue = Promise.resolve();
+function withWriteLock(fn) {
+  return new Promise((resolve, reject) => {
+    writeQueue = writeQueue.then(() => {
+      try {
+        const result = fn();
+        resolve(result);
+      } catch (e) {
+        reject(e);
+      }
+    }).catch(() => {});
+  });
 }
 
 // 默认数据结构
@@ -39,7 +64,7 @@ function defaultWeek() {
   const fmt = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 
   return {
-    id: Date.now(),
+    id: uid(),
     startDate: fmt(monday),
     endDate: fmt(friday),
     dailyBudget: 300,
@@ -104,20 +129,23 @@ function read() {
   return defaultData();
 }
 
-// UTF8写入（无BOM）
+// 原子写入：先写临时文件，再 rename 替换主文件
 function write(data) {
   try {
     if (fs.existsSync(DB_FILE)) {
-      // 多层备份 — 每次写入都保留时间戳副本，最多30份
+      // 备份 — 加入毫秒防同一秒覆盖
       const backupDir = path.join(DATA_DIR, 'backups');
       if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
-      const ts = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+      const now = new Date();
+      const ts = now.toISOString().replace(/[:.]/g, '-').substring(0, 19) + '-' + String(now.getMilliseconds()).padStart(3, '0');
       fs.copyFileSync(DB_FILE, path.join(backupDir, 'db-' + ts + '.json'));
       const files = fs.readdirSync(backupDir).sort().reverse();
       files.slice(30).forEach(f => fs.unlinkSync(path.join(backupDir, f)));
     }
     const json = JSON.stringify(data, null, 2);
-    fs.writeFileSync(DB_FILE, json, 'utf-8');
+    const tmpFile = DB_FILE + '.tmp.' + uid();
+    fs.writeFileSync(tmpFile, json, 'utf-8');
+    fs.renameSync(tmpFile, DB_FILE);
     return true;
   } catch (e) {
     console.error('数据库写入失败:', e.message);
@@ -177,7 +205,7 @@ function addWeek(weekData) {
   const clean = { ...weekData };
   if (clean.startDate) clean.startDate = String(clean.startDate).substring(0, 10);
   if (clean.endDate) clean.endDate = String(clean.endDate).substring(0, 10);
-  const w = { ...defaultWeek(), ...clean, id: Date.now() };
+  const w = { ...defaultWeek(), ...clean, id: uid() };
   data.weeks.push(w);
   data.currentWeekId = w.id;
   write(data);
@@ -278,7 +306,7 @@ function getVpsList() {
 
 function addVps(vps) {
   const data = read();
-  const item = { id: Date.now(), ...vps };
+  const item = { id: uid(), ...vps };
   data.vpsList.push(item);
   write(data);
   return item;
@@ -318,7 +346,7 @@ function makeCrud(collection, defaults = {}, sorter) {
     add(item) {
       const data = read();
       if (!Array.isArray(data[collection])) data[collection] = [];
-      const record = { id: Date.now(), ...defaults, ...item, createdAt: new Date().toISOString() };
+      const record = { id: uid(), ...defaults, ...item, createdAt: new Date().toISOString() };
       data[collection].push(record);
       write(data);
       return record;

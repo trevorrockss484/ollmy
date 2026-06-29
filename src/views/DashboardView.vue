@@ -14,6 +14,14 @@
       </div>
     </div>
 
+    <!-- 数据加载错误提示 -->
+    <el-alert v-if="loadErrors.length" type="warning" :closable="false" show-icon style="margin-bottom:16px">
+      <template #title>
+        部分数据加载失败：{{ loadErrors.join('、') }}，显示可能不准确。
+        <el-button type="warning" size="small" text @click="load()">重试</el-button>
+      </template>
+    </el-alert>
+
     <!-- ====== 昨日数据修正提醒 ====== -->
     <div v-if="yesterdayData" class="yesterday-banner">
       <div class="yb-left">
@@ -184,6 +192,7 @@ const yesterdayData = ref(null)
 const weekStats = reactive({ fbBudget: 0, fbCustomer: 0, fbGrouped: 0 })
 const vpsAlerts = ref([])
 const trendData = ref([])
+const loadErrors = ref([])
 
 const todayCN = computed(() => formatDateCN(todayStr()))
 const weekRange = computed(() => {
@@ -303,6 +312,7 @@ function fixYesterday() {
 
 // ====== 加载 ======
 async function load() {
+  loadErrors.value = []
   // 本周
   if (!weekStore.currentWeek) await weekStore.load()
   if (!weekStore.currentWeek) await weekStore.createWeek()
@@ -314,7 +324,7 @@ async function load() {
   try {
     const r = await api.daily.get(todayStr())
     if (r.success && r.data) todayData.value = r.data
-  } catch { }
+  } catch (e) { console.error('加载今日数据失败:', e); loadErrors.value.push('今日数据') }
 
   // 昨日（修正提醒）
   try {
@@ -325,7 +335,7 @@ async function load() {
       const fb = r.data.fb || {}
       yesterdayData.value = { date: yStr, budget: fb.budget || 0, customer: fb.newCustomer || 0, grouped: fb.grouped || 0, data: r.data }
     }
-  } catch { }
+  } catch (e) { console.error('加载昨日数据失败:', e); loadErrors.value.push('昨日数据') }
 
 
   // 本周汇总
@@ -336,7 +346,7 @@ async function load() {
       weekStats.fbCustomer = r.data.fbCustomer || 0
       weekStats.fbGrouped = r.data.fbGrouped || 0
     }
-  } catch { }
+  } catch (e) { console.error('加载本周汇总失败:', e); loadErrors.value.push('本周汇总') }
 
   // VPS
   try {
@@ -354,7 +364,7 @@ async function load() {
           return (o[a.severity] || 3) - (o[b.severity] || 3)
         })
     }
-  } catch { }
+  } catch (e) { console.error('加载VPS数据失败:', e); loadErrors.value.push('VPS状态') }
 
   // 近 7 天趋势
   const today = todayStr()
@@ -376,7 +386,7 @@ async function load() {
         customer: map[d]?.customer || 0
       }))
     }
-  } catch { }
+  } catch (e) { console.error('加载趋势数据失败:', e); loadErrors.value.push('7天趋势') }
 
   await nextTick()
   initDonut()

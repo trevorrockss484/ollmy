@@ -9,3 +9,5 @@ ngrok.exe
 ngrok.zip
 *.png
 screenshot-*
+.claude/
+.claude/worktrees/

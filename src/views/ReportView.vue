@@ -371,10 +371,12 @@ function parsePasted() {
  parseDetail.value.length ? ElMessage.success('识别 '+parseDetail.value.length+' 个字段') : ElMessage.warning('未识别到数据')
 }
 
-function extractBetween(text, startRe) {
+function extractBetween(text, startRe, endRe) {
  const sm = text.match(startRe); if (!sm) return ''
  const rest = text.substring(sm.index+sm[0].length)
- return (endM?rest.substring(0,endM.index):rest).replace(/^[\s\n]+/,'').replace(/[\s\n]+$/,'').replace(/—————————\s*$/,'').trim()
+ if (!endRe) return rest.replace(/^[\s\n]+/,'').replace(/[\s\n]+$/,'').replace(/—————————\s*$/,'').trim()
+ const endM = rest.match(endRe)
+ return (endM ? rest.substring(0, endM.index) : rest).replace(/^[\s\n]+/,'').replace(/[\s\n]+$/,'').replace(/—————————\s*$/,'').trim()
 }
 
 onMounted(async () => {

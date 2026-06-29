@@ -308,7 +308,7 @@ function downloadSaved(item) {
   document.body.appendChild(a); a.click(); document.body.removeChild(a)
 }
 async function shareVideo(item) {
-  const url = window.location.protocol + '//' + window.location.hostname + ':3456/share/video/' + item.id
+  const url = window.location.origin + '/share/video/' + item.id
   try {
     await navigator.clipboard.writeText(url)
     ElMessage.success('分享链接已复制，粘贴到微信即可预览')

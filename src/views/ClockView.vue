@@ -180,6 +180,7 @@ function computeDiff(bjH, cityH) {
 
 let timer = null
 let scatterTimer = null
+let mapObserver = null
 
 function tick() {
  const bj = getNowParts('Asia/Shanghai')
@@ -357,8 +358,8 @@ async function initMap() {
  chart.dispatchAction({ type: 'highlight', seriesIndex: 1, dataIndex: 0 })
 
  // resize
- const ro = new ResizeObserver(() => chart?.resize())
- ro.observe(mapEl.value)
+ mapObserver = new ResizeObserver(() => chart?.resize())
+ mapObserver.observe(mapEl.value)
 }
 
 // ===================== 生命周期 =====================
@@ -368,7 +369,7 @@ onMounted(async () => {
  await initMap()
 
  // 每秒更新地图散点 tooltip 数据
- setInterval(() => {
+ scatterTimer = setInterval(() => {
  if (!chart) return
  const scatterData = flatCities.map((c, i) => ({
  name: c.name,
@@ -385,7 +386,11 @@ onMounted(async () => {
 
 onUnmounted(() => {
  clearInterval(timer)
+ clearInterval(scatterTimer)
+ mapObserver?.disconnect()
+ mapObserver = null
  chart?.dispose()
+ chart = null
 })
 </script>
 

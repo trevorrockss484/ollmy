@@ -6,6 +6,10 @@ const fs = require('fs');
 const mammoth = require('mammoth');
 const db = require('../database/db');
 
+function htmlEscape(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads', 'library');
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -83,17 +87,23 @@ router.get('/:id/preview', async (req, res) => {
       if (!result || !result.value) {
         return res.status(500).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:PingFang SC,sans-serif;max-width:500px;margin:80px auto;text-align:center;color:#6b7280;line-height:2;}</style></head><body><div style="font-size:64px;">⚠️</div><h2>文档转换失败</h2><p>该 .docx 文件可能已损坏或格式不兼容</p></body></html>`);
       }
-      // sanitize: strip script/event handlers for iframe safety
+      // sanitize: strip script/style/event handlers/iframe/object/embed for safety
       let html = result.value;
       html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+      html = html.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+      html = html.replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '');
+      html = html.replace(/<embed\b[^>]*\/?>/gi, '');
       html = html.replace(/\son\w+\s*=\s*"[^"]*"/gi, '');
       html = html.replace(/\son\w+\s*=\s*'[^']*'/gi, '');
+      html = html.replace(/javascript\s*:/gi, '');
+      html = html.replace(/vbscript\s*:/gi, '');
       const page = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:PingFang SC,Microsoft YaHei,sans-serif;max-width:860px;margin:0 auto;padding:32px 24px;line-height:1.9;color:#333;font-size:15px;}img{max-width:100%;}h1,h2,h3{color:#1a1a1a;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid #ddd;padding:8px 12px;}</style></head><body>${html}</body></html>`;
       return res.type('html').send(page);
     }
 
     if (ext === '.doc') {
-      return res.type('html').send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:PingFang SC,Microsoft YaHei,sans-serif;max-width:500px;margin:80px auto;text-align:center;color:#6b7280;line-height:2;}</style></head><body><div style="font-size:64px;">📄</div><h2 style="color:#374151;">${item.name}</h2><p>.doc 旧格式不支持在线预览</p><p style="font-size:13px;">${item.originalName} · ${(item.fileSize/1024).toFixed(0)} KB</p><a href="/api/library/${item.id}/download" style="display:inline-block;margin-top:8px;padding:10px 32px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;">⬇ 下载查看</a></body></html>`);
+      return res.type('html').send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:PingFang SC,Microsoft YaHei,sans-serif;max-width:500px;margin:80px auto;text-align:center;color:#6b7280;line-height:2;}</style></head><body><div style="font-size:64px;">📄</div><h2 style="color:#374151;">${htmlEscape(item.name)}</h2><p>.doc 旧格式不支持在线预览</p><p style="font-size:13px;">${htmlEscape(item.originalName)} · ${(item.fileSize/1024).toFixed(0)} KB</p><a href="/api/library/${item.id}/download" style="display:inline-block;margin-top:8px;padding:10px 32px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;">⬇ 下载查看</a></body></html>`);
     }
 
     // PDF/txt等 inline 在浏览器打开

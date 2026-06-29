@@ -445,9 +445,9 @@ function getNextWeekDefaults() {
   const now = new Date()
   const day = now.getDay() || 7
   const mon = new Date(now); mon.setDate(now.getDate() + (8 - day))
-  const fri = new Date(mon); fri.setDate(mon.getDate() + 4)
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
   const fmt = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
-  return { startDate: fmt(mon), endDate: fmt(fri), dailyBudget: week.value?.dailyBudget || 300, weekBudget: week.value?.weekBudget || 1500, inquiryGoal: week.value?.inquiryGoal || 400, groupGoal: week.value?.groupGoal || 20, countries: [...(week.value?.countries || [])] }
+  return { startDate: fmt(mon), endDate: fmt(sun), dailyBudget: week.value?.dailyBudget || 300, weekBudget: week.value?.weekBudget || 1500, inquiryGoal: week.value?.inquiryGoal || 400, groupGoal: week.value?.groupGoal || 20, countries: [...(week.value?.countries || [])] }
 }
 
 function openCreateWeek() { newWeekForm.value = getNextWeekDefaults(); newWeekMode.value = 'quick'; newWeekOpen.value = true }
@@ -514,8 +514,10 @@ watch([() => s.fbGrouped, () => week.value?.groupGoal], () => {
   nextTick(() => initDonut())
 })
 
+function onResize() { donutChart?.resize() }
+
 onMounted(async () => {
-  window.addEventListener('resize', () => { donutChart?.resize() })
+  window.addEventListener('resize', onResize)
   if (!weekStore.weeks.length) await weekStore.load()
   if (!week.value) await weekStore.createWeek()
   const w = week.value
@@ -530,7 +532,7 @@ onMounted(async () => {
   initDonut()
 })
 
-onUnmounted(() => { donutChart?.dispose(); donutChart = null })
+onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.dispose(); donutChart = null })
 </script>
 
 <style scoped>

@@ -21,18 +21,19 @@ const routes = [
 
 const router = createRouter({ history: createWebHistory(), routes })
 
-let autoLoginDone = false
+let tokenVerified = false
 
 router.beforeEach(async (to, from, next) => {
   if (to.meta.public) return next()
   const auth = useAuthStore()
-  if (auth.isLoggedIn()) return next()
-  // 记住了密码 → 尝试自动登录
-  if (!autoLoginDone && auth.rememberMe) {
-    autoLoginDone = true
+  // 首次访问：向服务端验证 token 有效性
+  if (!tokenVerified && auth.isLoggedIn()) {
+    tokenVerified = true
     const ok = await auth.autoLogin()
     if (ok) return next()
+    return next('/login')
   }
+  if (auth.isLoggedIn()) return next()
   next('/login')
 })
 

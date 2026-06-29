@@ -38,10 +38,9 @@ const error = ref('')
 const form = reactive({ username: '', password: '' })
 const rememberMe = ref(false)
 
-// 自动填充已存账号密码
+// 自动填充已存账号
 if (authStore.rememberMe) {
  form.username = authStore.username || ''
- form.password = authStore.password || ''
  rememberMe.value = true
 }
 
@@ -56,7 +55,7 @@ async function doLogin() {
  })
  const data = await res.json()
  if (data.success) {
- authStore.login(data.data.token, data.data.username, form.password, rememberMe.value)
+ authStore.login(data.data.token, data.data.username, rememberMe.value)
  ElMessage.success('登录成功')
  window.location.href = '/'
  } else {

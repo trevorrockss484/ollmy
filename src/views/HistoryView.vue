@@ -518,6 +518,7 @@ watch([dateRange, filterCountry], () => {
   const q = {}
   if (dateRange.value?.[0]) { q.start = dateRange.value[0]; q.end = dateRange.value[1] }
   if (filterCountry.value) q.country = filterCountry.value
+  router.replace({ query: q })
 }, { deep: true })
 
 // ====== 初始化 ======

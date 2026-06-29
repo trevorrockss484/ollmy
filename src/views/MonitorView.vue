@@ -575,16 +575,16 @@ async function renew(v, days) {
   const currentExpire = new Date(v.expire)
   const base = currentExpire < new Date() ? new Date() : currentExpire
   base.setDate(base.getDate() + days)
-  await api.vps.update(v.id, { expire: base.toISOString().split('T')[0] })
-  ElMessage.success('续费 ' + days + ' 天')
-  load()
+  const res = await api.vps.update(v.id, { expire: base.toISOString().split('T')[0] })
+  if (res.success) { ElMessage.success('续费 ' + days + ' 天'); load() }
+  else { ElMessage.error(res.error || '续费失败') }
 }
 
 async function remove(v) {
-  await ElMessageBox.confirm('确定删除 ' + v.name + '？', '确认删除', { type: 'warning' })
-  await api.vps.delete(v.id)
-  ElMessage.success('已删除')
-  load()
+  try { await ElMessageBox.confirm('确定删除 ' + v.name + '？', '确认删除', { type: 'warning' }) } catch { return }
+  const res = await api.vps.delete(v.id)
+  if (res.success) { ElMessage.success('已删除'); load() }
+  else { ElMessage.error(res.error || '删除失败') }
 }
 
 onMounted(load)

@@ -1,55 +1,41 @@
 const BASE = '/api'
-let reLoginPromise = null
-
-async function reLogin() {
-  const user = localStorage.getItem('pan_user')
-  const pass = localStorage.getItem('pan_pass')
-  if (!user || !pass) return false
-  try {
-    const res = await fetch(BASE + '/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: user, password: pass })
-    })
-    const data = await res.json()
-    if (data.success && data.data?.token) {
-      localStorage.setItem('pan_token', data.data.token)
-      return true
-    }
-  } catch(e) {}
-  return false
-}
 
 async function request(url, options = {}) {
   const token = localStorage.getItem('pan_token') || ''
-  const res = await fetch(BASE + url, {
-    ...options,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'X-Auth-Token': token, ...(options.headers || {}) }
-  })
-  if (res.status === 401) {
-    // 自动尝试重新登录（记住密码时）
-    if (!reLoginPromise) reLoginPromise = reLogin()
-    const ok = await reLoginPromise
-    reLoginPromise = null
-    if (ok) {
-      // 重试原请求
-      const newToken = localStorage.getItem('pan_token') || ''
-      const retry = await fetch(BASE + url, {
-        ...options,
-        headers: { 'Content-Type': 'application/json; charset=utf-8', 'X-Auth-Token': newToken, ...(options.headers || {}) }
-      })
-      if (retry.status === 401) {
-        localStorage.removeItem('pan_token')
-        window.location.href = '/login'
-        return { success: false, error: '未登录' }
-      }
-      return retry.json()
-    }
-    localStorage.removeItem('pan_token')
-    window.location.href = '/login'
-    return { success: false, error: '未登录' }
+  const isFormData = options.body instanceof FormData
+  const headers = { 'X-Auth-Token': token, ...(options.headers || {}) }
+  // FormData 不设 Content-Type（浏览器自动带 boundary）
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json; charset=utf-8'
   }
-  return res.json()
+  try {
+    const res = await fetch(BASE + url, { ...options, headers })
+    // 401 → 清除 token 跳登录
+    if (res.status === 401) {
+      localStorage.removeItem('pan_token')
+      window.location.href = '/login'
+      return { success: false, error: '未登录' }
+    }
+    if (!res.ok) {
+      // 尝试解析 JSON 错误体
+      try {
+        const errData = await res.json()
+        return { success: false, error: errData.error || '请求失败 (' + res.status + ')' }
+      } catch {
+        return { success: false, error: '请求失败 (' + res.status + ')' }
+      }
+    }
+    // 检查响应类型
+    const ct = res.headers.get('content-type') || ''
+    if (ct.includes('application/json')) {
+      return res.json()
+    }
+    // 非 JSON 响应（blob、HTML 等）返回原始 response
+    return { success: true, _raw: res }
+  } catch (e) {
+    console.error('请求失败:', url, e.message)
+    return { success: false, error: '网络错误: ' + (e.message || '未知') }
+  }
 }
 
 export const api = {

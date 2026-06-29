@@ -570,9 +570,18 @@ router.post('/save-video', (req, res) => {
   try {
     const item = req.body;
     if (!item.compressedName) return res.status(400).json({ success: false, error: '无效数据' });
-    const srcPath = path.join(VIDEO_TEMP_DIR, item.compressedName);
+    // 路径穿越防护：拒绝 .. / \ 并使用 basename 取纯文件名
+    if (item.compressedName.includes('..') || item.compressedName.includes('/') || item.compressedName.includes('\\')) {
+      return res.status(403).json({ success: false, error: '禁止访问' });
+    }
+    const safeName = path.basename(item.compressedName);
+    const srcPath = path.join(VIDEO_TEMP_DIR, safeName);
+    // 确保解析后仍在 VIDEO_TEMP_DIR 内
+    if (!path.resolve(srcPath).startsWith(path.resolve(VIDEO_TEMP_DIR))) {
+      return res.status(403).json({ success: false, error: '禁止访问' });
+    }
     const userLabel = (item.name || item.originalName || '视频素材').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\.[^.]+$/, '');
-    const ext = path.extname(item.compressedName) || '.mp4';
+    const ext = path.extname(safeName) || '.mp4';
     const dstName = Date.now() + '_' + userLabel + ext;
     const dstPath = path.join(VIDEO_SAVED_DIR, dstName);
     if (fs.existsSync(srcPath)) fs.copyFileSync(srcPath, dstPath);
