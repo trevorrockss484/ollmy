@@ -366,15 +366,17 @@ async function load() {
     }
   } catch (e) { console.error('加载VPS数据失败:', e); loadErrors.value.push('VPS状态') }
 
-  // 近 7 天趋势
-  const today = todayStr()
-  const d7 = new Date()
-  d7.setDate(d7.getDate() - 6)
+  // 近 7 天趋势（过去7个完整天，不含今天）
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yStr = yesterday.toISOString().split('T')[0]
+  const d7 = new Date(yesterday)
+  d7.setDate(d7.getDate() - 6)         // 昨天往前6天 = 共7天
   const start7 = d7.toISOString().split('T')[0]
   try {
-    const r = await api.daily.list({ startDate: start7, endDate: today })
+    const r = await api.daily.list({ startDate: start7, endDate: yStr })
     if (r.success) {
-      const dates = getDateRange(start7, today)
+      const dates = getDateRange(start7, yStr)
       const map = {}
       Object.entries(r.data).forEach(([date, d]) => {
         const fb = d.fb || {}

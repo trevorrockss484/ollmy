@@ -169,10 +169,10 @@ function getCurrentWeek() {
     if (start > today) return true;
     return (today - end) / 86400000 > 7;
   };
-  // 有手动切换的周，直接返回（不过期检查——切换是用户主动行为）
+  // 当前选中周：未过期且未隐藏则返回
   if (data.currentWeekId) {
     const w = data.weeks.find(w => w.id === data.currentWeekId);
-    if (w && !w.hidden) return w;
+    if (w && !w.hidden && !isExpired(w)) return w;
   }
   // 自动选择：找最近未过期的一周
   const recent = data.weeks.filter(w => !w.hidden && !isExpired(w)).pop();
