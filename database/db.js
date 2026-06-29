@@ -169,7 +169,12 @@ function getCurrentWeek() {
     if (start > today) return true;
     return (today - end) / 86400000 > 7;
   };
-  // 当前选中周：未过期且未隐藏则返回
+  // 用户手动切换的周：直接返回，不过期检查
+  if (data.currentWeekId && data.manualWeek) {
+    const w = data.weeks.find(w => w.id === data.currentWeekId);
+    if (w && !w.hidden) return w;
+  }
+  // 系统自动选的周：需检查过期
   if (data.currentWeekId) {
     const w = data.weeks.find(w => w.id === data.currentWeekId);
     if (w && !w.hidden && !isExpired(w)) return w;
@@ -178,12 +183,14 @@ function getCurrentWeek() {
   const recent = data.weeks.filter(w => !w.hidden && !isExpired(w)).pop();
   if (recent) {
     data.currentWeekId = recent.id;
+    data.manualWeek = false;
     write(data);
     return recent;
   }
   const dw = defaultWeek();
   data.weeks.push(dw);
   data.currentWeekId = dw.id;
+  data.manualWeek = false;
   write(data);
   return dw;
 }
@@ -233,6 +240,7 @@ function deleteWeek(id) {
   if (data.currentWeekId === id) {
     const visible = data.weeks.filter(w => !w.hidden);
     data.currentWeekId = visible.length > 0 ? visible[visible.length - 1].id : null;
+    data.manualWeek = false;
   }
   write(data);
   return true;
@@ -244,6 +252,7 @@ function restoreWeek(id) {
   if (week) {
     week.hidden = false;
     data.currentWeekId = id;
+    data.manualWeek = true;
   }
   write(data);
   return week;
@@ -255,6 +264,7 @@ function permanentlyDeleteWeek(id) {
   if (data.currentWeekId === id) {
     const visible = data.weeks.filter(w => !w.hidden);
     data.currentWeekId = visible.length > 0 ? visible[visible.length - 1].id : null;
+    data.manualWeek = false;
   }
   write(data);
   return true;
@@ -265,6 +275,7 @@ function setCurrentWeek(id) {
   const exists = data.weeks.find(w => w.id === id);
   if (!exists) return null;
   data.currentWeekId = id;
+  data.manualWeek = true;           // 用户主动切换，跳过过期检查
   write(data);
   return data.currentWeekId;
 }
