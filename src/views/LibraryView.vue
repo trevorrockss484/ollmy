@@ -57,7 +57,7 @@
         </div>
         <div class="doc-actions">
           <el-button size="small" round type="primary" @click="preview(d)" title="查看"><el-icon :size="14"><View /></el-icon> 查看</el-button>
-          <a :href="api.library.downloadUrl(d.id)" class="doc-dl" title="下载">
+          <a :href="authUrl(api.library.downloadUrl(d.id))" class="doc-dl" title="下载">
             <el-button size="small" round><el-icon :size="14"><Download /></el-icon> 下载</el-button>
           </a>
           <el-button size="small" round @click="openEdit(d)" title="编辑"><el-icon :size="14"><Edit /></el-icon></el-button>
@@ -111,7 +111,7 @@
             <span class="pv-name">{{ previewItem.name }}</span>
             <span class="pv-meta">{{ previewItem.originalName }} · {{ formatSize(previewItem.fileSize) }}</span>
             <div style="flex:1;" />
-            <a :href="api.library.downloadUrl(previewItem.id)">
+            <a :href="authUrl(api.library.downloadUrl(previewItem.id))">
               <el-button size="small" type="primary"><el-icon :size="14"><Download /></el-icon> 下载</el-button>
             </a>
             <el-button circle size="small" @click="closePreview"><el-icon :size="15"><Close /></el-icon></el-button>
@@ -150,7 +150,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { api, formatSize } from '../api'
+import { api, formatSize, authUrl } from '../api'
 
 const items = ref([])
 const searchText = ref('')

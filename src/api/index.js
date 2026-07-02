@@ -131,6 +131,14 @@ export function getDateRange(start, end) {
   return dates
 }
 
+// 为下载 URL 附加认证 token，支持 <a> 标签直接下载
+export function authUrl(path) {
+  const token = localStorage.getItem('pan_token') || ''
+  if (!token) return path
+  const sep = path.includes('?') ? '&' : '?'
+  return path + sep + 'token=' + encodeURIComponent(token)
+}
+
 export function formatSize(bytes) {
   if (!bytes) return '0 B'
   if (bytes < 1024) return bytes + ' B'

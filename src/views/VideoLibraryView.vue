@@ -229,7 +229,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { formatSize } from '../api'
+import { formatSize, authUrl } from '../api'
 
 const list = ref([])
 const search = ref('')
@@ -303,7 +303,7 @@ async function deleteDetail() {
   } catch { ElMessage.error('删除失败') }
 }
 function downloadSaved(item) {
-  const a = document.createElement('a'); a.href = item.downloadUrl
+  const a = document.createElement('a'); a.href = authUrl(item.downloadUrl)
   a.download = (item.name || item.originalName || 'video').replace(/[<>:"/\\|?*]/g,'_')
   document.body.appendChild(a); a.click(); document.body.removeChild(a)
 }
@@ -319,7 +319,7 @@ async function shareVideo(item) {
   }
 }
 function downloadCover(item) {
-  const a = document.createElement('a'); a.href = item.coverDownloadUrl
+  const a = document.createElement('a'); a.href = authUrl(item.coverDownloadUrl)
   a.download = 'cover_' + (item.name || item.originalName || 'cover').replace(/[<>:"/\\|?*]/g,'_') + '.jpg'
   document.body.appendChild(a); a.click(); document.body.removeChild(a)
 }

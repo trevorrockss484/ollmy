@@ -222,7 +222,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { formatSize } from '../api'
+import { formatSize, authUrl } from '../api'
 
 const list = ref([])
 const search = ref('')
@@ -297,7 +297,7 @@ async function deleteDetail() {
   } catch { ElMessage.error('删除失败') }
 }
 
-function downloadSaved(item) { window.open(item.downloadUrl, '_blank') }
+function downloadSaved(item) { window.open(authUrl(item.downloadUrl), '_blank') }
 async function shareImage(item) {
   const url = window.location.origin + '/share/image/' + item.id
   try {

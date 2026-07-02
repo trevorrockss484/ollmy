@@ -223,7 +223,7 @@
 <script setup>
 import { ref, computed, reactive, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { formatSize } from '../api'
+import { formatSize, authUrl } from '../api'
 
 const fileInputRef = ref(null)
 const selectedFiles = ref([])
@@ -372,11 +372,11 @@ async function doSave() {
 }
 
 function downloadOne(r) {
-  const a = document.createElement('a'); a.href = r.downloadUrl
+  const a = document.createElement('a'); a.href = authUrl(r.downloadUrl)
   a.download = r.originalName.replace(/\.[^.]+$/, '') + '_压缩.' + (r.format || 'webp')
   document.body.appendChild(a); a.click(); document.body.removeChild(a)
 }
-function downloadAll() { window.open('/api/tools/download-all/' + encodeURIComponent(data.value.sessionId), '_blank') }
+function downloadAll() { window.open(authUrl('/api/tools/download-all/' + encodeURIComponent(data.value.sessionId)), '_blank') }
 
 onUnmounted(() => { for (const u of previewCache.value.values()) URL.revokeObjectURL(u); previewCache.value.clear() })
 </script>

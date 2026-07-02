@@ -26,7 +26,7 @@ app.use('/api/auth', authRoutes);
 // API 认证中间件
 app.use('/api', (req, res, next) => {
   if (req.path === '/auth/login' || req.path === '/auth/verify') return next();
-  const token = req.headers['x-auth-token'] || '';
+  const token = req.headers['x-auth-token'] || req.query.token || '';
   if (token && authRoutes.verifyToken(token)) {
     return next();
   }

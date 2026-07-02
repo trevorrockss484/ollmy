@@ -68,7 +68,7 @@
           </div>
           <div class="card-footer">
             <el-button size="small" round @click="preview(a)" title="预览"><el-icon :size="15"><View /></el-icon></el-button>
-            <a :href="api.assets.downloadUrl(a.id)" style="text-decoration:none;" title="下载">
+            <a :href="authUrl(api.assets.downloadUrl(a.id))" style="text-decoration:none;" title="下载">
               <el-button size="small" round><el-icon :size="15"><Download /></el-icon></el-button>
             </a>
             <el-button size="small" round @click="openEdit(a)" title="编辑"><el-icon :size="15"><Edit /></el-icon></el-button>
@@ -85,7 +85,7 @@
               <span class="lb-name">{{ previewAsset.name }}</span>
               <span class="lb-meta">{{ typeLabel(previewAsset.type) }} · {{ formatSize(previewAsset.fileSize) }}</span>
               <div style="flex:1;" />
-              <a :href="api.assets.downloadUrl(previewAsset.id)">
+              <a :href="authUrl(api.assets.downloadUrl(previewAsset.id))">
                 <el-button size="small" type="primary"><el-icon :size="14"><Download /></el-icon> 下载原图</el-button>
               </a>
               <el-button circle size="small" @click="closePreview"><el-icon :size="15"><Close /></el-icon></el-button>
@@ -194,7 +194,7 @@
           </div>
           <div class="doc-actions">
             <el-button size="small" round type="primary" @click="libPreview(d)" title="查看"><el-icon :size="14"><View /></el-icon> 查看</el-button>
-            <a :href="api.library.downloadUrl(d.id)" class="doc-dl" title="下载">
+            <a :href="authUrl(api.library.downloadUrl(d.id))" class="doc-dl" title="下载">
               <el-button size="small" round><el-icon :size="14"><Download /></el-icon> 下载</el-button>
             </a>
             <el-button size="small" round @click="libOpenEdit(d)" title="编辑"><el-icon :size="14"><Edit /></el-icon></el-button>
@@ -240,7 +240,7 @@
               <span class="pv-name">{{ libPreviewItem.name }}</span>
               <span class="pv-meta">{{ libPreviewItem.originalName }} · {{ formatSize(libPreviewItem.fileSize) }}</span>
               <div style="flex:1;" />
-              <a :href="api.library.downloadUrl(libPreviewItem.id)">
+              <a :href="authUrl(api.library.downloadUrl(libPreviewItem.id))">
                 <el-button size="small" type="primary"><el-icon :size="14"><Download /></el-icon> 下载</el-button>
               </a>
               <el-button circle size="small" @click="libClosePreview"><el-icon :size="15"><Close /></el-icon></el-button>
@@ -364,7 +364,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { api, formatSize } from '../api'
+import { api, formatSize, authUrl } from '../api'
 
 // ===== Tab =====
 const tab = ref('assets')

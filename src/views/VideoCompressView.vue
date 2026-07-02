@@ -133,7 +133,7 @@
               压缩后 · {{ formatSize(result.results[0].compressedSize) }}
               <i v-if="!result.results[0].wasOptimized">（已是最优，保留原画质）</i>
             </span>
-            <video :src="result.results[0].downloadUrl" controls preload="metadata" class="rc-video"></video>
+            <video :src="authUrl(result.results[0].downloadUrl)" controls preload="metadata" class="rc-video"></video>
           </div>
         </div>
 
@@ -181,7 +181,7 @@
 <script setup>
 import { ref, computed, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { formatSize } from '../api'
+import { formatSize, authUrl } from '../api'
 
 const fileInputRef = ref(null)
 const resultsRef = ref(null)
@@ -301,7 +301,7 @@ async function saveToVideoLibrary() {
 }
 
 function downloadOne(r) {
-  const a = document.createElement('a'); a.href = r.downloadUrl
+  const a = document.createElement('a'); a.href = authUrl(r.downloadUrl)
   a.download = r.originalName.replace(/\.[^.]+$/, '') + '_压缩.' + (r.format || 'mp4')
   document.body.appendChild(a); a.click(); document.body.removeChild(a)
 }
