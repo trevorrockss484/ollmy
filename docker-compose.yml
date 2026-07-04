@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  pan-assistant:
+    build: .
+    container_name: pan-assistant
+    restart: unless-stopped
+    ports:
+      - "3456:3456"
+    volumes:
+      # 数据库持久化（JSON 文件 + 自动备份）
+      - ./database/data:/app/database/data
+      # 上传文件持久化（图片、视频素材库）
+      - ./uploads:/app/uploads
+    environment:
+      - NODE_ENV=production
+      - PORT=3456
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3456/',r=>{process.exit(r.statusCode===200?0:1)})"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

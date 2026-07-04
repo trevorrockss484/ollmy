@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.gitignore
+*.log
+ngrok.exe
+ngrok.zip
+screenshot-*
+.claude
+.DS_Store
+Thumbs.db
+uploads
+database/data
+README.md
+PROJECT_REVIEW.md
