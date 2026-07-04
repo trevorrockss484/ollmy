@@ -7,7 +7,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # 安装全部依赖（含 vite、sharp 的编译工具链）
-RUN npm ci
+# --ignore-scripts 防止 postinstall 在 index.html 未复制时提前构建
+RUN npm ci --ignore-scripts
 
 # 复制源码并构建前端
 COPY vite.config.mjs ./
