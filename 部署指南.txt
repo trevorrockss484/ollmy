@@ -1,0 +1,362 @@
+================================================================================
+  Pan助手 — 从零到上线 · 完整部署指南
+  更新日期：2026-07-12
+  GitHub：https://github.com/trevorrockss484/ollmy.git
+================================================================================
+
+
+第一部分：购买服务器（腾讯云轻量应用服务器）
+================================================================================
+
+  1. 打开 https://cloud.tencent.com/product/lighthouse
+
+  2. 点击「立即选购」
+
+  3. 选择配置：
+     地域：选择离你最近的（如广州/上海/北京）
+     镜像：Ubuntu 22.04 LTS 或 Ubuntu 20.04 LTS
+     套餐：2核2G 或以上（推荐 2核4G，视频功能需要内存）
+     时长：按需选择（月付/年付）
+
+  4. 设置密码：
+     登录方式选择「密码」
+     设置一个强密码（记下来，后面要用）
+
+  5. 完成购买
+
+  6. 进入控制台：
+     https://console.cloud.tencent.com/lighthouse/instance
+     找到刚买的服务器 → 点进去可以看到「公网 IP」
+     记下这个 IP 地址（例如 123.456.789.0）
+
+
+第二部分：放行端口（购买后第一件事）
+================================================================================
+
+  1. 在轻量服务器控制台 → 点击你的服务器
+
+  2. 点击「防火墙」标签页
+
+  3. 点击「添加规则」→ 新增以下规则：
+
+     协议：TCP
+     端口：3456
+     策略：允许
+     备注：Pan助手
+
+  4. 点击「确定」
+
+  5. 确认防火墙列表中有 3456 端口
+
+
+第三部分：SSH 登录服务器
+================================================================================
+
+  1. 打开终端（Windows 按 Win+R 输入 cmd 回车）
+
+  2. 输入以下命令连接服务器：
+
+     ssh ubuntu@你的公网IP
+
+     示例：ssh ubuntu@123.456.789.0
+
+  3. 首次连接会提示：
+
+     The authenticity of host ... can t be established
+     Are you sure you want to continue connecting (yes/no)?
+
+     输入 yes 回车
+
+  4. 输入购买时设置的密码（输入时不显示，正常现象）
+
+  5. 看到以下提示表示登录成功：
+
+     Welcome to Ubuntu ...
+     ubuntu@VM-0-16-ubuntu:~$
+
+
+第四部分：安装 Docker
+================================================================================
+
+  1. 更新系统包：
+
+     sudo apt update
+
+  2. 安装 Docker（一键脚本）：
+
+     curl -fsSL https://get.docker.com | sudo bash
+
+  3. 把当前用户加入 docker 组（之后不用每次 sudo）：
+
+     sudo usermod -aG docker $USER
+
+  4. 刷新用户组（生效上面的设置）：
+
+     newgrp docker
+
+  5. 验证安装：
+
+     docker --version
+
+     看到版本号输出即成功。
+
+
+第五部分：拉取项目代码
+================================================================================
+
+  1. 创建项目目录：
+
+     mkdir -p ~/my-projects
+
+  2. 进入目录：
+
+     cd ~/my-projects
+
+  3. 克隆项目：
+
+     git clone https://github.com/trevorrockss484/ollmy.git pan-assistant
+
+  4. 进入项目：
+
+     cd pan-assistant
+
+
+第六部分：构建并启动
+================================================================================
+
+  1. 构建镜像并启动容器（首次约 3-5 分钟）：
+
+     docker compose up -d --build
+
+  2. 查看启动日志：
+
+     docker compose logs -f
+
+  3. 看到以下输出即成功：
+
+     🐼 Pan助手 → http://localhost:3456
+
+  4. 按 Ctrl+C 退出日志（容器继续运行）
+
+  5. 确认容器在运行：
+
+     docker compose ps
+
+     看到 Status 为 Up 即正常。
+
+
+第七部分：验证部署
+================================================================================
+
+  1. 服务器内测试：
+
+     curl http://localhost:3456/
+
+     返回 HTML 页面内容 → 正常
+
+  2. 浏览器访问：
+
+     http://你的公网IP:3456
+
+     看到登录页面即成功
+
+
+第八部分：首次登录
+================================================================================
+
+  1. 打开 http://你的公网IP:3456
+
+  2. 输入默认账号：
+
+     用户名：15377581454
+     密码：Pan18218040143
+
+  3. 点击「登录」
+
+  4. 建议首次登录后修改密码（联系开发者或修改源码）
+
+
+第九部分：日常更新代码（保留数据不丢失）
+================================================================================
+
+  每次我在 GitHub 上修复 Bug 或加新功能后，你按下面步骤更新服务器：
+
+  1. SSH 登录：
+
+     ssh ubuntu@你的公网IP
+
+  2. 进入项目目录：
+
+     cd ~/my-projects/pan-assistant
+
+  3. 备份数据（可跳过，但安全起见建议做）：
+
+     mkdir -p ~/backups
+     tar -czf ~/backups/pan-backup-$(date +%Y%m%d-%H%M%S).tar.gz database/data uploads
+
+  4. 拉取最新代码：
+
+     git stash
+
+     git pull origin main
+
+     git stash drop
+
+  5. 重建容器（容器重建，数据保留）：
+
+     docker compose down
+
+     docker compose up -d --build
+
+  6. 确认启动成功：
+
+     docker compose logs --tail=20
+
+     看到 🐼 Pan助手 → http://localhost:3456 即可
+
+  7. 浏览器刷新页面即可使用新版本
+
+
+第十部分：为什么数据不会丢
+================================================================================
+
+  docker-compose.yml 中配置了两行数据卷挂载：
+
+    ./database/data:/app/database/data
+    ./uploads:/app/uploads
+
+  解释：
+  - 冒号左边是「宿主机路径」（你的服务器硬盘）
+  - 冒号右边是「容器内路径」（Docker 虚拟环境）
+  - 容器删了重建，左边文件纹丝不动
+
+  所以更新代码只管重建容器，数据不会丢。
+
+
+第十一部分：常用命令速查
+================================================================================
+
+  状态查看：
+  docker compose ps
+
+  查看日志：
+  docker compose logs -f
+  docker compose logs --tail=50
+
+  重启容器：
+  docker compose restart
+
+  停止容器：
+  docker compose stop
+
+  启动容器（不重建）：
+  docker compose start
+
+  停止并删除容器：
+  docker compose down
+
+  重建并启动：
+  docker compose up -d --build
+
+
+第十二部分：故障处理
+================================================================================
+
+  问题：浏览器访问不了
+
+  排查步骤：
+  1. curl http://localhost:3456/  如果没返回 → 容器没启动
+  2. docker compose ps  看 Status
+  3. docker compose logs --tail=50  看错误日志
+  4. 检查防火墙放行 3456 端口（回第二部分）
+  5. 检查安全组规则是否生效
+
+
+  问题：git pull 报冲突
+
+  执行这三条：
+  git stash
+  git pull origin main
+  git stash drop
+
+
+  问题：容器启动失败
+
+  排查步骤：
+  1. docker compose logs --tail=100  看具体错误
+  2. docker compose down  清理旧容器
+  3. docker compose up -d --build  重新构建
+  4. 如果还不行，截图错误日志发给我
+
+
+  问题：磁盘空间不足
+
+  清理命令：
+  docker system prune -a
+
+  这会删除无用的镜像和缓存，不影响运行中的容器。
+
+
+第十三部分：从零部署完整命令汇总（逐条执行）
+================================================================================
+
+  # 1. SSH 登录
+  ssh ubuntu@你的公网IP
+
+  # 2. 更新系统
+  sudo apt update
+
+  # 3. 安装 Docker
+  curl -fsSL https://get.docker.com | sudo bash
+
+  # 4. 加入 docker 组
+  sudo usermod -aG docker $USER
+  newgrp docker
+
+  # 5. 创建目录
+  mkdir -p ~/my-projects
+
+  # 6. 进入目录
+  cd ~/my-projects
+
+  # 7. 克隆项目
+  git clone https://github.com/trevorrockss484/ollmy.git pan-assistant
+
+  # 8. 进入项目
+  cd pan-assistant
+
+  # 9. 构建并启动
+  docker compose up -d --build
+
+  # 10. 确认启动
+  docker compose logs --tail=20
+
+  # 11. 浏览器访问
+  http://你的公网IP:3456
+
+
+第十四部分：每次更新代码汇总（逐条执行）
+================================================================================
+
+  # 1. SSH 登录
+  ssh ubuntu@你的公网IP
+
+  # 2. 进项目
+  cd ~/my-projects/pan-assistant
+
+  # 3. 拉代码
+  git stash
+  git pull origin main
+  git stash drop
+
+  # 4. 重建
+  docker compose down
+  docker compose up -d --build
+
+  # 5. 确认
+  docker compose logs --tail=20
+
+
+================================================================================
+  文件结束
+================================================================================
