@@ -11,7 +11,17 @@ if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 
-// multer配置：原样存储，50MB限制
+// 判断文件媒体类型
+function getMediaType(filename) {
+  const ext = path.extname(filename).toLowerCase();
+  const videoExts = ['.mp4', '.mov', '.avi', '.webm', '.mkv', '.flv', '.wmv'];
+  const audioExts = ['.mp3', '.wav', '.aac', '.ogg', '.flac', '.m4a', '.wma'];
+  if (videoExts.includes(ext)) return 'video';
+  if (audioExts.includes(ext)) return 'audio';
+  return 'image';
+}
+
+// multer配置：原样存储
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => {
@@ -25,13 +35,13 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  limits: { fileSize: 200 * 1024 * 1024 }, // 200MB（视频需要更大空间）
   fileFilter: (req, file, cb) => {
-    const allowed = /\.(jpg|jpeg|png|gif|webp|bmp|tiff?)$/i;
+    const allowed = /\.(jpg|jpeg|png|gif|webp|bmp|tiff?|mp4|mov|avi|webm|mkv|flv|wmv|mp3|wav|aac|ogg|flac|m4a|wma)$/i;
     if (allowed.test(path.extname(file.originalname))) {
       cb(null, true);
     } else {
-      cb(new Error('仅支持图片格式: JPG, PNG, GIF, WebP, BMP, TIFF'));
+      cb(new Error('仅支持图片/视频/音频格式: JPG, PNG, GIF, MP4, MOV, MP3, WAV 等'));
     }
   }
 });
@@ -71,6 +81,7 @@ router.post('/upload', upload.array('files', 20), (req, res) => {
         fileName: file.filename,
         originalName: file.originalname,
         fileSize: file.size,
+        mediaType: getMediaType(file.originalname),
         gridOverlay: type === 'character',
         tags
       });
@@ -125,11 +136,62 @@ router.delete('/:id', (req, res) => {
   }
 });
 
+// 批量删除
+router.post('/batch-delete', (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, error: '请提供要删除的资产ID列表' });
+    }
+    const deleted = db.batchDeleteAssets(ids);
+    // 删除物理文件
+    for (const asset of deleted) {
+      const filePath = path.join(UPLOAD_DIR, asset.fileName);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+    res.json({ success: true, data: { count: deleted.length } });
+  } catch (e) {
+    res.status(500).json({ success: false, error: "服务器内部错误" });
+  }
+});
+
+// 批量下载（打包zip）
+router.post('/batch-download', (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, error: '请提供要下载的资产ID列表' });
+    }
+    const archiver = require('archiver');
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', 'attachment; filename="assets-' + Date.now() + '.zip"');
+
+    archive.on('error', (err) => { res.status(500).end(); });
+    archive.pipe(res);
+
+    for (const id of ids) {
+      const asset = db.getAsset(id);
+      if (!asset) continue;
+      const filePath = path.join(UPLOAD_DIR, asset.fileName);
+      if (!fs.existsSync(filePath)) continue;
+      const ext = path.extname(asset.fileName);
+      const dlName = (asset.name || asset.originalName || 'asset') + ext;
+      archive.file(filePath, { name: dlName });
+    }
+    archive.finalize();
+  } catch (e) {
+    res.status(500).json({ success: false, error: "服务器内部错误" });
+  }
+});
+
 // multer错误处理
 router.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(413).json({ success: false, error: '文件大小不能超过50MB' });
+      return res.status(413).json({ success: false, error: '文件大小不能超过200MB' });
     }
     return res.status(400).json({ success: false, error: err.message });
   }

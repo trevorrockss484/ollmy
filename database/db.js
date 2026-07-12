@@ -390,8 +390,8 @@ const promptsDb = makeCrud('prompts', { title: '', step: '未分类', sortOrder:
   }
 );
 
-const assetsDb = makeCrud('assets', { name: '', type: 'character', fileName: '', originalName: '', fileSize: 0, tags: [] });
-const libraryDb = makeCrud('library', { name: '', fileName: '', originalName: '', fileSize: 0, tags: [] });
+const assetsDb = makeCrud('assets', { name: '', type: 'character', fileName: '', originalName: '', fileSize: 0, tags: [], mediaType: 'image' });
+const libraryDb = makeCrud('library', { name: '', fileName: '', originalName: '', fileSize: 0, tags: [], readingProgress: 0, status: null });
 const compressedDb = makeCrud('compressed', { originalName: '', compressedName: '', originalSize: 0, compressedSize: 0, width: 0, height: 0, format: 'webp', quality: 80, name: '', category: '' });
 
 function getPrompts() { return promptsDb.list(); }
@@ -418,6 +418,42 @@ function getAsset(id) { return assetsDb.get(id); }
 function addAsset(item) { return assetsDb.add({ ...item, gridOverlay: item.gridOverlay !== undefined ? item.gridOverlay : (item.type === 'character') }); }
 function updateAsset(id, updates) { return assetsDb.update(id, updates); }
 function deleteAsset(id) { return assetsDb.delete(id); }
+function batchDeleteAssets(ids) {
+  const data = read();
+  if (!Array.isArray(data.assets)) return [];
+  const deleted = [];
+  const idSet = new Set(ids.map(String));
+  data.assets = data.assets.filter(a => {
+    if (idSet.has(String(a.id))) { deleted.push(a); return false; }
+    return true;
+  });
+  write(data);
+  return deleted;
+}
+
+// ===== 提示词步骤配置 =====
+const DEFAULT_PROMPT_STEPS = [
+  { key: '第一步：剧本', label: '剧本生成', color: '#a78bfa' },
+  { key: '第二步：人物 物品 场景的提取', label: '元素提取', color: '#60a5fa' },
+  { key: '第三步：生资产', label: '资产生成', color: '#22d3ee' },
+  { key: '第四步：分镜提示词', label: '分镜提示词', color: '#fb923c' },
+  { key: '第五步：生分镜', label: '分镜生成', color: '#f472b6' },
+];
+
+function getPromptSteps() {
+  const data = read();
+  if (!data.promptSteps || !Array.isArray(data.promptSteps) || data.promptSteps.length === 0) {
+    return DEFAULT_PROMPT_STEPS;
+  }
+  return data.promptSteps;
+}
+
+function savePromptSteps(steps) {
+  const data = read();
+  data.promptSteps = steps;
+  write(data);
+  return data.promptSteps;
+}
 
 function getLibrary() { return libraryDb.list(); }
 function getLibraryItem(id) { return libraryDb.get(id); }
@@ -438,7 +474,8 @@ module.exports = {
   getDailyData, getAllDailyData, saveDailyData, deleteDailyData,
   getVpsList, addVps, updateVps, deleteVps,
   getPrompts, getPrompt, addPrompt, updatePrompt, deletePrompt, reorderPrompts,
-  getAssets, getAsset, addAsset, updateAsset, deleteAsset,
+  getAssets, getAsset, addAsset, updateAsset, deleteAsset, batchDeleteAssets,
+  getPromptSteps, savePromptSteps,
   getLibrary, getLibraryItem, addLibraryItem, updateLibraryItem, deleteLibraryItem,
   hasOverlap,
   getCompressed, getCompressedItem, addCompressed, updateCompressed, deleteCompressed,

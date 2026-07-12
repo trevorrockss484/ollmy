@@ -13,8 +13,12 @@ function htmlEscape(str) {
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
-// ===== 所有 /api/ 路由统一设置JSON响应头 =====
+// ===== 所有 /api/ 路由统一设置JSON响应头（跳过非JSON端点） =====
 app.use('/api', (req, res, next) => {
+  const path = req.path.toLowerCase();
+  if (path.includes('/download') || path.includes('/preview') || path.includes('/batch-download') || path.includes('/content')) {
+    return next();
+  }
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   next();
 });

@@ -12,6 +12,40 @@ router.get('/', (req, res) => {
   }
 });
 
+// 排序（必须在 /:id 前）
+router.put('/reorder/batch', (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids)) return res.status(400).json({ success: false, error: 'ids is required' });
+    db.reorderPrompts(ids);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, error: "服务器内部错误" });
+  }
+});
+
+// 获取步骤配置（必须在 /:id 前）
+router.get('/steps/config', (req, res) => {
+  try {
+    const steps = db.getPromptSteps();
+    res.json({ success: true, data: steps });
+  } catch (e) {
+    res.status(500).json({ success: false, error: "服务器内部错误" });
+  }
+});
+
+// 保存步骤配置（必须在 /:id 前）
+router.put('/steps/config', (req, res) => {
+  try {
+    const { steps } = req.body;
+    if (!Array.isArray(steps)) return res.status(400).json({ success: false, error: 'steps is required' });
+    db.savePromptSteps(steps);
+    res.json({ success: true, data: steps });
+  } catch (e) {
+    res.status(500).json({ success: false, error: "服务器内部错误" });
+  }
+});
+
 // 获取单条
 router.get('/:id', (req, res) => {
   try {
@@ -48,18 +82,6 @@ router.put('/:id', (req, res) => {
 router.delete('/:id', (req, res) => {
   try {
     db.deletePrompt(req.params.id);
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ success: false, error: "服务器内部错误" });
-  }
-});
-
-// 排序
-router.put('/reorder/batch', (req, res) => {
-  try {
-    const { ids } = req.body;
-    if (!Array.isArray(ids)) return res.status(400).json({ success: false, error: 'ids is required' });
-    db.reorderPrompts(ids);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });

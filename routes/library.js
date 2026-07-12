@@ -73,6 +73,49 @@ router.post('/upload', upload.array('files', 10), (req, res) => {
   }
 });
 
+// 文档内容 API（返回JSON，供前端阅读器使用；必须在 /:id 之前）
+router.get('/:id/content', async (req, res) => {
+  try {
+    const item = db.getLibraryItem(req.params.id);
+    if (!item) return res.status(404).json({ success: false, error: '文件不存在' });
+    const filePath = path.join(UPLOAD_DIR, item.fileName);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: '文件不存在' });
+    const ext = path.extname(item.fileName).toLowerCase();
+
+    if (ext === '.docx') {
+      const result = await mammoth.convertToHtml({ path: filePath });
+      if (!result || !result.value) {
+        return res.json({ success: true, data: { type: 'error', html: '<p style="text-align:center;color:#999;padding:40px;">文档转换失败，文件可能已损坏</p>' } });
+      }
+      // 提取 body 内的 HTML（去掉 mammoth 生成的完整页面外壳）
+      let html = result.value;
+      // sanitize
+      html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+      html = html.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+      html = html.replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '');
+      html = html.replace(/<embed\b[^>]*\/?>/gi, '');
+      html = html.replace(/\son\w+\s*=\s*"[^"]*"/gi, '');
+      html = html.replace(/\son\w+\s*=\s*'[^']*'/gi, '');
+      html = html.replace(/javascript\s*:/gi, '');
+      html = html.replace(/vbscript\s*:/gi, '');
+      return res.json({ success: true, data: { type: 'docx', html } });
+    }
+
+    if (ext === '.txt') {
+      const text = fs.readFileSync(filePath, 'utf-8');
+      const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const html = `<pre style="font-family:'PingFang SC',monospace;white-space:pre-wrap;line-height:1.8;font-size:15px;margin:0;">${escaped}</pre>`;
+      return res.json({ success: true, data: { type: 'txt', html } });
+    }
+
+    // PDF/其他 → 前端用 iframe 回退
+    return res.json({ success: true, data: { type: ext.replace('.', ''), url: '/api/library/' + item.id + '/preview' } });
+  } catch (e) {
+    res.status(500).json({ success: false, error: "服务器内部错误" });
+  }
+});
+
 // 预览 — docx转HTML显示，.doc提示下载，PDF/txt等inline
 router.get('/:id/preview', async (req, res) => {
   try {
