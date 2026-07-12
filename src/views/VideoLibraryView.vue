@@ -1,5 +1,5 @@
 <template>
-  <div class="vlib-page" :class="{ 'with-footer': filteredList.length > pageSize }">
+  <div class="vlib-page">
 
     <!-- 顶栏 + Tab -->
     <div class="vl-topbar">
@@ -42,7 +42,7 @@
 
     <!-- 卡片网格 -->
     <div v-else class="vl-grid">
-      <div v-for="item in paginatedList" :key="item.id" class="vl-card" @click="openDetail(item)">
+      <div v-for="item in filteredList" :key="item.id" class="vl-card" @click="openDetail(item)">
         <div class="vl-card-img" :class="item.coverUrl ? 'portrait' : 'landscape'">
           <img v-if="item.coverUrl" :src="item.coverUrl" loading="lazy" />
           <template v-else>
@@ -62,27 +62,6 @@
             <span class="vl-card-size">{{ formatSize(item.compressedSize || item.originalSize) }}</span>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- 分页 -->
-    <div v-if="totalPages > 1 || pageSize !== 10" class="vl-page-bar">
-      <div class="vl-page-left">
-        <label>每页</label>
-        <select v-model.number="pageSize" @change="page = 1">
-          <option :value="9">9</option>
-          <option :value="18">18</option>
-          <option :value="27">27</option>
-          <option :value="45">45</option>
-        </select>
-        <span class="vl-page-total">共 {{ filteredList.length }} 项</span>
-      </div>
-      <div class="vl-page-right">
-        <button :disabled="page === 1" @click="page = 1">首页</button>
-        <button :disabled="page === 1" @click="page--">上一页</button>
-        <span class="vl-page-num">{{ page }} / {{ totalPages }}</span>
-        <button :disabled="page === totalPages" @click="page++">下一页</button>
-        <button :disabled="page === totalPages" @click="page = totalPages">末页</button>
       </div>
     </div>
 
@@ -235,8 +214,6 @@ const list = ref([])
 const search = ref('')
 const sortBy = ref('newest')
 const activeTab = ref('normal')
-const page = ref(1)
-const pageSize = ref(10)
 
 const presetCategories = ['工厂展厅', '产品实拍', '生产线', '安装视频', '宣传片', '社交媒体', '原始素材']
 const dynamicCategories = ref([])
@@ -261,11 +238,6 @@ const filteredList = computed(() => {
     case 'size': arr.sort((a, b) => (b.compressedSize || b.originalSize) - (a.compressedSize || a.originalSize)); break
   }
   return arr
-})
-const totalPages = computed(() => Math.ceil(filteredList.value.length / pageSize.value) || 1)
-const paginatedList = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return filteredList.value.slice(start, start + pageSize.value)
 })
 
 function countByPurpose(p) {
@@ -387,7 +359,7 @@ async function load() {
 }
 onMounted(() => load())
 onUnmounted(() => {})
-watch([activeTab, search, sortBy], () => { page.value = 1 })
+watch([activeTab, search, sortBy], () => {})
 </script>
 
 <style scoped>
@@ -512,29 +484,4 @@ watch([activeTab, search, sortBy], () => { page.value = 1 })
 .up-chip-close:hover { background: #fecaca; color: #dc2626; }
 
 .up-form { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 18px; }
-
-.vl-page-bar {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  margin-top: 20px; padding: 12px 16px;
-  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
-  flex-wrap: wrap;
-}
-.vl-page-left { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #6b7280; }
-.vl-page-left label { color: #9ca3af; font-weight: 500; }
-.vl-page-left select {
-  padding: 4px 8px; border-radius: 6px; border: 1px solid #e5e7eb;
-  background: #f9fafb; font-size: 13px; color: #374151; cursor: pointer;
-  outline: none;
-}
-.vl-page-left select:focus { border-color: #6366f1; }
-.vl-page-total { margin-left: 8px; }
-.vl-page-right { display: flex; align-items: center; gap: 6px; }
-.vl-page-right button {
-  padding: 5px 14px; border-radius: 6px; border: 1px solid #e5e7eb;
-  background: #fff; font-size: 13px; font-weight: 600; color: #374151;
-  cursor: pointer; transition: all 0.15s;
-}
-.vl-page-right button:hover:not(:disabled) { border-color: #6366f1; color: #6366f1; }
-.vl-page-right button:disabled { opacity: .35; cursor: default; }
-.vl-page-num { font-size: 14px; font-weight: 700; color: #6366f1; padding: 0 6px; }
 </style>

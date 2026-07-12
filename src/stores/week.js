@@ -5,12 +5,17 @@ import { api } from '../api'
 export const useWeekStore = defineStore('week', () => {
   const weeks = ref([])
   const currentWeek = ref(null)
+  let _loading = null
 
   async function load() {
-    const res = await api.config.weeks()
-    if (res.success) weeks.value = res.data
-    const cur = await api.config.current()
-    if (cur.success) currentWeek.value = cur.data
+    // 防并发重复加载
+    if (_loading) { await _loading; return }
+    _loading = (async () => {
+      const [wRes, cRes] = await Promise.all([api.config.weeks(), api.config.current()])
+      if (wRes.success) weeks.value = wRes.data
+      if (cRes.success) currentWeek.value = cRes.data
+    })()
+    try { await _loading } finally { _loading = null }
   }
 
   async function switchWeek(id) {

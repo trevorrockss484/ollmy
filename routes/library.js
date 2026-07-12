@@ -76,7 +76,7 @@ router.post('/upload', upload.array('files', 10), (req, res) => {
 // 预览 — docx转HTML显示，.doc提示下载，PDF/txt等inline
 router.get('/:id/preview', async (req, res) => {
   try {
-    const item = db.getLibraryItem(Number(req.params.id));
+    const item = db.getLibraryItem(req.params.id);
     if (!item) return res.status(404).send('文件不存在');
     const filePath = path.join(UPLOAD_DIR, item.fileName);
     if (!fs.existsSync(filePath)) return res.status(404).send('文件不存在');
@@ -116,7 +116,7 @@ router.get('/:id/preview', async (req, res) => {
 
 router.get('/:id/download', (req, res) => {
   try {
-    const item = db.getLibraryItem(Number(req.params.id));
+    const item = db.getLibraryItem(req.params.id);
     if (!item) return res.status(404).json({ success: false, error: '文件不存在' });
     const filePath = path.join(UPLOAD_DIR, item.fileName);
     if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: '文件不存在' });
@@ -130,7 +130,7 @@ router.get('/:id/download', (req, res) => {
 
 router.put('/:id', (req, res) => {
   try {
-    const item = db.updateLibraryItem(Number(req.params.id), req.body);
+    const item = db.updateLibraryItem(req.params.id, req.body);
     if (!item) return res.status(404).json({ success: false, error: '文件不存在' });
     res.json({ success: true, data: item });
   } catch (e) {
@@ -140,7 +140,7 @@ router.put('/:id', (req, res) => {
 
 router.delete('/:id', (req, res) => {
   try {
-    const item = db.deleteLibraryItem(Number(req.params.id));
+    const item = db.deleteLibraryItem(req.params.id);
     if (!item) return res.status(404).json({ success: false, error: '文件不存在' });
     const filePath = path.join(UPLOAD_DIR, item.fileName);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);

@@ -71,15 +71,79 @@
         </div>
 
         <div class="setting-col size-col">
-          <label>尺寸限制 <i>可选</i></label>
-          <div class="size-inputs">
+          <label>调整尺寸</label>
+          <div class="resize-mode-row">
+            <button v-for="m in resizeModes" :key="m.value" class="resize-mode-btn" :class="{ on: resizeMode===m.value }" @click="resizeMode=m.value">{{ m.label }}</button>
+          </div>
+          <div v-if="resizeMode!=='none'" class="size-presets">
+            <button v-for="p in sizePresets" :key="p.label" class="size-preset-btn" :class="{ on: isPresetActive(p) }" @click="applyPreset(p)">{{ p.label }}<span>{{ p.w }}×{{ p.h }}</span></button>
+          </div>
+          <div class="size-inputs" v-if="resizeMode!=='none'">
             <span>宽</span>
-            <el-input-number v-model="maxWidth" :min="100" :max="12000" :step="100" placeholder="不限" controls-position="right" size="default" />
+            <el-input-number v-model="maxWidth" :min="1" :max="12000" :step="50" placeholder="" controls-position="right" size="default" />
             <span class="size-x">×</span>
             <span>高</span>
-            <el-input-number v-model="maxHeight" :min="100" :max="12000" :step="100" placeholder="不限" controls-position="right" size="default" />
+            <el-input-number v-model="maxHeight" :min="1" :max="12000" :step="50" placeholder="" controls-position="right" size="default" />
           </div>
+          <div v-if="resizeMode==='fill' && maxWidth && maxHeight" class="crop-pos-section">
+            <label>裁切位置</label>
+            <div class="crop-grid">
+              <button v-for="p in cropPositions" :key="p.value" class="crop-pos-btn" :class="{ on: cropPosition===p.value }" @click="cropPosition=p.value" :title="p.label">
+                <span class="crop-dot" :style="{ gridColumn: p.col, gridRow: p.row }"></span>
+              </button>
+            </div>
+            <button class="crop-manual-btn" @click="openCropEditor">✂ 手动裁切</button>
+            <span v-if="customCropPct" class="crop-custom-label">已自定义</span>
+          </div>
+          <span class="size-hint" v-if="resizeMode!=='none'">
+            <template v-if="resizeMode==='fit'">缩放到限制内，保持宽高比</template>
+            <template v-else-if="resizeMode==='fill'">覆盖宽高限制，裁切超出部分</template>
+            <template v-else-if="resizeMode==='width'">固定宽度，高度按比例</template>
+            <template v-else-if="resizeMode==='height'">固定高度，宽度按比例</template>
+            <template v-else-if="resizeMode==='exact'">强制拉伸到指定宽高</template>
+          </span>
         </div>
+
+        <!-- 裁切编辑器弹窗 -->
+        <teleport to="body">
+          <div v-if="cropEditorOpen" class="crop-overlay" @click.self="closeCropEditor">
+            <div class="crop-dialog" @click.stop>
+              <div class="crop-dialog-top">
+                <h3>裁切预览</h3>
+                <span class="crop-dialog-size">{{ maxWidth }}×{{ maxHeight }}</span>
+                <span class="crop-dialog-grow"></span>
+                <button class="crop-reset-btn" @click="resetCropDrag">重置</button>
+                <button class="crop-ok-btn" @click="confirmCropDrag">确定</button>
+                <button class="crop-close-btn" @click="closeCropEditor">✕</button>
+              </div>
+              <div class="crop-dialog-body">
+                <div class="crop-main" ref="cropContainerRef" @mousedown="startCropMove" @wheel.prevent="onCropWheel">
+                  <img :src="previewUrl" class="crop-main-img" draggable="false" />
+                  <div class="crop-box" :style="cropBoxStyle" @mousedown.stop="startCropMove">
+                    <div class="crop-box-grid">
+                      <span class="crop-box-line-h" style="top:33%"></span>
+                      <span class="crop-box-line-h" style="top:66%"></span>
+                      <span class="crop-box-line-v" style="left:33%"></span>
+                      <span class="crop-box-line-v" style="left:66%"></span>
+                    </div>
+                    <div class="crop-ptr crop-ptr-nw" @mousedown.stop="startHandleDrag($event,'nw')"></div>
+                    <div class="crop-ptr crop-ptr-ne" @mousedown.stop="startHandleDrag($event,'ne')"></div>
+                    <div class="crop-ptr crop-ptr-sw" @mousedown.stop="startHandleDrag($event,'sw')"></div>
+                    <div class="crop-ptr crop-ptr-se" @mousedown.stop="startHandleDrag($event,'se')"></div>
+                  </div>
+                </div>
+                <div class="crop-side">
+                  <p class="crop-side-hint">🖱 拖拽移动选框<br>🔲 四角拉缩大小<br>🖱 滚轮调整缩放<br>比例锁定 {{ maxWidth }}:{{ maxHeight }}</p>
+                  <div class="crop-side-info">
+                    <div class="crop-info-row"><span>原图</span><span>{{ imgW }}×{{ imgH }}</span></div>
+                    <div class="crop-info-row"><span>目标</span><span>{{ maxWidth }}×{{ maxHeight }}</span></div>
+                    <div class="crop-info-row"><span>位置</span><span>{{ cropPctDesc }}</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </teleport>
 
         <div class="setting-col action-col">
           <el-button type="primary" size="large" round :loading="compressing" :disabled="compressing" @click="doCompress">
@@ -232,6 +296,151 @@ const dragOver = ref(false)
 const quality = ref(65)
 const maxWidth = ref(null)
 const maxHeight = ref(null)
+const resizeMode = ref('none')
+const resizeModes = [
+  { value: 'none', label: '不变' }, { value: 'fit', label: '等比缩放' },
+  { value: 'fill', label: '等比裁切' }, { value: 'width', label: '固定宽度' },
+  { value: 'height', label: '固定高度' }, { value: 'exact', label: '精确尺寸' },
+]
+const sizePresets = [
+  { label: '公众号', w: 900, h: 500 }, { label: '朋友圈', w: 1080, h: 1260 },
+  { label: '小红书', w: 1080, h: 1440 }, { label: '横版广告', w: 1080, h: 360 },
+  { label: '高清', w: 1920, h: 1080 }, { label: '方图', w: 800, h: 800 },
+  { label: '头像', w: 400, h: 400 }, { label: '手机壁纸', w: 1125, h: 2436 },
+  { label: 'PC壁纸', w: 2560, h: 1440 },
+]
+const cropPosition = ref('center')
+const cropPositions = [
+  { value: 'top-left', label: '左上', col: 1, row: 1 }, { value: 'top', label: '上中', col: 2, row: 1 }, { value: 'top-right', label: '右上', col: 3, row: 1 },
+  { value: 'left', label: '左中', col: 1, row: 2 }, { value: 'center', label: '居中', col: 2, row: 2 }, { value: 'right', label: '右中', col: 3, row: 2 },
+  { value: 'bottom-left', label: '左下', col: 1, row: 3 }, { value: 'bottom', label: '下中', col: 2, row: 3 }, { value: 'bottom-right', label: '右下', col: 3, row: 3 },
+]
+const customCropPct = ref(false)
+const cropEditorOpen = ref(false)
+const cropContainerRef = ref(null)
+const cropSideX = ref(0.5), cropSideY = ref(0.5), cropSideScale = ref(0.6)
+const cropPctDesc = ref('居中'), cropBoxStyle = ref({}), imgW = ref(0), imgH = ref(0)
+
+function applyPreset(p) { maxWidth.value = p.w; maxHeight.value = p.h }
+function isPresetActive(p) { return maxWidth.value === p.w && maxHeight.value === p.h }
+
+function getCropRect() {
+  const el = cropContainerRef.value; if (!el) return { x:0,y:0,w:0,h:0 }
+  const cw = el.offsetWidth, ch = el.offsetHeight
+  const ratio = (maxWidth.value || 1) / (maxHeight.value || 1)
+  let bw, bh
+  if (cw / ch > ratio) { bh = Math.round(ch * cropSideScale.value); bw = Math.round(bh * ratio) }
+  else { bw = Math.round(cw * cropSideScale.value); bh = Math.round(bw / ratio) }
+  const x = Math.round(cropSideX.value * (cw - bw))
+  const y = Math.round(cropSideY.value * (ch - bh))
+  return { x, y, w: bw, h: bh }
+}
+
+function updateCropBox() {
+  if (!cropContainerRef.value) return
+  const r = getCropRect()
+  cropBoxStyle.value = { left: r.x+'px', top: r.y+'px', width: r.w+'px', height: r.h+'px' }
+  const cx = cropSideX.value, cy = cropSideY.value
+  if (cx<0.1&&cy<0.1) cropPctDesc.value='左上'
+  else if (cx>0.9&&cy<0.1) cropPctDesc.value='右上'
+  else if (cx<0.1&&cy>0.9) cropPctDesc.value='左下'
+  else if (cx>0.9&&cy>0.9) cropPctDesc.value='右下'
+  else if (cx>0.3&&cx<0.7&&cy<0.1) cropPctDesc.value='顶部'
+  else if (cx>0.3&&cx<0.7&&cy>0.9) cropPctDesc.value='底部'
+  else if (cx<0.1&&cy>0.3&&cy<0.7) cropPctDesc.value='左侧'
+  else if (cx>0.9&&cy>0.3&&cy<0.7) cropPctDesc.value='右侧'
+  else cropPctDesc.value='居中'
+}
+
+function openCropEditor() {
+  if (!previews.value.length || !maxWidth.value || !maxHeight.value) return
+  previewUrl.value = previews.value[0].url
+  const pos = cropPositions.find(p => p.value === cropPosition.value)
+  if (pos && !customCropPct.value) {
+    cropSideX.value = pos.value.includes('left') ? 0 : pos.value.includes('right') ? 1 : 0.5
+    cropSideY.value = pos.value.includes('top') ? 0 : pos.value.includes('bottom') ? 1 : 0.5
+  }
+  cropEditorOpen.value = true
+  document.body.style.overflow = 'hidden'
+  nextTick(() => {
+    const el = cropContainerRef.value; if (!el) return
+    const ro = new ResizeObserver(() => updateCropBox()); ro.observe(el); cropContainerRef._ro = ro
+    const imgEl = el.querySelector('.crop-main-img')
+    if (imgEl) {
+      if (imgEl.complete) { imgW.value = imgEl.naturalWidth || 0; imgH.value = imgEl.naturalHeight || 0 }
+      else { imgEl.onload = () => { imgW.value = imgEl.naturalWidth || 0; imgH.value = imgEl.naturalHeight || 0 } }
+    }
+    updateCropBox()
+  })
+}
+
+function closeCropEditor() {
+  if (cropContainerRef.value?._ro) { cropContainerRef.value._ro.disconnect(); cropContainerRef.value._ro = null }
+  cropEditorOpen.value = false
+  document.body.style.overflow = ''
+}
+
+function resetCropDrag() { cropSideX.value=0.5; cropSideY.value=0.5; cropSideScale.value=0.6; updateCropBox() }
+
+function confirmCropDrag() {
+  const cx=cropSideX.value, cy=cropSideY.value
+  if (cx<0.1&&cy<0.1) cropPosition.value='top-left'
+  else if (cx>0.9&&cy<0.1) cropPosition.value='top-right'
+  else if (cx<0.1&&cy>0.9) cropPosition.value='bottom-left'
+  else if (cx>0.9&&cy>0.9) cropPosition.value='bottom-right'
+  else if (cx>0.3&&cx<0.7&&cy<0.1) cropPosition.value='top'
+  else if (cx>0.3&&cx<0.7&&cy>0.9) cropPosition.value='bottom'
+  else if (cx<0.1&&cy>0.3&&cy<0.7) cropPosition.value='left'
+  else if (cx>0.9&&cy>0.3&&cy<0.7) cropPosition.value='right'
+  else cropPosition.value='center'
+  customCropPct.value = true
+  closeCropEditor()
+}
+
+function startCropMove(e) {
+  if (!cropContainerRef.value) return
+  const CR = cropContainerRef.value.getBoundingClientRect()
+  const cw = cropContainerRef.value.offsetWidth, ch = cropContainerRef.value.offsetHeight
+  const r = getCropRect()
+  const ox = e.clientX - CR.left - r.x - r.w/2, oy = e.clientY - CR.top - r.y - r.h/2
+  const move = (ex, ey) => { cropSideX.value=Math.max(0,Math.min(1,(ex-CR.left-ox)/(cw-r.w)))||0.5; cropSideY.value=Math.max(0,Math.min(1,(ey-CR.top-oy)/(ch-r.h)))||0.5; updateCropBox() }
+  move(e.clientX, e.clientY)
+  const up = () => { document.removeEventListener('mousemove',mm); document.removeEventListener('mouseup',up) }
+  const mm = ev => move(ev.clientX, ev.clientY)
+  document.addEventListener('mousemove', mm); document.addEventListener('mouseup', up)
+}
+
+function onCropWheel(e) { cropSideScale.value=Math.max(0.1,Math.min(1.0,cropSideScale.value-e.deltaY*0.001)); updateCropBox() }
+
+function startHandleDrag(e, corner) {
+  e.stopPropagation()
+  if (!cropContainerRef.value) return
+  const CR = cropContainerRef.value.getBoundingClientRect()
+  const cw = cropContainerRef.value.offsetWidth, ch = cropContainerRef.value.offsetHeight
+  const ratio = (maxWidth.value||1)/(maxHeight.value||1)
+  const r0 = getCropRect()
+  let ax, ay
+  if (corner.includes('n')) { ay = r0.y + r0.h } else { ay = r0.y }
+  if (corner.includes('w')) { ax = r0.x + r0.w } else { ax = r0.x }
+  const move = (ex, ey) => {
+    const cx = ex - CR.left, cy = ey - CR.top
+    let bw = Math.abs(cx - ax), bh = Math.abs(cy - ay)
+    bw = Math.max(60, Math.max(bw, bh * ratio)); bh = bw / ratio
+    if (corner.includes('e') && ax + bw > cw) { bw = cw - ax; bh = bw / ratio }
+    if (corner.includes('w') && ax - bw < 0) { bw = ax; bh = bw / ratio }
+    if (corner.includes('s') && ay + bh > ch) { bh = ch - ay; bw = bh * ratio }
+    if (corner.includes('n') && ay - bh < 0) { bh = ay; bw = bh * ratio }
+    if (bw < 60) { bw = 60; bh = bw / ratio }
+    const nax = corner.includes('w') ? ax - bw : ax, nay = corner.includes('n') ? ay - bh : ay
+    cropSideX.value = (cw > bw) ? (nax / (cw - bw)) : 0.5
+    cropSideY.value = (ch > bh) ? (nay / (ch - bh)) : 0.5
+    cropSideScale.value = Math.min(bw / cw, (bh * ratio) / (cw * ratio))
+    updateCropBox()
+  }
+  const up = () => { document.removeEventListener('mousemove',mm); document.removeEventListener('mouseup',up) }
+  const mm = ev => move(ev.clientX, ev.clientY)
+  document.addEventListener('mousemove', mm); document.addEventListener('mouseup', up)
+}
 const outputFormat = ref('original')
 const compressing = ref(false)
 const results = ref([])
@@ -322,6 +531,16 @@ async function doCompress() {
     fd.append('quality', String(quality.value))
     if (maxWidth.value) fd.append('maxWidth', String(maxWidth.value))
     if (maxHeight.value) fd.append('maxHeight', String(maxHeight.value))
+    if (resizeMode.value !== 'none') {
+      fd.append('resizeMode', resizeMode.value)
+      if (resizeMode.value === 'fill') {
+        fd.append('cropPosition', cropPosition.value)
+        if (customCropPct.value) {
+          fd.append('cropLeft', String(Math.round(cropSideX.value * 100)))
+          fd.append('cropTop', String(Math.round(cropSideY.value * 100)))
+        }
+      }
+    }
     fd.append('outputFormat', outputFormat.value)
     const token = localStorage.getItem('pan_token') || ''
     const res = await fetch('/api/tools/compress', { method: 'POST', headers: { 'X-Auth-Token': token }, body: fd })
@@ -581,4 +800,57 @@ onUnmounted(() => { for (const u of previewCache.value.values()) URL.revokeObjec
 .tag-g { color: #059669; background: #d1fae5; }
 .tag-y { color: #b45309; background: #fef3c7; }
 .tag-n { color: #6b7280; background: #f3f4f6; }
+
+/* 裁切弹窗 */
+.crop-overlay { position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.88); display:flex; align-items:center; justify-content:center; }
+.crop-dialog { background:#1f2937; border-radius:16px; overflow:hidden; width:min(95vw,1100px); max-height:90vh; display:flex; flex-direction:column; }
+.crop-dialog-top { display:flex; align-items:center; gap:12px; padding:12px 20px; background:#111827; flex-shrink:0; }
+.crop-dialog-top h3 { color:#fff; font-size:16px; margin:0; }
+.crop-dialog-size { color:#6366f1; font-size:13px; font-weight:700; }
+.crop-dialog-grow { flex:1; }
+.crop-reset-btn { padding:6px 14px; border-radius:6px; border:1px solid #4b5563; background:transparent; color:#d1d5db; font-size:13px; cursor:pointer; }
+.crop-reset-btn:hover { border-color:#6366f1; color:#fff; }
+.crop-ok-btn { padding:6px 20px; border-radius:6px; border:none; background:#6366f1; color:#fff; font-size:13px; font-weight:700; cursor:pointer; }
+.crop-close-btn { padding:4px 10px; border-radius:6px; border:none; background:transparent; color:#9ca3af; font-size:16px; cursor:pointer; }
+.crop-close-btn:hover { color:#fff; }
+.crop-dialog-body { display:flex; flex:1; overflow:hidden; }
+.crop-main { flex:1; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#2d2d2d; min-height:360px; cursor:crosshair; }
+.crop-main-img { display:block; max-width:100%; max-height:100%; object-fit:contain; user-select:none; -webkit-user-drag:none; }
+.crop-side { width:200px; background:#1a1d24; padding:16px; flex-shrink:0; display:flex; flex-direction:column; gap:12px; overflow-y:auto; }
+.crop-side-hint { font-size:12px; color:#9ca3af; margin:0; line-height:1.6; }
+.crop-side-info { display:flex; flex-direction:column; gap:4px; }
+.crop-info-row { display:flex; justify-content:space-between; font-size:13px; color:#d1d5db; padding:6px 0; border-bottom:1px solid #374151; }
+.crop-info-row span:first-child { color:#9ca3af; }
+.crop-box { position:absolute; border:2px solid #fff; box-shadow:0 0 0 9999px rgba(0,0,0,.45); cursor:move; z-index:5; }
+.crop-box-grid { position:absolute; inset:0; pointer-events:none; }
+.crop-box-line-h { position:absolute; left:0; right:0; height:1px; background:rgba(255,255,255,.25); }
+.crop-box-line-v { position:absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,.25); }
+.crop-ptr { position:absolute; width:12px; height:12px; background:#6366f1; border:2px solid #fff; z-index:10; }
+.crop-ptr-nw { top:-6px; left:-6px; cursor:nw-resize; }
+.crop-ptr-ne { top:-6px; right:-6px; cursor:ne-resize; }
+.crop-ptr-sw { bottom:-6px; left:-6px; cursor:sw-resize; }
+.crop-ptr-se { bottom:-6px; right:-6px; cursor:se-resize; }
+
+/* 裁切位置 */
+.resize-mode-row { display:flex; gap:5px; margin-bottom:8px; flex-wrap:wrap; }
+.resize-mode-btn { padding:4px 10px; border-radius:6px; border:1px solid #d1d5db; background:#fff; color:#6b7280; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
+.resize-mode-btn:hover { border-color:#6366f1; color:#6366f1; }
+.resize-mode-btn.on { background:#6366f1; color:#fff; border-color:#6366f1; }
+.size-presets { display:flex; gap:4px; margin-bottom:8px; flex-wrap:wrap; }
+.size-preset-btn { display:flex; flex-direction:column; align-items:center; padding:5px 10px; border-radius:6px; border:1px solid #e5e7eb; background:#f9fafb; cursor:pointer; transition:all .15s; font-size:11px; color:#6b7280; }
+.size-preset-btn span { font-size:10px; color:#bbb; margin-top:1px; }
+.size-preset-btn:hover { border-color:#6366f1; color:#6366f1; }
+.size-preset-btn.on { background:#eef2ff; border-color:#6366f1; color:#6366f1; }
+.size-hint { display:block; margin-top:4px; font-size:11px; color:#bbb; }
+.crop-pos-section { margin-top:8px; }
+.crop-pos-section > label { display:block; font-size:12px; font-weight:700; color:#374151; margin-bottom:6px; }
+.crop-grid { display:grid; grid-template-columns:repeat(3,36px); grid-template-rows:repeat(3,36px); gap:3px; }
+.crop-pos-btn { position:relative; border-radius:6px; border:1.5px solid #e5e7eb; background:#fff; cursor:pointer; display:grid; grid-template-columns:1fr 1fr 1fr; grid-template-rows:1fr 1fr 1fr; padding:0; transition:all .15s; }
+.crop-pos-btn:hover { border-color:#6366f1; background:#f8faff; }
+.crop-pos-btn.on { border-color:#6366f1; background:#6366f1; }
+.crop-dot { width:8px; height:8px; border-radius:50%; background:#d1d5db; margin:auto; }
+.crop-pos-btn.on .crop-dot { background:#fff; }
+.crop-manual-btn { margin-top:8px; padding:6px 16px; border-radius:8px; border:1px dashed #6366f1; background:transparent; color:#6366f1; font-size:13px; font-weight:700; cursor:pointer; display:block; }
+.crop-manual-btn:hover { background:#eef2ff; }
+.crop-custom-label { display:inline-block; margin-left:8px; font-size:11px; color:#6366f1; }
 </style>

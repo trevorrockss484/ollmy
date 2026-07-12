@@ -86,7 +86,7 @@ router.post('/upload', upload.array('files', 20), (req, res) => {
 // 下载原文件
 router.get('/:id/download', (req, res) => {
   try {
-    const asset = db.getAsset(Number(req.params.id));
+    const asset = db.getAsset(req.params.id);
     if (!asset) return res.status(404).json({ success: false, error: '资产不存在' });
     const filePath = path.join(UPLOAD_DIR, asset.fileName);
     if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: '文件不存在' });
@@ -101,7 +101,7 @@ router.get('/:id/download', (req, res) => {
 // 更新元数据
 router.put('/:id', (req, res) => {
   try {
-    const asset = db.updateAsset(Number(req.params.id), req.body);
+    const asset = db.updateAsset(req.params.id, req.body);
     if (!asset) return res.status(404).json({ success: false, error: '资产不存在' });
     res.json({ success: true, data: asset });
   } catch (e) {
@@ -112,7 +112,7 @@ router.put('/:id', (req, res) => {
 // 删除（含文件）
 router.delete('/:id', (req, res) => {
   try {
-    const asset = db.deleteAsset(Number(req.params.id));
+    const asset = db.deleteAsset(req.params.id);
     if (!asset) return res.status(404).json({ success: false, error: '资产不存在' });
     // 删除物理文件
     const filePath = path.join(UPLOAD_DIR, asset.fileName);

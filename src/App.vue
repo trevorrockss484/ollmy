@@ -224,7 +224,9 @@ async function checkVps() {
  })
  .sort((a, b) => {
  const order = { overdue: 0, urgent: 1, warning: 2 }
- return (order[a.severity] || 3) - (order[b.severity] || 3)
+ const bySeverity = (order[a.severity] || 3) - (order[b.severity] || 3)
+ if (bySeverity !== 0) return bySeverity
+ return a.days - b.days
  })
  }
  } catch(e) {}

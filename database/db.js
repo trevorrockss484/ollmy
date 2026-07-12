@@ -12,13 +12,9 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// 生成唯一 ID（优先 crypto.randomUUID，降级时间戳+随机数）
+// 生成唯一 ID（时间戳毫秒 + 随机后缀，保持数字类型兼容存量数据）
 function uid() {
-  try {
-    return crypto.randomUUID();
-  } catch {
-    return Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
-  }
+  return Date.now();
 }
 
 // 写锁：防止并发读改写覆盖
@@ -71,7 +67,8 @@ function defaultWeek() {
     weekBudget: 1500,
     inquiryGoal: 400,
     groupGoal: 20,
-    countries: ['印度尼西亚','越南','埃塞俄比亚','尼日利亚','南非']
+    countries: ['印度尼西亚','越南','埃塞俄比亚','尼日利亚','南非'],
+    hidden: false,
   };
 }
 
@@ -174,28 +171,22 @@ function getCurrentWeek() {
   };
 
   // 用户手动切换：直接返回，不检查过期
-  if (data.currentWeekId && data.manualWeek) {
-    const w = data.weeks.find(w => w.id === data.currentWeekId);
+  if (data.currentWeekId != null && data.manualWeek) {
+    const w = data.weeks.find(w => w.id == data.currentWeekId);
     if (w && !w.hidden) return w;
     // 手动周被删/隐藏了 → 退回到自动选择
   }
 
-  // 自动选择：活跃周 > 未来周 > 历史周
+  // 自动选择：优先活跃周，无活跃周则创建当前周（而非选历史/未来周）
   const candidates = data.weeks.filter(w => !w.hidden && !isExpired(w));
-  candidates.sort((a, b) => {
-    const rank = (w) => isActive(w) ? 0 : new Date(w.startDate + 'T00:00:00') > today ? 1 : 2;
-    const ra = rank(a), rb = rank(b);
-    if (ra !== rb) return ra - rb;
-    return new Date(b.endDate + 'T00:00:00') - new Date(a.endDate + 'T00:00:00');
-  });
-  const best = candidates[0];
-  if (best) {
-    if (data.currentWeekId !== best.id || data.manualWeek) {
-      data.currentWeekId = best.id;
+  const active = candidates.find(w => isActive(w));
+  if (active) {
+    if (data.currentWeekId != active.id || data.manualWeek) {
+      data.currentWeekId = active.id;
       data.manualWeek = false;
       write(data);
     }
-    return best;
+    return active;
   }
   // 无有效周：创建新周
   const dw = defaultWeek();
@@ -233,7 +224,7 @@ function addWeek(weekData) {
 
 function updateWeek(id, updates) {
   const data = read();
-  const idx = data.weeks.findIndex(w => w.id === id);
+  const idx = data.weeks.findIndex(w => w.id == id);
   if (idx === -1) return null;
   const clean = { ...updates };
   if (clean.startDate) clean.startDate = String(clean.startDate).substring(0, 10);
@@ -245,11 +236,11 @@ function updateWeek(id, updates) {
 
 function deleteWeek(id) {
   const data = read();
-  const week = data.weeks.find(w => w.id === id);
-  if (week) {
-    week.hidden = true;
-  }
-  if (data.currentWeekId === id) {
+  const week = data.weeks.find(w => w.id == id);
+  if (week) { week.hidden = true; }
+  // 确保所有周都有 hidden 属性
+  for (const w of data.weeks) { if (w.hidden === undefined || w.hidden === null) w.hidden = false; }
+  if (data.currentWeekId == id) {
     const visible = data.weeks.filter(w => !w.hidden);
     data.currentWeekId = visible.length > 0 ? visible[visible.length - 1].id : null;
     data.manualWeek = false;
@@ -260,7 +251,7 @@ function deleteWeek(id) {
 
 function restoreWeek(id) {
   const data = read();
-  const week = data.weeks.find(w => w.id === id);
+  const week = data.weeks.find(w => w.id == id);
   if (week) {
     week.hidden = false;
     data.currentWeekId = id;
@@ -272,8 +263,8 @@ function restoreWeek(id) {
 
 function permanentlyDeleteWeek(id) {
   const data = read();
-  data.weeks = data.weeks.filter(w => w.id !== id);
-  if (data.currentWeekId === id) {
+  data.weeks = data.weeks.filter(w => w.id != id);
+  if (data.currentWeekId == id) {
     const visible = data.weeks.filter(w => !w.hidden);
     data.currentWeekId = visible.length > 0 ? visible[visible.length - 1].id : null;
     data.manualWeek = false;
@@ -284,7 +275,7 @@ function permanentlyDeleteWeek(id) {
 
 function setCurrentWeek(id) {
   const data = read();
-  const exists = data.weeks.find(w => w.id === id);
+  const exists = data.weeks.find(w => w.id == id);
   if (!exists) return null;
   data.currentWeekId = id;
   data.manualWeek = true;           // 用户主动切换，跳过过期检查
@@ -337,7 +328,7 @@ function addVps(vps) {
 
 function updateVps(id, updates) {
   const data = read();
-  const idx = data.vpsList.findIndex(v => v.id === id);
+  const idx = data.vpsList.findIndex(v => v.id == id);
   if (idx === -1) return null;
   data.vpsList[idx] = { ...data.vpsList[idx], ...updates };
   write(data);
@@ -346,7 +337,7 @@ function updateVps(id, updates) {
 
 function deleteVps(id) {
   const data = read();
-  data.vpsList = data.vpsList.filter(v => v.id !== id);
+  data.vpsList = data.vpsList.filter(v => v.id != id);
   write(data);
   return true;
 }
@@ -364,7 +355,7 @@ function makeCrud(collection, defaults = {}, sorter) {
     },
     get(id) {
       const data = read();
-      return (data[collection] || []).find(item => item.id === id) || null;
+      return (data[collection] || []).find(item => item.id == id) || null;
     },
     add(item) {
       const data = read();
@@ -376,7 +367,7 @@ function makeCrud(collection, defaults = {}, sorter) {
     },
     update(id, updates) {
       const data = read();
-      const idx = (data[collection] || []).findIndex(item => item.id === id);
+      const idx = (data[collection] || []).findIndex(item => item.id == id);
       if (idx === -1) return null;
       data[collection][idx] = { ...data[collection][idx], ...updates, id };
       write(data);
@@ -384,8 +375,8 @@ function makeCrud(collection, defaults = {}, sorter) {
     },
     delete(id) {
       const data = read();
-      const found = (data[collection] || []).find(item => item.id === id);
-      data[collection] = (data[collection] || []).filter(item => item.id !== id);
+      const found = (data[collection] || []).find(item => item.id == id);
+      data[collection] = (data[collection] || []).filter(item => item.id != id);
       write(data);
       return found;
     }
@@ -412,7 +403,7 @@ function reorderPrompts(orderedIds) {
   const data = read();
   if (!Array.isArray(data.prompts)) return false;
   orderedIds.forEach((id, i) => {
-    const p = data.prompts.find(p => p.id === id);
+    const p = data.prompts.find(p => p.id == id);
     if (p) p.sortOrder = i + 1;
   });
   write(data);

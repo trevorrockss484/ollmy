@@ -361,7 +361,9 @@ async function load() {
         })
         .sort((a, b) => {
           const o = { overdue: 0, urgent: 1, warning: 2 }
-          return (o[a.severity] || 3) - (o[b.severity] || 3)
+          const bySeverity = (o[a.severity] || 3) - (o[b.severity] || 3)
+          if (bySeverity !== 0) return bySeverity
+          return a.days - b.days
         })
     }
   } catch (e) { console.error('加载VPS数据失败:', e); loadErrors.value.push('VPS状态') }

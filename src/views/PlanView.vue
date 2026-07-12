@@ -471,11 +471,10 @@ async function doCreateWeek() {
 // ====== 切换 / 删除 ======
 async function switchToWeek(id) {
   try {
-    await weekStore.switchWeek(id)
-    // 确保用最新 store 值，手动重新读
-    const cur = await api.config.current()
-    if (!cur.success || !cur.data) return ElMessage.error('切换失败')
-    const w = cur.data
+    const switched = await weekStore.switchWeek(id)
+    if (!switched) return ElMessage.error('切换失败')
+    const w = week.value
+    if (!w) return ElMessage.error('切换失败')
     form.value = { startDate:w.startDate,endDate:w.endDate,dailyBudget:w.dailyBudget,weekBudget:w.weekBudget,inquiryGoal:w.inquiryGoal,groupGoal:w.groupGoal,countries:[...(w.countries||[])] }
     await loadWeekData(w)
     await nextTick()
@@ -518,7 +517,7 @@ function onResize() { donutChart?.resize() }
 
 onMounted(async () => {
   window.addEventListener('resize', onResize)
-  if (!weekStore.weeks.length) await weekStore.load()
+  await weekStore.load()
   if (!week.value) await weekStore.createWeek()
   const w = week.value
   if (!w) return

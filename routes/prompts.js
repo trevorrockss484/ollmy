@@ -15,7 +15,7 @@ router.get('/', (req, res) => {
 // 获取单条
 router.get('/:id', (req, res) => {
   try {
-    const p = db.getPrompt(Number(req.params.id));
+    const p = db.getPrompt(req.params.id);
     if (!p) return res.status(404).json({ success: false, error: '提示词不存在' });
     res.json({ success: true, data: p });
   } catch (e) {
@@ -36,7 +36,7 @@ router.post('/', (req, res) => {
 // 编辑
 router.put('/:id', (req, res) => {
   try {
-    const p = db.updatePrompt(Number(req.params.id), req.body);
+    const p = db.updatePrompt(req.params.id, req.body);
     if (!p) return res.status(404).json({ success: false, error: '提示词不存在' });
     res.json({ success: true, data: p });
   } catch (e) {
@@ -47,7 +47,7 @@ router.put('/:id', (req, res) => {
 // 删除
 router.delete('/:id', (req, res) => {
   try {
-    db.deletePrompt(Number(req.params.id));
+    db.deletePrompt(req.params.id);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });

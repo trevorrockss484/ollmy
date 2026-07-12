@@ -111,6 +111,23 @@ router.post('/compress', (req, res) => {
       const quality = Math.min(100, Math.max(1, parseInt(req.body.quality) || 80));
       const maxW = req.body.maxWidth ? parseInt(req.body.maxWidth) : null;
       const maxH = req.body.maxHeight ? parseInt(req.body.maxHeight) : null;
+      const resizeMode = req.body.resizeMode || 'fit';
+      const cropPosition = req.body.cropPosition || 'center';
+      const cropLeft = req.body.cropLeft ? parseInt(req.body.cropLeft) : null;
+      const cropTop = req.body.cropTop ? parseInt(req.body.cropTop) : null;
+
+      // 把百分比映射为 sharp position 字符串
+      function positionFromPct(l, t) {
+        if (l != null && t != null) {
+          const h = l < 25 ? 'left' : l > 75 ? 'right' : '';
+          const v = t < 25 ? 'top' : t > 75 ? 'bottom' : '';
+          if (h && v) return v + ' ' + h;
+          if (h) return h;
+          if (v) return v;
+        }
+        return cropPosition || 'center';
+      }
+      const finalPosition = (cropLeft != null && cropTop != null) ? positionFromPct(cropLeft, cropTop) : cropPosition;
       const outFmtRaw = req.body.outputFormat || 'original';
       if (!['original','webp','jpeg','png','avif'].includes(outFmtRaw)) return res.status(400).json({ success: false, error: '不支持的输出格式' });
       const outFmt = outFmtRaw;
@@ -127,7 +144,27 @@ router.post('/compress', (req, res) => {
         const meta = await pipe.metadata();
         const ow = meta.width || 0, oh = meta.height || 0;
 
-        if (maxW || maxH) pipe = pipe.resize({ width: maxW || undefined, height: maxH || undefined, fit: 'inside', withoutEnlargement: true });
+        if (maxW || maxH) {
+          switch (resizeMode) {
+            case 'fit': // 等比缩放 — 限制在 maxW×maxH 内
+              pipe = pipe.resize({ width: maxW || undefined, height: maxH || undefined, fit: 'inside', withoutEnlargement: false });
+              break;
+            case 'fill': // 等比裁切 — 覆盖 maxW×maxH，指定位置裁切
+              pipe = pipe.resize({ width: maxW, height: maxH, fit: 'cover', position: finalPosition });
+              break;
+            case 'width': // 固定宽度，高度自动
+              pipe = pipe.resize({ width: maxW, fit: 'inside' });
+              break;
+            case 'height': // 固定高度，宽度自动
+              pipe = pipe.resize({ height: maxH, fit: 'inside' });
+              break;
+            case 'exact': // 精确尺寸 — 强制拉伸/压扁到指定尺寸
+              pipe = pipe.resize({ width: maxW, height: maxH, fit: 'fill' });
+              break;
+            default:
+              pipe = pipe.resize({ width: maxW || undefined, height: maxH || undefined, fit: 'inside', withoutEnlargement: false });
+          }
+        }
 
         let outExt, outPipe;
         switch (outFmt) {
@@ -310,7 +347,7 @@ router.get('/saved', (req, res) => {
 // ===== DELETE /api/tools/saved/:id —— 删除素材 =====
 router.delete('/saved/:id', (req, res) => {
   try {
-    const item = db.deleteCompressed(Number(req.params.id));
+    const item = db.deleteCompressed(req.params.id);
     if (!item) return res.status(404).json({ success: false, error: '素材不存在' });
     // 删物理文件
     const fp = path.join(SAVED_DIR, item.compressedName);
@@ -325,7 +362,7 @@ router.delete('/saved/:id', (req, res) => {
 router.put('/saved/:id', express.json(), (req, res) => {
   try {
     const { name, category } = req.body || {};
-    const updated = db.updateCompressed(Number(req.params.id), { name, category });
+    const updated = db.updateCompressed(req.params.id, { name, category });
     if (!updated) return res.status(404).json({ success: false, error: '素材不存在' });
     res.json({ success: true, data: updated });
   } catch (e) {
@@ -677,7 +714,7 @@ router.get('/saved-videos', (req, res) => {
 router.put('/saved-video/:id', (req, res) => {
   try {
     const { name, category } = req.body || {};
-    const updated = db.updateCompressed(Number(req.params.id), { name, category });
+    const updated = db.updateCompressed(req.params.id, { name, category });
     if (!updated) return res.status(404).json({ success: false, error: '素材不存在' });
     res.json({ success: true, data: updated });
   } catch (e) { res.status(500).json({ success: false, error: '更新失败' }); }
@@ -686,7 +723,7 @@ router.put('/saved-video/:id', (req, res) => {
 // DELETE /api/tools/saved-video/:id — 删除视频素材
 router.delete('/saved-video/:id', (req, res) => {
   try {
-    const item = db.deleteCompressed(Number(req.params.id));
+    const item = db.deleteCompressed(req.params.id);
     if (!item) return res.status(404).json({ success: false, error: '素材不存在' });
     const fp = path.join(VIDEO_SAVED_DIR, item.compressedName);
     if (fs.existsSync(fp)) fs.unlinkSync(fp);
@@ -740,21 +777,21 @@ router.post('/scripts/add', (req, res) => {
 router.put('/scripts/:id', (req, res) => {
   try {
     const { title, content, contentCn, category, tags } = req.body || {};
-    const updated = db.updateScript(Number(req.params.id), { title, content, contentCn, category, tags });
+    const updated = db.updateScript(req.params.id, { title, content, contentCn, category, tags });
     if (!updated) return res.status(404).json({ success: false, error: '话术不存在' });
     res.json({ success: true, data: updated });
   } catch (e) { res.status(500).json({ success: false, error: '更新失败' }); }
 });
 router.delete('/scripts/:id', (req, res) => {
   try {
-    const item = db.deleteScript(Number(req.params.id));
+    const item = db.deleteScript(req.params.id);
     if (!item) return res.status(404).json({ success: false, error: '话术不存在' });
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, error: '删除失败' }); }
 });
 router.post('/scripts/:id/usage', (req, res) => {
   try {
-    const item = db.incScriptUsage(Number(req.params.id));
+    const item = db.incScriptUsage(req.params.id);
     if (!item) return res.status(404).json({ success: false, error: '话术不存在' });
     res.json({ success: true, data: item });
   } catch (e) { res.status(500).json({ success: false, error: '更新失败' }); }

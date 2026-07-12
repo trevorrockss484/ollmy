@@ -119,12 +119,12 @@
  <el-button size="small" type="primary" link @click="pickTemplate(t)">使用</el-button>
  <el-button size="small" type="danger" link @click="delMyTemplate(i)">删除</el-button>
  </div>
+ <div style="display:flex;gap:8px;margin-top:12px;">
+ <el-input v-model="newTemplateText" placeholder="输入新模版内容..." size="small" style="flex:1;" />
+ <el-button size="small" type="primary" @click="saveMyTemplate"><el-icon :size="13"><Check /></el-icon> 新增模版</el-button>
+ </div>
  </el-tab-pane>
  </el-tabs>
- <div style="margin-top:16px;display:flex;gap:8px;">
- <el-input v-model="newTemplateText" placeholder="输入新模版内容..." size="small" style="flex:1;" />
- <el-button size="small" type="primary" @click="saveMyTemplate"><el-icon :size="13"><Check /></el-icon> 保存为我的模版</el-button>
- </div>
  <template #footer><el-button @click="templateVisible = false">关闭</el-button></template>
  </el-dialog>
  </div>
@@ -173,24 +173,29 @@ const templateLabels = { groupDetail:'拉群详情模版', summary:'总结模版
 const presetTemplates = {
  groupDetail: [
  '【尼日利亚x3，一个有平面图，其他单品】，【印尼x1，单品】，【越南x1，中间商】',
- '【尼日利亚x2，都是单品】，【印尼x2，一个大项目】，【埃塞俄比亚x1，批发商】',
- '【越南x3，两个中间商一个工厂】，【南非x2，零售客户】',
- '【印尼x1，工程项目】，【尼日利亚x1，批发采购商】',
- '【菲律宾x2，中间商】，【泰国x1，工厂采购】'
+ '【尼日利亚x2，单品】，【沙特x1，平面图有公司】，【印度x1，平面图】',
+ '【英国x1，平面图】，【印度x1，平面图】，【迪拜x1，平面图】',
+ '【尼日利亚x4，一个有平面图做酒店，一个中间商8月来中国，一个单品，一个单品】',
+ '【美国x1，平面图】，【泰国x1，办公室采购】，【俄罗斯x1，加微信沟通】',
+ '【印度x3，平面图x2，单品x1】，【尼日利亚x2，中间商】，【沙特x1，公司采购有平面图】',
  ],
  summary: [
+ '平均客户单价12元一个，今天测试新素材，需要时间测试。高预算跑东南亚，小预算跑非洲，非洲客单价成本比之前高了',
+ '平均客户单价6.9元一个，继续去测试素材，调整高消耗无效广告组。高预算重点跑东南亚，小预算测试非洲市场',
+ '今天整体量跑不出去，更换素材去测试。很多素材跑不出去，调整高消耗无效广告组',
+ '今天询盘少，还在调整素材。调整细分定位，继续优化素材和广告设置',
+ '今日换新国家测试，尼日利亚的量能跑起来先不关，同时也测试其他国家',
+ '早上到中午回复信息少，投放地区有时差。调整话术提高转化，减少低效广告预算，加大高转化地区投放力度',
+ '今天整体效果量比之前多了，但无效偏多，东南亚地区效果也不好。调整细分定位，优化广告素材和落地页',
  '调整广告出价后客户成本下降，继续优化。减少低效广告预算，加大高转化地区投放力度',
-  "平均客户单价0元一个，继续去测试新素材，调整高消耗无效广告组，高预算重点跑东南亚，小预算测试非洲市场",
- '今日东南亚投放效果较好，印尼越南客户质量偏高，非洲市场尼日利亚询盘量上升持续观察',
- '今天整体效果不错，新客户数量达标。部分素材CTR偏低需要更换，明日测试新创意方向',
- '东南亚市场稳定投放，非洲市场测试阶段。尼日利亚询盘质量提升，埃塞俄比亚广告展示偏低需调整'
  ],
  optimize: [
+ '提高询盘数量，调整客户精准度，减少无效客户，优化广告素材和落地页',
  '提高询盘数量，调整客户精准度，减少无效客户，尽量多点时间回信息',
- '重点优化东南亚高转化市场，逐步加大非洲预算测试，持续AB测试广告创意',
- '降低客单价，提高广告CTR，优化表单内容减少无效填写，跟进老客户转化',
- '增加视频素材占比，定向优化高消费力人群，排除非目标国家流量',
- '提升广告相关性得分，调整出价策略控制成本，每日筛选无效关键词'
+ '调整客户精准度，减少无效客户。优化广告素材，更换低CTR素材，调整表单减少无效填写',
+ '提高数量，调整细分定位，减少无效客户。测试新国家新素材，小预算测出效果再放量',
+ '调整出价策略控制成本，提高广告CTR。筛选无效关键词，排除非目标国家流量',
+ '重点优化东南亚高转化市场，逐步加大非洲预算测试。持续AB测试广告创意，跟进老客户转化',
  ],
 }
 
@@ -219,20 +224,23 @@ function pickTemplate(text) {
 }
 
 function saveMyTemplate() {
- const text = newTemplateText.value.trim()
- if (!text) { ElMessage.warning('请输入模版内容'); return }
- if (!myTemplates.value[templateField.value]) myTemplates.value[templateField.value] = []
- myTemplates.value[templateField.value].unshift(text)
- localStorage.setItem(MY_TEMPLATE_KEY, JSON.stringify(myTemplates.value))
- newTemplateText.value = ''
- templateTab.value = 'custom'
- ElMessage.success('模版已保存')
+  const text = newTemplateText.value.trim()
+  if (!text) { ElMessage.warning('请输入模版内容'); return }
+  const field = templateField.value
+  if (!myTemplates.value[field]) { myTemplates.value[field] = [] }
+  myTemplates.value[field].unshift(text)
+  try { localStorage.setItem(MY_TEMPLATE_KEY, JSON.stringify(myTemplates.value)) }
+  catch (e) { ElMessage.error('保存失败'); return }
+  newTemplateText.value = ''
+  ElMessage.success('模版已保存')
 }
 
 function delMyTemplate(index) {
- myTemplates.value[templateField.value].splice(index, 1)
- localStorage.setItem(MY_TEMPLATE_KEY, JSON.stringify(myTemplates.value))
- ElMessage.success('已删除')
+  const field = templateField.value
+  if (!myTemplates.value[field]) return
+  myTemplates.value[field].splice(index, 1)
+  try { localStorage.setItem(MY_TEMPLATE_KEY, JSON.stringify(myTemplates.value)) }
+  catch (e) { ElMessage.error('删除失败'); return }
 }
 
 // ====== 监听日期变化，检测已有数据 ======

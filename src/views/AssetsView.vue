@@ -246,7 +246,7 @@
               <el-button circle size="small" @click="libClosePreview"><el-icon :size="15"><Close /></el-icon></el-button>
             </div>
             <div class="preview-body" @click.stop>
-              <iframe :src="'/api/library/' + libPreviewItem.id + '/preview'" class="preview-iframe" frameborder="0" sandbox="allow-same-origin" />
+              <iframe :src="authUrl('/api/library/' + libPreviewItem.id + '/preview')" class="preview-iframe" frameborder="0" sandbox="allow-same-origin" />
             </div>
           </div>
         </transition>

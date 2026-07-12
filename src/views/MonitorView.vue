@@ -502,6 +502,7 @@ const filteredList = computed(() => {
   if (filterType.value === 'overdue') arr = arr.filter(v => v.severity === 'overdue')
   else if (filterType.value === 'urgent') arr = arr.filter(v => v.severity === 'urgent')
   else if (filterType.value === 'warning') arr = arr.filter(v => v.severity === 'warning')
+  else arr = arr.filter(v => v.severity !== 'overdue')  // 默认不展示已过期VPS
   // 模糊搜索 — 含名称/服务商/国家/备注/网址
   const kw = searchText.value.trim().toLowerCase()
   if (kw) arr = arr.filter(v =>

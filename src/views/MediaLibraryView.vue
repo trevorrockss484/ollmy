@@ -34,10 +34,10 @@
       <p>没有匹配的素材</p>
     </div>
 
-    <!-- 内容区（网格 + 分页固定） -->
+    <!-- 内容区 -->
     <div v-else class="ml-content">
       <div class="ml-grid">
-        <div v-for="item in paginatedList" :key="item.id" class="ml-card" @click="openDetail(item)">
+        <div v-for="item in filteredList" :key="item.id" class="ml-card" @click="openDetail(item)">
           <div class="ml-img">
             <img :src="item.previewUrl" loading="lazy" />
           </div>
@@ -49,26 +49,6 @@
         </div>
       </div>
 
-      <!-- 分页 -->
-      <div v-if="totalPages > 1 || pageSize !== 10" class="ml-page-bar">
-      <div class="ml-page-left">
-        <label>每页</label>
-        <select v-model.number="pageSize" @change="page = 1">
-          <option :value="10">10</option>
-          <option :value="20">20</option>
-          <option :value="36">36</option>
-          <option :value="60">60</option>
-        </select>
-        <span class="ml-page-total">共 {{ filteredList.length }} 项</span>
-      </div>
-      <div class="ml-page-right">
-        <button :disabled="page === 1" @click="page = 1">首页</button>
-        <button :disabled="page === 1" @click="page--">上一页</button>
-        <span class="ml-page-num">{{ page }} / {{ totalPages }}</span>
-        <button :disabled="page === totalPages" @click="page++">下一页</button>
-        <button :disabled="page === totalPages" @click="page = totalPages">末页</button>
-      </div>
-    </div>
     </div>
 
     <!-- 详情/编辑弹窗 -->
@@ -228,9 +208,6 @@ const list = ref([])
 const search = ref('')
 const filterCat = ref('')
 const sortBy = ref('newest')
-const page = ref(1)
-const pageSize = ref(10)
-
 const presetCategories = ['总裁桌', '会议桌', '员工桌', '休闲空间', '沙发', '茶几', '酒店家具', '家用家具']
 const dynamicCategories = ref([])
 const allCategories = computed(() => {
@@ -252,11 +229,6 @@ const filteredList = computed(() => {
     case 'size': arr.sort((a, b) => b.compressedSize - a.compressedSize); break
   }
   return arr
-})
-const totalPages = computed(() => Math.ceil(filteredList.value.length / pageSize.value) || 1)
-const paginatedList = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return filteredList.value.slice(start, start + pageSize.value)
 })
 
 // 详情弹窗
@@ -368,7 +340,7 @@ async function load() {
 
 onMounted(() => load())
 onUnmounted(() => { for (const u of upPcache.values()) URL.revokeObjectURL(u); upPcache.clear() })
-watch([search, filterCat, sortBy], () => { page.value = 1 })
+watch([search, filterCat, sortBy], () => {})
 </script>
 
 <style scoped>
@@ -495,29 +467,4 @@ watch([search, filterCat, sortBy], () => { page.value = 1 })
 .upz-chip-del:hover { background: #fecaca; color: #dc2626; }
 
 .up-form { display: flex; flex-direction: column; gap: 16px; }
-
-.ml-page-bar {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  margin-top: 20px; padding: 12px 16px;
-  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
-  flex-wrap: wrap;
-}
-.ml-page-left { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #6b7280; }
-.ml-page-left label { color: #9ca3af; font-weight: 500; }
-.ml-page-left select {
-  padding: 4px 8px; border-radius: 6px; border: 1px solid #e5e7eb;
-  background: #f9fafb; font-size: 13px; color: #374151; cursor: pointer;
-  outline: none;
-}
-.ml-page-left select:focus { border-color: #6366f1; }
-.ml-page-total { margin-left: 8px; }
-.ml-page-right { display: flex; align-items: center; gap: 6px; }
-.ml-page-right button {
-  padding: 5px 14px; border-radius: 6px; border: 1px solid #e5e7eb;
-  background: #fff; font-size: 13px; font-weight: 600; color: #374151;
-  cursor: pointer; transition: all 0.15s;
-}
-.ml-page-right button:hover:not(:disabled) { border-color: #6366f1; color: #6366f1; }
-.ml-page-right button:disabled { opacity: .35; cursor: default; }
-.ml-page-num { font-size: 14px; font-weight: 700; color: #6366f1; padding: 0 6px; }
 </style>

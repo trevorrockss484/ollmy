@@ -25,7 +25,7 @@ router.post('/', (req, res) => {
 // 更新VPS
 router.put('/:id', (req, res) => {
   try {
-    const vps = db.updateVps(Number(req.params.id), req.body);
+    const vps = db.updateVps(req.params.id, req.body);
     if (!vps) return res.status(404).json({ success: false, error: 'VPS不存在' });
     res.json({ success: true, data: vps });
   } catch (e) {
@@ -36,7 +36,7 @@ router.put('/:id', (req, res) => {
 // 删除VPS
 router.delete('/:id', (req, res) => {
   try {
-    db.deleteVps(Number(req.params.id));
+    db.deleteVps(req.params.id);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
