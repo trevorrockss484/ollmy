@@ -487,18 +487,20 @@ async function copyReportText() {
 }
 
 function exportCSV() {
-  const headers = ['日期', '账号', '国家', 'FB消耗', 'FB新客户', 'FB拉群', '客均成本', '转化率',
+  const headers = ['日期', '账号', '国家', '美金', 'FB消耗', 'FB新客户', 'FB拉群', '客均成本',
     '发目录未回', '发信息未理会', '低预算', '同行', '骚扰', '参观未定', '拉群详情', '总结', '优化方向']
   let csv = '﻿' + headers.join(',') + '\n'
   list.value.forEach(r => {
     const fb = r._fb || {}
-    // 兼容旧 groupDetail 和新 groupEntries
-    let detailStr = fb.groupDetail || ''
-    if (!detailStr && fb.groupEntries && Array.isArray(fb.groupEntries)) {
+    // 优先 groupEntries，fallback groupDetail
+    let detailStr = ''
+    if (fb.groupEntries && Array.isArray(fb.groupEntries)) {
       detailStr = fb.groupEntries.filter(e => e.text).map(e => '【' + e.text + (e.status ? '，' + e.status : '') + '】').join('')
+    } else {
+      detailStr = fb.groupDetail || ''
     }
-    csv += [r.rawDate, r.accountName || '', r.country, r.fbBudget, r.fbCustomer, r.fbGrouped,
-      typeof r.avgCost === 'string' ? 0 : r.avgCost, r.conversion,
+    csv += [r.rawDate, r.accountName || '', r.country, fb.usdBudget || 0, r.fbBudget, r.fbCustomer, r.fbGrouped,
+      typeof r.avgCost === 'string' ? 0 : r.avgCost,
       fb.catNoReply || 0, fb.msgIgnore || 0, fb.lowBudget || 0,
       fb.competitor || 0, fb.harass || 0, fb.visitPending || 0,
       '"' + detailStr.replace(/"/g, '""') + '"',
