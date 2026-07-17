@@ -475,11 +475,6 @@ function fmtRate(rmb, usd) {
   return (rmb / usd).toFixed(2)
 }
 
-function fmtPct(part, total) {
-  if (!total) return '0%'
-  return Math.round(part / total * 100) + '%'
-}
-
 const dayCards = computed(() =>
   days.value.map(date => {
     const d = dailyData.value[date]
@@ -879,7 +874,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 }
 .dv-head {
   display: grid;
-  grid-template-columns: 104px 1fr 1fr 60px 72px 64px 70px 80px;
+  grid-template-columns: 120px repeat(7, 1fr);
   padding: 10px 20px; align-items: center;
   background: #f9fafb; border-bottom: 1px solid #e5e7eb;
 }
@@ -892,7 +887,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 
 .dv-row {
   display: grid;
-  grid-template-columns: 104px 1fr 1fr 60px 72px 64px 70px 80px;
+  grid-template-columns: 120px repeat(7, 1fr);
   padding: 14px 20px; align-items: center;
   border-bottom: 1px solid #f3f4f6;
   cursor: pointer; transition: background .12s; background: #fff;
