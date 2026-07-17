@@ -117,6 +117,9 @@
         <!-- 二、每个国家明细 -->
         <div class="section-header">
           <span class="section-num">二</span> 每个国家明细
+          <span class="sort-hint">拖拽排序：</span>
+          <el-button size="small" text @click="sortCountries('az')">A-Z</el-button>
+          <el-button size="small" text @click="sortCountries('budget')">按消耗</el-button>
         </div>
 
         <div v-for="(c, i) in activeCountries" :key="c" class="country-card" :style="{ '--cc-color': countryColors[i], '--cc-color-light': countryColors[i] + '18' }">
@@ -126,7 +129,11 @@
               <span class="fi" :class="'fi-' + flagCode(c)" style="border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.1);"></span>
               <span class="cc-name">{{ c }}</span>
             </div>
-            <el-button size="small" text type="danger" class="cc-remove-btn" @click="removeCountry(c)" :disabled="activeCountries.length <= 1">移除</el-button>
+            <div class="cc-header-right">
+              <el-button size="small" text :disabled="i === 0" @click="moveCountry(i, -1)"><el-icon :size="14"><Top /></el-icon></el-button>
+              <el-button size="small" text :disabled="i === activeCountries.length - 1" @click="moveCountry(i, 1)"><el-icon :size="14"><Bottom /></el-icon></el-button>
+              <el-button size="small" text type="danger" class="cc-remove-btn" @click="removeCountry(c)" :disabled="activeCountries.length <= 1">移除</el-button>
+            </div>
           </div>
           <div class="cc-body">
             <div class="cc-row">
@@ -426,6 +433,24 @@ function removeCountry(c) {
   if (activeCountries.value.length <= 1) { ElMessage.warning('至少保留一个国家'); return }
   activeCountries.value = activeCountries.value.filter(x => x !== c)
   delete countryData[c]
+}
+
+function moveCountry(idx, direction) {
+  const arr = [...activeCountries.value]
+  const target = idx + direction
+  if (target < 0 || target >= arr.length) return
+  ;[arr[idx], arr[target]] = [arr[target], arr[idx]]
+  activeCountries.value = arr
+}
+
+function sortCountries(mode) {
+  const arr = [...activeCountries.value]
+  if (mode === 'az') {
+    arr.sort((a, b) => a.localeCompare(b))
+  } else if (mode === 'budget') {
+    arr.sort((a, b) => (countryData[b]?.budget || 0) - (countryData[a]?.budget || 0))
+  }
+  activeCountries.value = arr
 }
 
 const reportDate = ref(todayStr())
@@ -832,6 +857,7 @@ onMounted(async () => {
 
 /* ====== 区块标题 ====== */
 .section-header { font-size: 16px; font-weight: 700; color: #1f2937; padding: 8px 0 4px; display: flex; align-items: center; gap: 10px; }
+.sort-hint { font-size: 11px; font-weight: 500; color: #9ca3af; margin-left: 6px; }
 .section-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: #eef2ff; color: #6366f1; font-size: 14px; }
 
 /* ====== 国家卡片 ====== */
@@ -840,6 +866,7 @@ onMounted(async () => {
 .country-card:hover { border-color: var(--cc-color, #6366f1); }
 .cc-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: var(--cc-color-light, #f8fafc); border-bottom: 1px solid #f3f4f6; }
 .cc-header-left { display: flex; align-items: center; gap: 10px; }
+.cc-header-right { display: flex; align-items: center; gap: 2px; }
 .cc-num { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background: #6366f1; color: #fff; font-size: 12px; font-weight: 700; }
 .cc-name { font-size: 15px; font-weight: 700; color: #1f2937; }
 .cc-remove-btn { flex-shrink:0; font-size:12px; padding:2px 8px; opacity:.6; }
