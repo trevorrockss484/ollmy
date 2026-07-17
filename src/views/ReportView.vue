@@ -505,8 +505,12 @@ const reportSummary = ref('')
 const reportOptimize = ref('')
 
 function initCountryData(countries) {
-  // 始终以周计划国家为默认值
-  activeCountries.value = [...countries]
+  // 以周计划国家为底，保留用户手动添加的国家
+  const merged = new Set([...countries])
+  for (const c of activeCountries.value) {
+    if (!merged.has(c) && countryData[c] !== undefined) merged.add(c)
+  }
+  activeCountries.value = [...merged]
   for (const c of activeCountries.value) {
     if (!(c in countryData)) countryData[c] = defaultCountryFb()
   }
@@ -646,14 +650,13 @@ function buildReportText() {
   const dateLabel = parseInt(parts[0]) + '.' + parseInt(parts[1]) + '.' + parseInt(parts[2])
 
   let text = `${dateLabel} 海外投流数据总结
-账号：${selectedAccount.value?.name || '莉莎办公家具'}
 
 一、今日海外整体汇总
 
 1. 总费用：${fmtNum(ot.budget)}
 2. 总客资：${ot.newCustomer}
 3. 总拉群及客户详情：${ot.grouped}`
-  if (ot.allEntries.length) text += `\n▷\n${ot.allEntries.map(e => '【' + e + '】').join('')}\n▷`
+  if (ot.allEntries.length) text += `\n▷\n${ot.allEntries.map(e => '【' + e + '】').join('\n')}\n▷`
   else if (ot.groupCountSummary) text += `\n▷\n（${ot.groupCountSummary}）\n▷`
   text += `
 4. 询盘客价：${ot.avgCost > 0 ? ot.avgCost.toFixed(1) : '0'} 元
@@ -675,7 +678,7 @@ function buildReportText() {
 1. 费用：${fmtNum(budget)} 元
 2. 客资：${customer} 个
 3. 总拉群及客户详情：${grouped} 个`
-    if (entries.length) text += `\n▷\n${entries.map(e => '【' + e.text + (e.status ? '，' + e.status : '') + '】').join('')}\n▷`
+    if (entries.length) text += `\n▷\n${entries.map(e => '【' + e.text + (e.status ? '，' + e.status : '') + '】').join('\n')}\n▷`
     text += `
 4. 询盘客价：${avg} / 元
 5. 有效客价：${eff} / 元
