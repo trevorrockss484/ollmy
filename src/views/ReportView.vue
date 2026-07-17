@@ -117,9 +117,13 @@
         <!-- 二、每个国家明细 -->
         <div class="section-header">
           <span class="section-num">二</span> 每个国家明细
-          <span class="sort-hint">拖拽排序：</span>
-          <el-button size="small" text @click="sortCountries('az')">A-Z</el-button>
-          <el-button size="small" text @click="sortCountries('budget')">按消耗</el-button>
+          <div class="sort-bar">
+            <span class="sort-label">排序</span>
+            <button class="sort-btn" :class="{ active: sortMode === 'az' }" @click="sortCountries('az')">A → Z</button>
+            <button class="sort-btn" :class="{ active: sortMode === 'customer' }" @click="sortCountries('customer')">客资</button>
+            <button class="sort-btn" :class="{ active: sortMode === 'budget' }" @click="sortCountries('budget')">消耗</button>
+            <button class="sort-btn" :class="{ active: sortMode === 'grouped' }" @click="sortCountries('grouped')">拉群</button>
+          </div>
         </div>
 
         <div v-for="(c, i) in activeCountries" :key="c" class="country-card" :style="{ '--cc-color': countryColors[i], '--cc-color-light': countryColors[i] + '18' }">
@@ -443,13 +447,20 @@ function moveCountry(idx, direction) {
   activeCountries.value = arr
 }
 
+const sortMode = ref('')
+
 function sortCountries(mode) {
   const arr = [...activeCountries.value]
   if (mode === 'az') {
     arr.sort((a, b) => a.localeCompare(b))
+  } else if (mode === 'customer') {
+    arr.sort((a, b) => (countryData[b]?.newCustomer || 0) - (countryData[a]?.newCustomer || 0))
   } else if (mode === 'budget') {
     arr.sort((a, b) => (countryData[b]?.budget || 0) - (countryData[a]?.budget || 0))
+  } else if (mode === 'grouped') {
+    arr.sort((a, b) => (countryData[b]?.grouped || 0) - (countryData[a]?.grouped || 0))
   }
+  sortMode.value = mode
   activeCountries.value = arr
 }
 
@@ -856,8 +867,21 @@ onMounted(async () => {
 .gd-global-label { font-size: 13px; font-weight: 700; color: #374151; white-space: nowrap; min-width: 120px; }
 
 /* ====== 区块标题 ====== */
-.section-header { font-size: 16px; font-weight: 700; color: #1f2937; padding: 8px 0 4px; display: flex; align-items: center; gap: 10px; }
-.sort-hint { font-size: 11px; font-weight: 500; color: #9ca3af; margin-left: 6px; }
+.section-header { font-size: 16px; font-weight: 700; color: #1f2937; padding: 8px 0 4px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* 排序按钮组 */
+.sort-bar { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.sort-label { font-size: 11px; font-weight: 600; color: #9ca3af; margin-right: 4px; }
+.sort-btn {
+  font-size: 11px; font-weight: 600; color: #6b7280;
+  padding: 4px 10px; border-radius: 6px; border: 1px solid #e5e7eb;
+  background: #fff; cursor: pointer; transition: all .12s;
+  white-space: nowrap;
+}
+.sort-btn:hover { border-color: #6366f1; color: #6366f1; background: #f5f3ff; }
+.sort-btn.active {
+  background: #6366f1; color: #fff; border-color: #6366f1;
+}
 .section-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: #eef2ff; color: #6366f1; font-size: 14px; }
 
 /* ====== 国家卡片 ====== */
