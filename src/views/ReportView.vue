@@ -29,7 +29,7 @@
           v-if="addableCountries.length"
           v-model:visible="popVisible"
           placement="bottom-end"
-          :width="220"
+          :width="280"
           trigger="click"
           :show-arrow="false"
         >
@@ -38,18 +38,20 @@
               <el-icon :size="14"><Plus /></el-icon> 添加国家
             </span>
           </template>
-          <el-input v-model="countrySearch" placeholder="搜索国家..." size="small" clearable class="country-search-input" />
-          <div class="country-pop-list">
-            <div
-              v-for="c in filteredAddable"
-              :key="c"
-              class="country-pop-item"
-              @click="addCountry(c); countrySearch=''; popVisible=false"
-            >
-              <span class="fi" :class="'fi-' + flagCode(c)" style="margin-right:6px;border-radius:2px;"></span>
-              {{ c }}
-            </div>
-            <div v-if="!filteredAddable.length" class="country-pop-empty">无匹配国家</div>
+          <div class="tree-pop-header">选择国家（可多选）</div>
+          <el-tree
+            ref="countryTreeRef"
+            :data="countryTreeData"
+            show-checkbox
+            node-key="key"
+            :props="{ label: 'label', children: 'children' }"
+            default-expand-all
+            @check="onCountryTreeCheck"
+            style="max-height:320px;overflow-y:auto;"
+          />
+          <div class="tree-pop-actions">
+            <el-button size="small" @click="popVisible=false">取消</el-button>
+            <el-button size="small" type="primary" @click="confirmAddCountries">确定添加</el-button>
           </div>
         </el-popover>
       </div>
@@ -305,6 +307,36 @@ const activeCountries = ref(loadStoredCountries() || [])
 const addableCountries = computed(() => allCountries.filter(c => !activeCountries.value.includes(c)))
 const countrySearch = ref('')
 const popVisible = ref(false)
+const countryTreeRef = ref(null)
+const pendingCountryChecks = ref([])
+
+const countryTreeData = [
+  { key:'se-asia', label:'东南亚', children:['印度尼西亚','越南','菲律宾','泰国','马来西亚','新加坡','缅甸','柬埔寨'].map(c=>({key:c,label:c})) },
+  { key:'africa', label:'非洲', children:['尼日利亚','埃塞俄比亚','南非','肯尼亚','加纳','埃及'].map(c=>({key:c,label:c})) },
+  { key:'latam', label:'拉美', children:['巴西','墨西哥','哥伦比亚','阿根廷'].map(c=>({key:c,label:c})) },
+  { key:'mid-east', label:'中东', children:['阿联酋','沙特阿拉伯','土耳其','卡塔尔'].map(c=>({key:c,label:c})) },
+  { key:'s-asia', label:'南亚', children:['印度','巴基斯坦','孟加拉国'].map(c=>({key:c,label:c})) },
+  { key:'e-asia', label:'东亚', children:['日本','韩国'].map(c=>({key:c,label:c})) },
+  { key:'emea', label:'欧美', children:['美国','英国','德国','法国','澳大利亚','俄罗斯'].map(c=>({key:c,label:c})) }
+]
+const allLeafKeys = countryTreeData.flatMap(g => g.children.map(c => c.key))
+
+function onCountryTreeCheck(_n, checked) {
+  pendingCountryChecks.value = checked.checkedKeys.filter(k => allLeafKeys.includes(k))
+}
+
+function confirmAddCountries() {
+  for (const c of pendingCountryChecks.value) {
+    if (!activeCountries.value.includes(c)) {
+      activeCountries.value = [...activeCountries.value, c]
+      if (!(c in countryData)) countryData[c] = defaultCountryFb()
+    }
+  }
+  saveStoredCountries()
+  pendingCountryChecks.value = []
+  popVisible.value = false
+}
+
 const filteredAddable = computed(() => {
   const q = countrySearch.value.trim().toLowerCase()
   if (!q) return addableCountries.value
@@ -725,6 +757,10 @@ onMounted(async () => {
 }
 .country-pop-item:hover { background: #f3f4f6; }
 .country-pop-empty { padding: 12px; text-align: center; color: #9ca3af; font-size: 12px; }
+
+/* 国家树弹窗 */
+.tree-pop-header { font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 8px; }
+.tree-pop-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f3f4f6; }
 
 /* ====== 操作栏 ====== */
 .action-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px 20px; margin-bottom: 16px; }
