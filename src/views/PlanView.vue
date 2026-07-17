@@ -145,7 +145,8 @@
         <div class="daily-table">
           <div class="dt-head">
             <div class="dt-th dt-th--date">日期</div>
-            <div class="dt-th">FB消耗</div>
+            <div class="dt-th">美金$</div>
+            <div class="dt-th">消耗¥</div>
             <div class="dt-th">新客户</div>
             <div class="dt-th">拉群</div>
             <div class="dt-th dt-th--st">状态</div>
@@ -162,6 +163,7 @@
               <span class="dt-date">{{ formatDayOnly(d.date) }}</span>
               <el-tag v-if="d.isToday" type="primary" size="small" effect="dark" class="dt-today">今天</el-tag>
             </div>
+            <div class="dt-td usd">{{ d.completed ? '$' + fmtK(d.fbUsdBudget) : '—' }}</div>
             <div class="dt-td price">{{ d.completed ? '¥' + Math.round(d.fbBudget) : '—' }}</div>
             <div class="dt-td">{{ d.completed ? (d.fbCustomer || '0') : '—' }}</div>
             <div class="dt-td highlight">{{ d.completed ? (d.fbGrouped || '0') : '—' }}</div>
@@ -450,17 +452,18 @@ function fmtK(n) {
 const dayCards = computed(() =>
   days.value.map(date => {
     const d = dailyData.value[date]
-    let fbBudget = 0, fbCustomer = 0, fbGrouped = 0
+    let fbBudget = 0, fbUsdBudget = 0, fbCustomer = 0, fbGrouped = 0
     if (d?.countries) {
       Object.values(d.countries).forEach(c => {
         fbBudget += c.budget || 0
+        fbUsdBudget += c.usdBudget || 0
         fbCustomer += c.newCustomer || 0
         fbGrouped += c.grouped || 0
       })
     }
     return {
       date, dayName: getDayName(date), completed: !!d, isToday: date === todayStr(),
-      fbBudget, fbCustomer, fbGrouped
+      fbBudget, fbUsdBudget, fbCustomer, fbGrouped
     }
   })
 )
@@ -843,7 +846,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
   overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.03);
 }
 .dt-head {
-  display:grid; grid-template-columns:150px repeat(3,1fr) 100px;
+  display:grid; grid-template-columns:130px repeat(4,1fr) 80px;
   background:#f9fafb; border-bottom:1px solid #e5e7eb;
 }
 .dt-th {
@@ -854,7 +857,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 .dt-th--st { text-align:center; }
 
 .dt-row {
-  display:grid; grid-template-columns:150px repeat(3,1fr) 100px;
+  display:grid; grid-template-columns:130px repeat(4,1fr) 80px;
   border-bottom:1px solid #f3f4f6; cursor:pointer;
   transition:background .12s; background:#fff;
 }
@@ -869,6 +872,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
   font-variant-numeric:tabular-nums;
 }
 .dt-td.price { color:#6366f1; font-weight:700; }
+.dt-td.usd { color:#a16207; font-weight:700; font-size:13px; }
 .dt-td.highlight { color:#059669; font-weight:700; }
 .dt-td--date { justify-content:flex-start; padding-left:22px; gap:8px; }
 .dt-day { font-size:15px; font-weight:800; color:#111827; }
@@ -891,6 +895,6 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 @media (max-width:900px) {
   .overview-strip { grid-template-columns:repeat(2,1fr); }
   .mid-layout { grid-template-columns:1fr; }
-  .dt-head, .dt-row { grid-template-columns:120px repeat(3,1fr) 80px; }
+  .dt-head, .dt-row { grid-template-columns:110px repeat(4,1fr) 70px; }
 }
 </style>

@@ -78,6 +78,10 @@
               <div class="ov-val">¥{{ fmtNum(overallTotal.budget) }}</div>
               <div class="ov-label">1. 总费用</div>
             </div>
+            <div class="ov-item ov-item-usd">
+              <div class="ov-val">${{ fmtNum(overallTotal.usdBudget) }}</div>
+              <div class="ov-label">美金</div>
+            </div>
             <div class="ov-item">
               <div class="ov-val">{{ overallTotal.newCustomer }}</div>
               <div class="ov-label">2. 总客资</div>
@@ -127,6 +131,11 @@
                 <label>费用</label>
                 <el-input-number v-model="countryData[c].budget" :min="0" :precision="2" :controls="false" placeholder="0" class="cc-input" />
                 <span class="cc-unit">元</span>
+              </div>
+              <div class="cc-field cc-field-usd">
+                <label>美金 <el-tooltip content="对账用，不写入日报" placement="top"><span class="usd-hint">?</span></el-tooltip></label>
+                <el-input-number v-model="countryData[c].usdBudget" :min="0" :precision="2" :controls="false" placeholder="$" class="cc-input cc-input-usd" />
+                <span class="cc-unit">$</span>
               </div>
               <div class="cc-field">
                 <label>客资</label>
@@ -315,7 +324,7 @@ const selectedAccountId = ref('lisa-office')
 const selectedAccount = computed(() => accounts.value.find(a => a.id === selectedAccountId.value) || accounts.value[0])
 
 let entryIdSeq = 0
-const defaultCountryFb = () => ({ budget:null, newCustomer:null, grouped:null, groupEntries:[], catNoReply:null, msgIgnore:null, lowBudget:null, competitor:null, harass:null, visitPending:null })
+const defaultCountryFb = () => ({ budget:null, usdBudget:null, newCustomer:null, grouped:null, groupEntries:[], catNoReply:null, msgIgnore:null, lowBudget:null, competitor:null, harass:null, visitPending:null })
 
 function addGroupEntry(c) {
   if (!countryData[c]) countryData[c] = defaultCountryFb()
@@ -382,12 +391,12 @@ function countryAvg(c) { const d = countryData[c]; if (!d) return 0; const b = n
 function countryEffCost(c) { const d = countryData[c]; if (!d) return 0; const b = n(d.budget), g = n(d.grouped); return (b && g) ? b / g : 0 }
 
 const overallTotal = computed(() => {
-  let budget = 0, newCustomer = 0, grouped = 0
+  let budget = 0, usdBudget = 0, newCustomer = 0, grouped = 0
   const groupCountParts = []
   const allEntries = []
   for (const c of activeCountries.value) {
     const d = countryData[c]; if (!d) continue
-    budget += n(d.budget); newCustomer += n(d.newCustomer); grouped += n(d.grouped)
+    budget += n(d.budget); usdBudget += n(d.usdBudget); newCustomer += n(d.newCustomer); grouped += n(d.grouped)
     if (n(d.grouped) > 0) groupCountParts.push(c + '+' + n(d.grouped))
     // 收集所有客户详情条目
     const entries = d.groupEntries || []
@@ -395,7 +404,7 @@ const overallTotal = computed(() => {
       if (e.text) allEntries.push(e.status ? `${e.text}，${e.status}` : e.text)
     }
   }
-  return { budget, newCustomer, grouped, avgCost: (budget && newCustomer) ? budget / newCustomer : 0, effCost: (budget && grouped) ? budget / grouped : 0, allEntries, groupCountSummary: groupCountParts.join('  ') }
+  return { budget, usdBudget, newCustomer, grouped, avgCost: (budget && newCustomer) ? budget / newCustomer : 0, effCost: (budget && grouped) ? budget / grouped : 0, allEntries, groupCountSummary: groupCountParts.join('  ') }
 })
 
 function fmtNum(v) { if (v == null) return '0.00'; const r = Math.round(v * 100) / 100; return r.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
@@ -549,7 +558,7 @@ async function saveData() {
   const countries = {}
   for (const c of activeCountries.value) {
     const d = countryData[c]; if (!d) continue
-    countries[c] = { budget: n(d.budget), newCustomer: n(d.newCustomer), grouped: n(d.grouped), groupEntries: (d.groupEntries || []).map(e => ({ text: e.text || '', status: e.status || '' })), catNoReply: n(d.catNoReply), msgIgnore: n(d.msgIgnore), lowBudget: n(d.lowBudget), competitor: n(d.competitor), harass: n(d.harass), visitPending: n(d.visitPending) }
+    countries[c] = { budget: n(d.budget), usdBudget: n(d.usdBudget), newCustomer: n(d.newCustomer), grouped: n(d.grouped), groupEntries: (d.groupEntries || []).map(e => ({ text: e.text || '', status: e.status || '' })), catNoReply: n(d.catNoReply), msgIgnore: n(d.msgIgnore), lowBudget: n(d.lowBudget), competitor: n(d.competitor), harass: n(d.harass), visitPending: n(d.visitPending) }
   }
   saveMsg.value = '保存中...'; saveOk.value = true
   try {
@@ -688,6 +697,8 @@ onMounted(async () => {
 .overall-auto { font-size: 11px; font-weight: 400; opacity: .6; background: rgba(255,255,255,.12); padding: 2px 8px; border-radius: 10px; }
 .overall-grid { display: flex; gap: 8px; flex-wrap: wrap; }
 .ov-item { background: rgba(255,255,255,.1); border-radius: 10px; padding: 10px 14px; flex: 1; min-width: 90px; text-align: center; backdrop-filter: blur(4px); }
+.ov-item-usd { background: rgba(253,224,71,.2); }
+.ov-item-usd .ov-val { color: #fef08a; }
 .ov-val { font-size: 20px; font-weight: 800; }
 .ov-val.highlight { color: #c7d2fe; }
 .ov-label { font-size: 11px; opacity: .65; margin-top: 2px; }
@@ -715,6 +726,17 @@ onMounted(async () => {
 .cc-input { width: 100%; }
 .cc-input :deep(.el-input__wrapper) { background: #f9fafb; border-radius: 8px; box-shadow: none; padding: 2px 10px; }
 .cc-input :deep(.el-input__inner) { font-size: 18px; font-weight: 700; color: #1f2937; height: 36px; }
+
+/* 美金字段 */
+.cc-field-usd { border-left: 1px dashed #e5e7eb; padding-left: 10px; }
+.cc-input-usd :deep(.el-input__wrapper) { background: #fefce8; }
+.cc-input-usd :deep(.el-input__inner) { color: #a16207; }
+.usd-hint {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #fef3c7; color: #a16207; font-size: 10px; font-weight: 700;
+  cursor: help; margin-left: 2px;
+}
 .cc-unit { font-size: 11px; color: #9ca3af; margin-left: 4px; }
 .cc-field.cc-computed { background: #f5f3ff; border-radius: 8px; padding: 6px 10px; }
 .cc-computed-val { font-size: 18px; font-weight: 700; color: #6366f1; height: 36px; display: flex; align-items: center; }
