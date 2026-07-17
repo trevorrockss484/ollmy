@@ -311,13 +311,65 @@ const manageOpen = ref(false)
 
 // ====== 国家树 ======
 const countryTreeData = [
-  { key:'se-asia', label:'东南亚', children:['印度尼西亚','越南','菲律宾','泰国','马来西亚','新加坡','缅甸','柬埔寨'].map(c=>({key:c,label:c})) },
-  { key:'africa', label:'非洲', children:['尼日利亚','埃塞俄比亚','南非','肯尼亚','加纳','埃及'].map(c=>({key:c,label:c})) },
-  { key:'latam', label:'拉美', children:['巴西','墨西哥','哥伦比亚','阿根廷'].map(c=>({key:c,label:c})) },
-  { key:'mid-east', label:'中东', children:['阿联酋','沙特阿拉伯','土耳其','卡塔尔'].map(c=>({key:c,label:c})) },
-  { key:'s-asia', label:'南亚', children:['印度','巴基斯坦','孟加拉国'].map(c=>({key:c,label:c})) },
-  { key:'e-asia', label:'东亚', children:['日本','韩国'].map(c=>({key:c,label:c})) },
-  { key:'emea', label:'欧美', children:['美国','英国','德国','法国','澳大利亚','俄罗斯'].map(c=>({key:c,label:c})) }
+  { key:'se-asia', label:'东南亚',
+    children:[
+      {key:'印度尼西亚',label:'印度尼西亚 +62'},{key:'越南',label:'越南 +84'},
+      {key:'菲律宾',label:'菲律宾 +63'},{key:'泰国',label:'泰国 +66'},
+      {key:'马来西亚',label:'马来西亚 +60'},{key:'新加坡',label:'新加坡 +65'},
+      {key:'缅甸',label:'缅甸 +95'},{key:'柬埔寨',label:'柬埔寨 +855'},
+      {key:'老挝',label:'老挝 +856'},{key:'文莱',label:'文莱 +673'}
+    ]},
+  { key:'s-asia', label:'南亚',
+    children:[
+      {key:'印度',label:'印度 +91'},{key:'巴基斯坦',label:'巴基斯坦 +92'},
+      {key:'孟加拉国',label:'孟加拉国 +880'},{key:'斯里兰卡',label:'斯里兰卡 +94'},
+      {key:'尼泊尔',label:'尼泊尔 +977'}
+    ]},
+  { key:'africa', label:'非洲',
+    children:[
+      {key:'尼日利亚',label:'尼日利亚 +234'},{key:'埃塞俄比亚',label:'埃塞俄比亚 +251'},
+      {key:'南非',label:'南非 +27'},{key:'肯尼亚',label:'肯尼亚 +254'},
+      {key:'加纳',label:'加纳 +233'},{key:'埃及',label:'埃及 +20'},
+      {key:'坦桑尼亚',label:'坦桑尼亚 +255'},{key:'乌干达',label:'乌干达 +256'},
+      {key:'摩洛哥',label:'摩洛哥 +212'},{key:'阿尔及利亚',label:'阿尔及利亚 +213'},
+      {key:'安哥拉',label:'安哥拉 +244'},{key:'科特迪瓦',label:'科特迪瓦 +225'}
+    ]},
+  { key:'mid-east', label:'中东',
+    children:[
+      {key:'阿联酋',label:'阿联酋 +971'},{key:'沙特阿拉伯',label:'沙特阿拉伯 +966'},
+      {key:'土耳其',label:'土耳其 +90'},{key:'卡塔尔',label:'卡塔尔 +974'},
+      {key:'阿曼',label:'阿曼 +968'},{key:'科威特',label:'科威特 +965'},
+      {key:'巴林',label:'巴林 +973'},{key:'伊拉克',label:'伊拉克 +964'},
+      {key:'约旦',label:'约旦 +962'},{key:'黎巴嫩',label:'黎巴嫩 +961'},
+      {key:'以色列',label:'以色列 +972'},{key:'伊朗',label:'伊朗 +98'},
+      {key:'也门',label:'也门 +967'}
+    ]},
+  { key:'e-asia', label:'东亚',
+    children:[
+      {key:'日本',label:'日本 +81'},{key:'韩国',label:'韩国 +82'},
+      {key:'蒙古',label:'蒙古 +976'}
+    ]},
+  { key:'latam', label:'拉美',
+    children:[
+      {key:'巴西',label:'巴西 +55'},{key:'墨西哥',label:'墨西哥 +52'},
+      {key:'哥伦比亚',label:'哥伦比亚 +57'},{key:'阿根廷',label:'阿根廷 +54'},
+      {key:'智利',label:'智利 +56'},{key:'秘鲁',label:'秘鲁 +51'},
+      {key:'厄瓜多尔',label:'厄瓜多尔 +593'},{key:'委内瑞拉',label:'委内瑞拉 +58'}
+    ]},
+  { key:'emea', label:'欧美',
+    children:[
+      {key:'美国',label:'美国 +1'},{key:'英国',label:'英国 +44'},
+      {key:'德国',label:'德国 +49'},{key:'法国',label:'法国 +33'},
+      {key:'澳大利亚',label:'澳大利亚 +61'},{key:'俄罗斯',label:'俄罗斯 +7'},
+      {key:'加拿大',label:'加拿大 +1'},{key:'意大利',label:'意大利 +39'},
+      {key:'西班牙',label:'西班牙 +34'},{key:'荷兰',label:'荷兰 +31'},
+      {key:'波兰',label:'波兰 +48'},{key:'乌克兰',label:'乌克兰 +380'}
+    ]},
+  { key:'central-asia', label:'中亚',
+    children:[
+      {key:'哈萨克斯坦',label:'哈萨克斯坦 +7'},{key:'乌兹别克斯坦',label:'乌兹别克斯坦 +998'},
+      {key:'吉尔吉斯斯坦',label:'吉尔吉斯斯坦 +996'}
+    ]}
 ]
 const allLeafKeys = countryTreeData.flatMap(g => g.children.map(c => c.key))
 const treeRef = ref(null)
@@ -343,7 +395,16 @@ function goalLabel(key) {
   return (key === 'inquiry' ? '新客户' : key === 'group' ? '拉群' : '消耗') + ' · ' + (pct || 0) + '%'
 }
 
-const flagMap = { 印度尼西亚:"id", 印尼:"id", 越南:"vn", 泰国:"th", 菲律宾:"ph", 马来西亚:"my", 新加坡:"sg", 缅甸:"mm", 柬埔寨:"kh", 尼日利亚:"ng", 埃塞俄比亚:"et", 南非:"za", 肯尼亚:"ke", 加纳:"gh", 埃及:"eg", 阿联酋:"ae", 沙特阿拉伯:"sa", 沙特:"sa", 土耳其:"tr", 卡塔尔:"qa", 印度:"in", 巴基斯坦:"pk", 孟加拉国:"bd", 孟加拉:"bd", 日本:"jp", 韩国:"kr", 巴西:"br", 墨西哥:"mx", 哥伦比亚:"co", 阿根廷:"ar", 美国:"us", 英国:"gb", 德国:"de", 法国:"fr", 澳大利亚:"au", 俄罗斯:"ru" }
+const flagMap = {
+  印度尼西亚:"id", 印尼:"id", 越南:"vn", 泰国:"th", 菲律宾:"ph", 马来西亚:"my", 新加坡:"sg", 缅甸:"mm", 柬埔寨:"kh", 老挝:"la", 文莱:"bn",
+  印度:"in", 巴基斯坦:"pk", 孟加拉国:"bd", 孟加拉:"bd", 斯里兰卡:"lk", 尼泊尔:"np",
+  尼日利亚:"ng", 埃塞俄比亚:"et", 南非:"za", 肯尼亚:"ke", 加纳:"gh", 埃及:"eg", 坦桑尼亚:"tz", 乌干达:"ug", 摩洛哥:"ma", 阿尔及利亚:"dz", 安哥拉:"ao", 科特迪瓦:"ci",
+  阿联酋:"ae", 沙特阿拉伯:"sa", 沙特:"sa", 土耳其:"tr", 卡塔尔:"qa", 阿曼:"om", 科威特:"kw", 巴林:"bh", 伊拉克:"iq", 约旦:"jo", 黎巴嫩:"lb", 以色列:"il", 伊朗:"ir", 也门:"ye",
+  日本:"jp", 韩国:"kr", 蒙古:"mn",
+  巴西:"br", 墨西哥:"mx", 哥伦比亚:"co", 阿根廷:"ar", 智利:"cl", 秘鲁:"pe", 厄瓜多尔:"ec", 委内瑞拉:"ve",
+  美国:"us", 英国:"gb", 德国:"de", 法国:"fr", 澳大利亚:"au", 俄罗斯:"ru", 加拿大:"ca", 意大利:"it", 西班牙:"es", 荷兰:"nl", 波兰:"pl", 乌克兰:"ua",
+  哈萨克斯坦:"kz", 乌兹别克斯坦:"uz", 吉尔吉斯斯坦:"kg"
+}
 function flagCode(name) { return flagMap[name] || "" }
 
 function fmtReportMoney(n) {
