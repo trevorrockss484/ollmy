@@ -2,56 +2,56 @@
   <div class="report-page">
     <!-- ====== 顶部栏 ====== -->
     <div class="top-bar">
-      <div class="top-left">
-        <h2><el-icon :size="24"><Edit /></el-icon> 每日汇报</h2>
-        <el-date-picker v-model="reportDate" type="date" value-format="YYYY-MM-DD" size="default" style="width:148px;" />
-        <el-select v-model="selectedAccountId" size="default" style="width:180px;" placeholder="选择广告账号" @change="onAccountChange">
-          <el-option v-for="a in accounts" :key="a.id" :label="a.name" :value="a.id" />
-        </el-select>
-        <el-tag v-if="existingData" type="success" effect="dark" size="small" round>已有数据</el-tag>
-        <el-tag v-else type="info" effect="plain" size="small" round>新日期</el-tag>
-      </div>
-      <div class="top-right">
-        <div class="country-chip-row">
-          <el-tag
-            v-for="c in activeCountries" :key="c"
-            size="default"
-            effect="plain"
-            class="country-chip"
-            closable
-            @close="removeCountry(c)"
-          >
-            <span class="fi" :class="'fi-' + flagCode(c)" style="margin-right:5px;border-radius:2px;"></span>
-            {{ c }}
-          </el-tag>
-          <el-popover
-            v-if="addableCountries.length"
-            v-model:visible="popVisible"
-            placement="bottom-end"
-            :width="220"
-            trigger="click"
-            :show-arrow="false"
-          >
-            <template #reference>
-              <span class="add-country-btn">
-                <el-icon :size="14"><Plus /></el-icon> 添加国家
-              </span>
-            </template>
-            <el-input v-model="countrySearch" placeholder="搜索国家..." size="small" clearable class="country-search-input" />
-            <div class="country-pop-list">
-              <div
-                v-for="c in filteredAddable"
-                :key="c"
-                class="country-pop-item"
-                @click="addCountry(c); countrySearch=''; popVisible=false"
-              >
-                <span class="fi" :class="'fi-' + flagCode(c)" style="margin-right:6px;border-radius:2px;"></span>
-                {{ c }}
-              </div>
-              <div v-if="!filteredAddable.length" class="country-pop-empty">无匹配国家</div>
-            </div>
-          </el-popover>
+      <div class="top-row">
+        <div class="top-left">
+          <h2><el-icon :size="24"><Edit /></el-icon> 每日汇报</h2>
+          <el-date-picker v-model="reportDate" type="date" value-format="YYYY-MM-DD" size="default" style="width:148px;" />
+          <el-select v-model="selectedAccountId" size="default" style="width:180px;" placeholder="选择广告账号" @change="onAccountChange">
+            <el-option v-for="a in accounts" :key="a.id" :label="a.name" :value="a.id" />
+          </el-select>
+          <el-tag v-if="existingData" type="success" effect="dark" size="small" round>已有数据</el-tag>
+          <el-tag v-else type="info" effect="plain" size="small" round>新日期</el-tag>
         </div>
+      </div>
+      <div class="country-chip-bar">
+        <el-tag
+          v-for="c in activeCountries" :key="c"
+          size="default"
+          effect="plain"
+          class="country-chip"
+          closable
+          @close="removeCountry(c)"
+        >
+          <span class="fi" :class="'fi-' + flagCode(c)" style="margin-right:5px;border-radius:2px;"></span>
+          {{ c }}
+        </el-tag>
+        <el-popover
+          v-if="addableCountries.length"
+          v-model:visible="popVisible"
+          placement="bottom-end"
+          :width="220"
+          trigger="click"
+          :show-arrow="false"
+        >
+          <template #reference>
+            <span class="add-country-btn">
+              <el-icon :size="14"><Plus /></el-icon> 添加国家
+            </span>
+          </template>
+          <el-input v-model="countrySearch" placeholder="搜索国家..." size="small" clearable class="country-search-input" />
+          <div class="country-pop-list">
+            <div
+              v-for="c in filteredAddable"
+              :key="c"
+              class="country-pop-item"
+              @click="addCountry(c); countrySearch=''; popVisible=false"
+            >
+              <span class="fi" :class="'fi-' + flagCode(c)" style="margin-right:6px;border-radius:2px;"></span>
+              {{ c }}
+            </div>
+            <div v-if="!filteredAddable.length" class="country-pop-empty">无匹配国家</div>
+          </div>
+        </el-popover>
       </div>
     </div>
 
@@ -285,7 +285,23 @@ const allCountries = [
   '美国','英国','德国','法国','澳大利亚','俄罗斯'
 ]
 
-const activeCountries = ref([])
+const STORED_COUNTRIES_KEY = 'pan_report_countries'
+
+function loadStoredCountries() {
+  try {
+    const raw = localStorage.getItem(STORED_COUNTRIES_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return null
+}
+
+function saveStoredCountries() {
+  try {
+    localStorage.setItem(STORED_COUNTRIES_KEY, JSON.stringify(activeCountries.value))
+  } catch {}
+}
+
+const activeCountries = ref(loadStoredCountries() || [])
 const addableCountries = computed(() => allCountries.filter(c => !activeCountries.value.includes(c)))
 const countrySearch = ref('')
 const popVisible = ref(false)
@@ -314,6 +330,7 @@ const countryColors = [
 function addCountry(c) {
   if (!activeCountries.value.includes(c)) {
     activeCountries.value = [...activeCountries.value, c]
+    saveStoredCountries()
     if (!(c in countryData)) countryData[c] = defaultCountryFb()
   }
 }
@@ -321,6 +338,7 @@ function addCountry(c) {
 function removeCountry(c) {
   if (activeCountries.value.length <= 1) { ElMessage.warning('至少保留一个国家'); return }
   activeCountries.value = activeCountries.value.filter(x => x !== c)
+  saveStoredCountries()
   delete countryData[c]
 }
 
@@ -365,10 +383,25 @@ const reportSummary = ref('')
 const reportOptimize = ref('')
 
 function initCountryData(countries) {
-  // 基于周计划国家初始化 activeCountries（保留用户手动添加的）
-  const base = new Set([...countries])
-  for (const c of activeCountries.value) base.add(c)
-  activeCountries.value = [...base]
+  // 本地有保存 → 优先用保存的；否则用周计划国家初始化
+  if (!activeCountries.value.length) {
+    const stored = loadStoredCountries()
+    if (stored && stored.length) {
+      activeCountries.value = stored
+    } else {
+      activeCountries.value = [...countries]
+    }
+    if (!activeCountries.value.length && countries.length) {
+      activeCountries.value = [...countries]
+    }
+  }
+  // 确保周计划国家也在列表中
+  for (const c of countries) {
+    if (!activeCountries.value.includes(c)) {
+      activeCountries.value = [...activeCountries.value, c]
+    }
+  }
+  saveStoredCountries()
   for (const c of activeCountries.value) {
     if (!(c in countryData)) countryData[c] = defaultCountryFb()
   }
@@ -649,15 +682,19 @@ onMounted(async () => {
 @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 
 /* ====== 顶部 ====== */
-.top-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px 24px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
-.top-left { display: flex; align-items: center; gap: 14px; }
+.top-bar {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+  padding: 16px 24px 12px; margin-bottom: 10px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.03);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.top-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.top-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .top-left h2 { font-size: 20px; font-weight: 700; margin: 0; white-space: nowrap; }
-.top-right { display: flex; align-items: center; }
-.week-label { font-size: 12px; font-weight: 600; color: #6b7280; }
 
-/* 国家 chip 行 */
-.country-chip-row {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+/* 国家芯片栏 — 独立一行，自动换行 */
+.country-chip-bar {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
 }
 .country-chip {
   font-weight: 600; font-size: 13px;
@@ -674,6 +711,7 @@ onMounted(async () => {
   border-radius: 6px; cursor: pointer;
   font-size: 13px; font-weight: 700; color: #6366f1;
   background: #f5f3ff; transition: all .15s; user-select: none;
+  flex-shrink: 0;
 }
 .add-country-btn:hover { background: #eef2ff; border-color: #818cf8; }
 
