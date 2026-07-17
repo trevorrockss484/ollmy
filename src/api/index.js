@@ -57,7 +57,7 @@ export const api = {
     delete: (date) => request('/daily/' + date, { method: 'DELETE' }),
   },
   summary: {
-    monthly: (month) => request('/summary/monthly/' + month),
+    monthly: (month, params = {}) => request('/summary/monthly/' + month + (Object.keys(params).length ? '?' + new URLSearchParams(params) : '')),
     weekly: (params) => request('/summary/weekly?' + new URLSearchParams(params)),
   },
   vps: {

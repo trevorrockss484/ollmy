@@ -6,7 +6,8 @@ const db = require('../database/db');
 router.get('/monthly/:month', (req, res) => {
   try {
     const month = req.params.month; // 格式: 2025-06
-    const all = db.getAllDailyData();
+    const { accountId } = req.query;
+    const all = db.getAllDailyData(accountId ? { accountId } : {});
 
     const dates = Object.keys(all).filter(d => d.startsWith(month)).sort();
 
@@ -56,8 +57,8 @@ router.get('/monthly/:month', (req, res) => {
 // 获取周汇总
 router.get('/weekly', (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
-    const all = db.getAllDailyData({ startDate, endDate });
+    const { startDate, endDate, accountId } = req.query;
+    const all = db.getAllDailyData({ startDate, endDate, accountId });
     const dates = Object.keys(all).sort();
 
     let summary = {

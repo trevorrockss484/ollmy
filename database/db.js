@@ -86,6 +86,7 @@ function defaultWeek() {
     weekBudget: 1500,
     inquiryGoal: 400,
     groupGoal: 20,
+    accountBudgets: {},
     countries: ['印度尼西亚','越南','埃塞俄比亚','尼日利亚','南非'],
     hidden: false,
   };
@@ -114,10 +115,17 @@ function read() {
           weekBudget: data.config.weekBudget,
           inquiryGoal: data.config.inquiryGoal,
           groupGoal: data.config.groupGoal,
+          accountBudgets: {},
           countries: ['印度尼西亚','越南','埃塞俄比亚','尼日利亚','南非']
         }];
         data.currentWeekId = 1;
         delete data.config;
+      }
+      // 补齐旧周缺少的 accountBudgets 字段
+      if (Array.isArray(data.weeks)) {
+        for (const w of data.weeks) {
+          if (!w.accountBudgets) w.accountBudgets = {};
+        }
       }
       return data;
     }
@@ -300,6 +308,18 @@ function setCurrentWeek(id) {
   data.manualWeek = true;           // 用户主动切换，跳过过期检查
   write(data);
   return data.currentWeekId;
+}
+
+// 获取指定账号的周预算（优先 accountBudgets，fallback 全局默认值）
+function getWeekAccountBudgets(week, accountId) {
+  const id = normalizeAccountId(accountId)
+  const acc = (week.accountBudgets && week.accountBudgets[id]) || {}
+  return {
+    dailyBudget: acc.dailyBudget != null ? acc.dailyBudget : (week.dailyBudget || 300),
+    weekBudget: acc.weekBudget != null ? acc.weekBudget : (week.weekBudget || 1500),
+    inquiryGoal: acc.inquiryGoal != null ? acc.inquiryGoal : (week.inquiryGoal || 400),
+    groupGoal: acc.groupGoal != null ? acc.groupGoal : (week.groupGoal || 20),
+  }
 }
 
 // ==================== 日报操作 ====================
@@ -623,6 +643,7 @@ const scriptsDb = makeCrud('scripts', { title: '', content: '', contentCn: '', c
 
 module.exports = {
   getWeeks, getCurrentWeek, addWeek, updateWeek, deleteWeek, restoreWeek, permanentlyDeleteWeek, setCurrentWeek,
+  getWeekAccountBudgets,
   getAccounts, getDefaultAccountId, normalizeAccountId,
   getDailyData, getAllDailyData, saveDailyData, deleteDailyData,
   getVpsList, addVps, updateVps, deleteVps,

@@ -18,6 +18,9 @@
         </div>
       </div>
       <div class="plan-top-actions">
+        <el-select v-model="selectedAccountId" placeholder="选择账号" size="small" style="width:150px;margin-right:6px" @change="onAccountChange">
+          <el-option v-for="a in accounts" :key="a.id" :label="a.name" :value="a.id" />
+        </el-select>
         <el-button size="small" @click="openCreateWeek"><el-icon :size="14"><Plus /></el-icon> 新增周</el-button>
         <el-button size="small" type="primary" @click="openSettings"><el-icon :size="14"><Setting /></el-icon> 设置</el-button>
         <el-button size="small" @click="manageOpen = true">管理周计划</el-button>
@@ -44,21 +47,21 @@
         <div class="ov-card">
           <div class="ov-icon-wrap" style="background:#fff7ed;color:#ea580c;"><el-icon :size="20"><TrendCharts /></el-icon></div>
           <div class="ov-info">
-            <div class="ov-val">{{ s.fbCustomer }}<span class="ov-unit">/{{ week.inquiryGoal }}</span></div>
+            <div class="ov-val">{{ s.fbCustomer }}<span class="ov-unit">/{{ budgets.inquiryGoal }}</span></div>
             <div class="ov-label">{{ goalLabel('inquiry') }}</div>
           </div>
         </div>
         <div class="ov-card">
           <div class="ov-icon-wrap" style="background:#ecfdf5;color:#059669;"><el-icon :size="20"><ChatDotRound /></el-icon></div>
           <div class="ov-info">
-            <div class="ov-val success">{{ s.fbGrouped }}<span class="ov-unit">/{{ week.groupGoal }}</span></div>
+            <div class="ov-val success">{{ s.fbGrouped }}<span class="ov-unit">/{{ budgets.groupGoal }}</span></div>
             <div class="ov-label">{{ goalLabel('group') }}</div>
           </div>
         </div>
         <div class="ov-card">
           <div class="ov-icon-wrap" style="background:#fef2f2;color:#ef4444;"><el-icon :size="20"><Money /></el-icon></div>
           <div class="ov-info">
-            <div class="ov-val" :class="bPct > 90 ? 'danger' : ''">¥{{ fmtK(s.fbBudget) }}<span class="ov-unit">/¥{{ fmtK(week.weekBudget) }}</span></div>
+            <div class="ov-val" :class="bPct > 90 ? 'danger' : ''">¥{{ fmtK(s.fbBudget) }}<span class="ov-unit">/¥{{ fmtK(budgets.weekBudget) }}</span></div>
             <div class="ov-label">{{ goalLabel('budget') }}</div>
           </div>
         </div>
@@ -80,7 +83,7 @@
             <div ref="donutRef" class="donut-chart"></div>
             <div class="donut-label">
               <div class="dl-val">{{ s.fbGrouped }}</div>
-              <div class="dl-sub">/ {{ week.groupGoal }} 拉群</div>
+              <div class="dl-sub">/ {{ budgets.groupGoal }} 拉群</div>
             </div>
           </div>
           <div class="donut-footer">
@@ -91,7 +94,7 @@
             </div>
             <div class="df-item">
               <span class="df-dot" style="background:#f3f4f6;"></span>
-              <span class="df-val">{{ Math.max(0, (week.groupGoal||0) - s.fbGrouped) }}</span>
+              <span class="df-val">{{ Math.max(0, (budgets.groupGoal||0) - s.fbGrouped) }}</span>
               <span class="df-label">剩余</span>
             </div>
           </div>
@@ -102,7 +105,7 @@
           <div class="mid-card-hd">本周消耗</div>
           <div class="spend-meter">
             <div class="spend-big">¥{{ fmtK(s.fbBudget) }}</div>
-            <div class="spend-sub">/ ¥{{ fmtK(week.weekBudget) }}</div>
+            <div class="spend-sub">/ ¥{{ fmtK(budgets.weekBudget) }}</div>
           </div>
           <div class="spend-bar-wrap">
             <div class="spend-bar-track">
@@ -172,6 +175,7 @@
 
       <!-- ====== 设置弹窗 ====== -->
       <el-dialog v-model="settingsOpen" title="本周设置" width="620px" @opened="onSettingsOpened">
+        <el-alert :title="'当前编辑账号：' + (selectedAccountId ? (accounts.find(a=>a.id===selectedAccountId)||{}).name||selectedAccountId : '未选择')" type="info" :closable="false" show-icon style="margin-bottom:12px" />
         <el-form label-width="80px" size="default">
           <el-row :gutter="12">
             <el-col :span="12"><el-form-item label="开始日期"><el-date-picker v-model="form.startDate" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item></el-col>
@@ -263,6 +267,23 @@ const week = computed(() => weekStore.currentWeek)
 const donutRef = ref(null)
 let donutChart = null
 
+// 账号选择
+const accounts = ref([])
+const selectedAccountId = ref(localStorage.getItem('plan_accountId') || '')
+
+// 当前账号的预算解析
+const budgets = computed(() => {
+  const w = week.value
+  if (!w || !selectedAccountId.value) return w || {}
+  const ab = (w.accountBudgets && w.accountBudgets[selectedAccountId.value]) || {}
+  return {
+    dailyBudget: ab.dailyBudget != null ? ab.dailyBudget : (w.dailyBudget || 300),
+    weekBudget: ab.weekBudget != null ? ab.weekBudget : (w.weekBudget || 1500),
+    inquiryGoal: ab.inquiryGoal != null ? ab.inquiryGoal : (w.inquiryGoal || 400),
+    groupGoal: ab.groupGoal != null ? ab.groupGoal : (w.groupGoal || 20),
+  }
+})
+
 function shortDate(str) { return str ? formatDate(str) : '' }
 function formatDayOnly(str) { if (!str) return ''; return parseInt(str.split('-')[2]) + '日' }
 
@@ -296,9 +317,9 @@ const days = computed(() => {
 })
 const completedDays = computed(() => days.value.filter(d => dailyData.value[d]).length)
 
-const iPct = computed(() => week.value?.inquiryGoal ? Math.min(100, Math.round(s.fbCustomer / week.value.inquiryGoal * 100)) : 0)
-const groupPct = computed(() => week.value?.groupGoal ? Math.min(100, Math.round(s.fbGrouped / week.value.groupGoal * 100)) : 0)
-const bPct = computed(() => week.value?.weekBudget ? Math.min(100, Math.round(s.fbBudget / week.value.weekBudget * 100)) : 0)
+const iPct = computed(() => budgets.value.inquiryGoal ? Math.min(100, Math.round(s.fbCustomer / budgets.value.inquiryGoal * 100)) : 0)
+const groupPct = computed(() => budgets.value.groupGoal ? Math.min(100, Math.round(s.fbGrouped / budgets.value.groupGoal * 100)) : 0)
+const bPct = computed(() => budgets.value.weekBudget ? Math.min(100, Math.round(s.fbBudget / budgets.value.weekBudget * 100)) : 0)
 
 function goalLabel(key) {
   const pct = key === 'inquiry' ? iPct.value : key === 'group' ? groupPct.value : bPct.value
@@ -470,7 +491,7 @@ function initDonut() {
       itemStyle: { borderColor: 'transparent', borderWidth: 0 },
       data: [
         { value: s.fbGrouped, itemStyle: { color: '#10b981' } },
-        { value: Math.max(0, (week.value?.groupGoal || 0) - s.fbGrouped), itemStyle: { color: '#f3f4f6' } }
+        { value: Math.max(0, (budgets.value.groupGoal || 0) - s.fbGrouped), itemStyle: { color: '#f3f4f6' } }
       ]
     }]
   })
@@ -478,11 +499,35 @@ function initDonut() {
 }
 
 // ====== 加载 ======
+async function loadAccounts() {
+  try {
+    const r = await api.daily.accounts()
+    if (r.success && Array.isArray(r.data) && r.data.length) {
+      accounts.value = r.data
+      if (!selectedAccountId.value || !accounts.value.find(a => a.id === selectedAccountId.value)) {
+        selectedAccountId.value = accounts.value[0].id
+      }
+      localStorage.setItem('plan_accountId', selectedAccountId.value)
+    }
+  } catch (e) { console.error('加载账号列表失败:', e) }
+}
+
+function onAccountChange() {
+  localStorage.setItem('plan_accountId', selectedAccountId.value)
+  const w = week.value
+  if (!w) return
+  loadWeekData(w)
+  nextTick(() => initDonut())
+}
+
 async function loadWeekData(w) {
+  const aid = selectedAccountId.value || undefined
+  const params = { startDate: w.startDate, endDate: w.endDate }
+  if (aid) params.accountId = aid
   try {
     const [sumRes, dailyRes] = await Promise.all([
-      api.summary.weekly({ startDate: w.startDate, endDate: w.endDate }),
-      api.daily.list({ startDate: w.startDate, endDate: w.endDate })
+      api.summary.weekly(params),
+      api.daily.list(params)
     ])
     if (sumRes.success) { s.fbBudget = sumRes.data.fbBudget || 0; s.fbCustomer = sumRes.data.fbCustomer || 0; s.fbGrouped = sumRes.data.fbGrouped || 0; s.totalBudget = sumRes.data.totalBudget || 0 }
     if (dailyRes.success) dailyData.value = dailyRes.data
@@ -509,7 +554,8 @@ function openSettings() {
   if (week.value) {
     const w = weekStore.currentWeek
     if (!w) return
-    form.value = { startDate: w.startDate, endDate: w.endDate, dailyBudget: w.dailyBudget, weekBudget: w.weekBudget, inquiryGoal: w.inquiryGoal, groupGoal: w.groupGoal, countries: [...(w.countries || [])] }
+    const b = budgets.value
+    form.value = { startDate: w.startDate, endDate: w.endDate, dailyBudget: b.dailyBudget, weekBudget: b.weekBudget, inquiryGoal: b.inquiryGoal, groupGoal: b.groupGoal, countries: [...(w.countries || [])] }
   }
   settingsOpen.value = true
 }
@@ -522,7 +568,22 @@ function onSettingsOpened() {
 
 async function saveSettings() {
   if (!week.value?.id) { ElMessage.error('未找到当前周计划'); return }
-  const res = await weekStore.updateWeek(week.value.id, form.value)
+  const w = week.value
+  const aid = selectedAccountId.value
+  // 构建 accountBudgets
+  const accountBudgets = { ...(w.accountBudgets || {}) }
+  accountBudgets[aid] = {
+    dailyBudget: form.value.dailyBudget,
+    weekBudget: form.value.weekBudget,
+    inquiryGoal: form.value.inquiryGoal,
+    groupGoal: form.value.groupGoal,
+  }
+  const res = await weekStore.updateWeek(w.id, {
+    startDate: form.value.startDate,
+    endDate: form.value.endDate,
+    countries: form.value.countries,
+    accountBudgets,
+  })
   if (res.success) { settingsOpen.value = false; ElMessage.success('已保存') }
   else { ElMessage.error(res.error || '保存失败') }
 }
@@ -538,19 +599,24 @@ function getNextWeekDefaults() {
   const mon = new Date(now); mon.setDate(now.getDate() + (8 - day))
   const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
   const fmt = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
-  return { startDate: fmt(mon), endDate: fmt(sun), dailyBudget: week.value?.dailyBudget || 300, weekBudget: week.value?.weekBudget || 1500, inquiryGoal: week.value?.inquiryGoal || 400, groupGoal: week.value?.groupGoal || 20, countries: [...(week.value?.countries || [])] }
+  const b = budgets.value
+  return { startDate: fmt(mon), endDate: fmt(sun), dailyBudget: b.dailyBudget || 300, weekBudget: b.weekBudget || 1500, inquiryGoal: b.inquiryGoal || 400, groupGoal: b.groupGoal || 20, countries: [...(week.value?.countries || [])], accountBudgets: week.value?.accountBudgets ? JSON.parse(JSON.stringify(week.value.accountBudgets)) : {} }
 }
 
 function openCreateWeek() { newWeekForm.value = getNextWeekDefaults(); newWeekMode.value = 'quick'; newWeekOpen.value = true }
 
 async function doCreateWeek() {
-  const res = await weekStore.createWeek(newWeekForm.value)
+  const data = { ...newWeekForm.value }
+  // 移除临时预算字段，只保留 accountBudgets
+  delete data.dailyBudget; delete data.weekBudget; delete data.inquiryGoal; delete data.groupGoal
+  const res = await weekStore.createWeek(data)
   if (res.success) {
     newWeekOpen.value = false
     ElMessage.success('新周计划已创建')
     const w = week.value || res.data
     if (w && w.startDate && w.endDate) {
-      form.value = { startDate:w.startDate,endDate:w.endDate,dailyBudget:w.dailyBudget,weekBudget:w.weekBudget,inquiryGoal:w.inquiryGoal,groupGoal:w.groupGoal,countries:[...(w.countries||[])] }
+      const b = budgets.value
+      form.value = { startDate:w.startDate,endDate:w.endDate,dailyBudget:b.dailyBudget,weekBudget:b.weekBudget,inquiryGoal:b.inquiryGoal,groupGoal:b.groupGoal,countries:[...(w.countries||[])] }
       await loadWeekData(w)
       await nextTick(); initDonut()
     }
@@ -566,7 +632,8 @@ async function switchToWeek(id) {
     if (!switched) return ElMessage.error('切换失败')
     const w = week.value
     if (!w) return ElMessage.error('切换失败')
-    form.value = { startDate:w.startDate,endDate:w.endDate,dailyBudget:w.dailyBudget,weekBudget:w.weekBudget,inquiryGoal:w.inquiryGoal,groupGoal:w.groupGoal,countries:[...(w.countries||[])] }
+    const b = budgets.value
+    form.value = { startDate:w.startDate,endDate:w.endDate,dailyBudget:b.dailyBudget,weekBudget:b.weekBudget,inquiryGoal:b.inquiryGoal,groupGoal:b.groupGoal,countries:[...(w.countries||[])] }
     await loadWeekData(w)
     await nextTick()
     initDonut()
@@ -600,7 +667,7 @@ async function deleteThisWeek() {
 }
 
 // 数据变化时更新图表
-watch([() => s.fbGrouped, () => week.value?.groupGoal], () => {
+watch([() => s.fbGrouped, () => budgets.value.groupGoal], () => {
   nextTick(() => initDonut())
 })
 
@@ -608,13 +675,15 @@ function onResize() { donutChart?.resize() }
 
 onMounted(async () => {
   window.addEventListener('resize', onResize)
+  await loadAccounts()
   await weekStore.load()
   if (!week.value) await weekStore.createWeek()
   const w = week.value
   if (!w) return
+  const b = budgets.value
   form.value = {
-    startDate: w.startDate, endDate: w.endDate, dailyBudget: w.dailyBudget,
-    weekBudget: w.weekBudget, inquiryGoal: w.inquiryGoal, groupGoal: w.groupGoal,
+    startDate: w.startDate, endDate: w.endDate, dailyBudget: b.dailyBudget,
+    weekBudget: b.weekBudget, inquiryGoal: b.inquiryGoal, groupGoal: b.groupGoal,
     countries: [...(w.countries || [])]
   }
   await loadWeekData(w)

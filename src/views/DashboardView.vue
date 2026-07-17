@@ -7,6 +7,9 @@
         <p class="top-sub">{{ todayCN }} · {{ weekRange }}</p>
       </div>
       <div class="top-right">
+        <el-select v-model="selectedAccountId" placeholder="选择账号" size="default" style="width:160px;margin-right:8px" @change="onAccountChange">
+          <el-option v-for="a in accounts" :key="a.id" :label="a.name" :value="a.id" />
+        </el-select>
         <el-button type="primary" class="btn-hero" @click="$router.push('/report')">
           <el-icon :size="16"><Edit /></el-icon>
           写日报
@@ -44,7 +47,7 @@
           <div class="hero-val">¥{{ todayVal('budget') }}</div>
           <div class="hero-sub" :class="{ danger: budgetOver }">
             <el-icon v-if="budgetOver" :size="12"><WarningFilled /></el-icon>
-            {{ budgetOver ? '超预算 ' + (week?.dailyBudget||'?') + ' 元' : '日预算 ¥' + (week?.dailyBudget||'—') }}
+            {{ budgetOver ? '超预算 ' + (budgets.dailyBudget||'?') + ' 元' : '日预算 ¥' + (budgets.dailyBudget||'—') }}
           </div>
         </div>
         <div class="hero-bg-icon"><el-icon :size="52"><Money /></el-icon></div>
@@ -87,16 +90,16 @@
           <div ref="donutRef" class="donut"></div>
           <div class="donut-center">
             <div class="dc-val">{{ weekStats.fbGrouped }}</div>
-            <div class="dc-label">拉群 / {{ week?.groupGoal || '—' }}</div>
+            <div class="dc-label">拉群 / {{ budgets.groupGoal || '—' }}</div>
           </div>
         </div>
         <div class="progress-bars">
           <div class="pb-item">
-            <div class="pb-top"><span><span class="pb-dot" style="background:#6366f1;"></span> 消耗</span><span>¥{{ fmtK(weekStats.fbBudget) }} / ¥{{ fmtK(week?.weekBudget||0) }}</span></div>
+            <div class="pb-top"><span><span class="pb-dot" style="background:#6366f1;"></span> 消耗</span><span>¥{{ fmtK(weekStats.fbBudget) }} / ¥{{ fmtK(budgets.weekBudget||0) }}</span></div>
             <div class="pb-track"><div class="pb-fill blue" :style="{width: weekBudgetPct+'%'}"></div></div>
           </div>
           <div class="pb-item">
-            <div class="pb-top"><span><span class="pb-dot" style="background:#10b981;"></span> 新客户</span><span>{{ weekStats.fbCustomer }} / {{ week?.inquiryGoal||0 }}</span></div>
+            <div class="pb-top"><span><span class="pb-dot" style="background:#10b981;"></span> 新客户</span><span>{{ weekStats.fbCustomer }} / {{ budgets.inquiryGoal||0 }}</span></div>
             <div class="pb-track"><div class="pb-fill green" :style="{width: inquiryPct+'%'}"></div></div>
           </div>
         </div>
@@ -187,12 +190,27 @@ const weekStore = useWeekStore()
 const router = useRouter()
 const week = computed(() => weekStore.currentWeek)
 
+// 当前账号的预算解析（优先 accountBudgets，fallback 全局值）
+const budgets = computed(() => {
+  const w = week.value
+  if (!w || !selectedAccountId.value) return w || {}
+  const ab = (w.accountBudgets && w.accountBudgets[selectedAccountId.value]) || {}
+  return {
+    dailyBudget: ab.dailyBudget != null ? ab.dailyBudget : (w.dailyBudget || 300),
+    weekBudget: ab.weekBudget != null ? ab.weekBudget : (w.weekBudget || 1500),
+    inquiryGoal: ab.inquiryGoal != null ? ab.inquiryGoal : (w.inquiryGoal || 400),
+    groupGoal: ab.groupGoal != null ? ab.groupGoal : (w.groupGoal || 20),
+  }
+})
+
 const todayData = ref(null)
 const yesterdayData = ref(null)
 const weekStats = reactive({ fbBudget: 0, fbCustomer: 0, fbGrouped: 0 })
 const vpsAlerts = ref([])
 const trendData = ref([])
 const loadErrors = ref([])
+const accounts = ref([])
+const selectedAccountId = ref(localStorage.getItem('dash_accountId') || '')
 
 const todayCN = computed(() => formatDateCN(todayStr()))
 const weekRange = computed(() => {
@@ -224,7 +242,7 @@ const avgCostStr = computed(() => avgCost.value > 0 ? avgCost.value.toFixed(0) :
 
 const budgetOver = computed(() => {
   if (!todayData.value || !week.value) return false
-  return sumCountries(todayData.value, 'budget') > week.value.dailyBudget
+  return sumCountries(todayData.value, 'budget') > budgets.value.dailyBudget
 })
 
 const todayCatCount = computed(() => {
@@ -237,9 +255,9 @@ const todayCatCount = computed(() => {
   return count
 })
 
-const inquiryPct = computed(() => week.value?.inquiryGoal ? Math.min(100, Math.round(weekStats.fbCustomer / week.value.inquiryGoal * 100)) : 0)
-const groupPct = computed(() => week.value?.groupGoal ? Math.min(100, Math.round(weekStats.fbGrouped / week.value.groupGoal * 100)) : 0)
-const weekBudgetPct = computed(() => week.value?.weekBudget ? Math.min(100, Math.round(weekStats.fbBudget / week.value.weekBudget * 100)) : 0)
+const inquiryPct = computed(() => budgets.value.inquiryGoal ? Math.min(100, Math.round(weekStats.fbCustomer / budgets.value.inquiryGoal * 100)) : 0)
+const groupPct = computed(() => budgets.value.groupGoal ? Math.min(100, Math.round(weekStats.fbGrouped / budgets.value.groupGoal * 100)) : 0)
+const weekBudgetPct = computed(() => budgets.value.weekBudget ? Math.min(100, Math.round(weekStats.fbBudget / budgets.value.weekBudget * 100)) : 0)
 
 function fmtK(n) {
   const v = Math.round(n || 0)
@@ -262,7 +280,7 @@ function initDonut() {
       label: { show: false }, emphasis: { disabled: true },
       data: [
         { value: weekStats.fbGrouped, itemStyle: { color: '#10b981' } },
-        { value: Math.max(0, (week.value?.groupGoal || 1) - weekStats.fbGrouped), itemStyle: { color: '#f3f4f6' } }
+        { value: Math.max(0, (budgets.value.groupGoal || 1) - weekStats.fbGrouped), itemStyle: { color: '#f3f4f6' } }
       ]
     }]
   })
@@ -322,6 +340,24 @@ function fixYesterday() {
 }
 
 // ====== 加载 ======
+async function loadAccounts() {
+  try {
+    const r = await api.daily.accounts()
+    if (r.success && Array.isArray(r.data) && r.data.length) {
+      accounts.value = r.data
+      if (!selectedAccountId.value || !accounts.value.find(a => a.id === selectedAccountId.value)) {
+        selectedAccountId.value = accounts.value[0].id
+      }
+      localStorage.setItem('dash_accountId', selectedAccountId.value)
+    }
+  } catch (e) { console.error('加载账号列表失败:', e) }
+}
+
+function onAccountChange() {
+  localStorage.setItem('dash_accountId', selectedAccountId.value)
+  load()
+}
+
 async function load() {
   loadErrors.value = []
   // 本周
@@ -331,9 +367,11 @@ async function load() {
   const w = weekStore.currentWeek
   if (!w) return
 
+  const aid = selectedAccountId.value || undefined
+
   // 今日
   try {
-    const r = await api.daily.get(todayStr())
+    const r = await api.daily.get(todayStr(), aid ? { accountId: aid } : {})
     if (r.success && r.data) todayData.value = r.data
   } catch (e) { console.error('加载今日数据失败:', e); loadErrors.value.push('今日数据') }
 
@@ -341,7 +379,7 @@ async function load() {
   try {
     const d = new Date(); d.setDate(d.getDate() - 1)
     const yStr = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
-    const r = await api.daily.get(yStr)
+    const r = await api.daily.get(yStr, aid ? { accountId: aid } : {})
     if (r.success && r.data) {
       const totalBudget = sumCountries(r.data, 'budget')
       const totalCustomer = sumCountries(r.data, 'newCustomer')
@@ -353,7 +391,9 @@ async function load() {
 
   // 本周汇总
   try {
-    const r = await api.summary.weekly({ startDate: w.startDate, endDate: w.endDate })
+    const params = { startDate: w.startDate, endDate: w.endDate }
+    if (aid) params.accountId = aid
+    const r = await api.summary.weekly(params)
     if (r.success) {
       weekStats.fbBudget = r.data.fbBudget || 0
       weekStats.fbCustomer = r.data.fbCustomer || 0
@@ -389,7 +429,9 @@ async function load() {
   d7.setDate(d7.getDate() - 6)         // 昨天往前6天 = 共7天
   const start7 = d7.toISOString().split('T')[0]
   try {
-    const r = await api.daily.list({ startDate: start7, endDate: yStr })
+    const listParams = { startDate: start7, endDate: yStr }
+    if (aid) listParams.accountId = aid
+    const r = await api.daily.list(listParams)
     if (r.success) {
       const dates = getDateRange(start7, yStr)
       const map = {}
@@ -419,7 +461,7 @@ function onResize() {
   }, 200)
 }
 
-onMounted(() => { load(); window.addEventListener('resize', onResize) })
+onMounted(async () => { await loadAccounts(); load(); window.addEventListener('resize', onResize) })
 onUnmounted(() => {
   donutChart?.dispose()
   trendChart?.dispose()
