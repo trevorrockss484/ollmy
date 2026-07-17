@@ -117,10 +117,11 @@
           <span class="section-num">二</span> 每个国家明细
         </div>
 
-        <div v-for="(c, i) in activeCountries" :key="c" class="country-card">
+        <div v-for="(c, i) in activeCountries" :key="c" class="country-card" :style="{ '--cc-color': countryColors[i], '--cc-color-light': countryColors[i] + '18' }">
           <div class="cc-header">
             <div class="cc-header-left">
-              <span class="cc-num">{{ i + 1 }}</span>
+              <span class="cc-num" :style="{ background: countryColors[i] }">{{ i + 1 }}</span>
+              <span class="fi" :class="'fi-' + flagCode(c)" style="border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.1);"></span>
               <span class="cc-name">{{ c }}</span>
             </div>
             <el-button size="small" text type="danger" class="cc-remove-btn" @click="removeCountry(c)" :disabled="activeCountries.length <= 1">移除</el-button>
@@ -297,6 +298,18 @@ const filteredAddable = computed(() => {
 // 国旗代码映射
 const flagMap = { 印度尼西亚:"id", 印尼:"id", 越南:"vn", 泰国:"th", 菲律宾:"ph", 马来西亚:"my", 新加坡:"sg", 缅甸:"mm", 柬埔寨:"kh", 尼日利亚:"ng", 埃塞俄比亚:"et", 南非:"za", 肯尼亚:"ke", 加纳:"gh", 埃及:"eg", 阿联酋:"ae", 沙特阿拉伯:"sa", 沙特:"sa", 土耳其:"tr", 卡塔尔:"qa", 印度:"in", 巴基斯坦:"pk", 孟加拉国:"bd", 日本:"jp", 韩国:"kr", 巴西:"br", 墨西哥:"mx", 哥伦比亚:"co", 阿根廷:"ar", 美国:"us", 英国:"gb", 德国:"de", 法国:"fr", 澳大利亚:"au", 俄罗斯:"ru" }
 function flagCode(name) { return flagMap[name] || "" }
+
+// 国家卡片颜色调色板
+const countryColors = [
+  '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+  '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#3b82f6',
+  '#84cc16', '#e11d48', '#7c3aed', '#0891b2', '#d946ef',
+  '#65a30d', '#2563eb', '#db2777', '#0d9488', '#ea580c',
+  '#4f46e5', '#059669', '#d97706', '#dc2626', '#9333ea',
+  '#0284c7', '#be185d', '#0f766e', '#c2410c', '#1d4ed8',
+  '#a3e635', '#9d174d', '#6d28d9', '#155e75', '#a21caf',
+  '#4d7c0f', '#1e40af', '#9f1239', '#115e59', '#9a3412',
+]
 
 function addCountry(c) {
   if (!activeCountries.value.includes(c)) {
@@ -711,9 +724,10 @@ onMounted(async () => {
 .section-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: #eef2ff; color: #6366f1; font-size: 14px; }
 
 /* ====== 国家卡片 ====== */
-.country-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; transition: border-color .2s; }
-.country-card:hover { border-color: #c7d2fe; }
-.cc-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: #f8fafc; border-bottom: 1px solid #f3f4f6; }
+.country-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; transition: border-color .2s; position: relative; }
+.country-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--cc-color, #6366f1); border-radius: 12px 0 0 12px; }
+.country-card:hover { border-color: var(--cc-color, #6366f1); }
+.cc-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: var(--cc-color-light, #f8fafc); border-bottom: 1px solid #f3f4f6; }
 .cc-header-left { display: flex; align-items: center; gap: 10px; }
 .cc-num { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background: #6366f1; color: #fff; font-size: 12px; font-weight: 700; }
 .cc-name { font-size: 15px; font-weight: 700; color: #1f2937; }
@@ -738,8 +752,8 @@ onMounted(async () => {
   cursor: help; margin-left: 2px;
 }
 .cc-unit { font-size: 11px; color: #9ca3af; margin-left: 4px; }
-.cc-field.cc-computed { background: #f5f3ff; border-radius: 8px; padding: 6px 10px; }
-.cc-computed-val { font-size: 18px; font-weight: 700; color: #6366f1; height: 36px; display: flex; align-items: center; }
+.cc-field.cc-computed { background: var(--cc-color-light, #f5f3ff); border-radius: 8px; padding: 6px 10px; }
+.cc-computed-val { font-size: 18px; font-weight: 700; color: var(--cc-color, #6366f1); height: 36px; display: flex; align-items: center; }
 .cc-gd label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px; }
 
 /* 客户详情条目 */
