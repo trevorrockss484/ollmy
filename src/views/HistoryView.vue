@@ -28,9 +28,6 @@
             <el-option label="全部账号" value="all" />
             <el-option v-for="a in accounts" :key="a.id" :label="a.name" :value="a.id" />
           </el-select>
-          <el-select v-model="filterCountry" placeholder="全部国家" clearable size="default" style="width:140px;" @change="onFilterChange">
-            <el-option v-for="c in countries" :key="c" :label="c" :value="c" />
-          </el-select>
           <el-select v-model="monthPicked" placeholder="月度汇总" clearable size="default" style="width:160px;" @change="loadMonthly">
             <el-option v-for="m in recentMonths" :key="m" :label="m" :value="m" />
           </el-select>
@@ -149,7 +146,6 @@ import { api, formatDateCN, todayStr } from '../api'
 const route = useRoute()
 const router = useRouter()
 
-const countries = ['综合', '印度', '迪拜', '沙特', '美国', '泰国', '阿曼', '卡塔尔', '阿联酋', '马来西亚', '马来', '印度尼西亚', '越南', '埃塞俄比亚', '尼日利亚', '南非']
 const accounts = ref([
   { id: 'lisa-office', name: '莉莎办公家具' },
   { id: 'zhenshan-office', name: '甄珊办公家具' },
@@ -161,7 +157,6 @@ const accountLabel = computed(() => selectedAccountId.value === 'all' ? '全部�
 
 // ====== 筛选状态 — URL 优先 ======
 const dateRange = ref(null)
-const filterCountry = ref('')
 const monthPicked = ref(todayStr().substring(0, 7))
 const searchText = ref('')
 
@@ -199,7 +194,6 @@ async function doQuery() {
   loading.value = true
   try {
     const params = { startDate: dateRange.value[0], endDate: dateRange.value[1], accountId: selectedAccountId.value }
-    if (filterCountry.value) params.country = filterCountry.value
     const res = await api.daily.list(params)
     if (res.success) {
       const entries = Object.entries(res.data).sort(([a], [b]) => b.localeCompare(a))
@@ -521,7 +515,6 @@ function exportCSV() {
 
 // ====== URL 状态持久化 ======
 function onDateChange() { doQuery() }
-function onFilterChange() { doQuery() }
 function onAccountChange() { doQuery() }
 
 async function loadAccounts() {
@@ -534,14 +527,12 @@ async function loadAccounts() {
 function restoreFromURL() {
   const q = new URLSearchParams(window.location.search)
   if (q.get('start')) dateRange.value = [q.get('start'), q.get('end') || q.get('start')]
-  if (q.get('country')) filterCountry.value = q.get('country')
   if (q.get('month')) monthPicked.value = q.get('month')
 }
 
-watch([dateRange, filterCountry], () => {
+watch([dateRange], () => {
   const q = {}
   if (dateRange.value?.[0]) { q.start = dateRange.value[0]; q.end = dateRange.value[1] }
-  if (filterCountry.value) q.country = filterCountry.value
   router.replace({ query: q })
 }, { deep: true })
 
