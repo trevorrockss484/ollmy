@@ -166,31 +166,19 @@
               <el-tag v-if="d.isToday" type="primary" size="small" effect="dark" round>今天</el-tag>
             </div>
             <div class="dv-cell dv-cell--usd">
-              <template v-if="d.completed">
-                <span class="dv-val">${{ fmtK(d.fbUsdBudget) }}</span>
-                <div class="dv-mini-bar"><div class="dv-mini-fill" :style="{ width: miniBarPct(d.fbUsdBudget, maxUsd) }"></div></div>
-              </template>
+              <span v-if="d.completed" class="dv-val">${{ fmtK(d.fbUsdBudget) }}</span>
               <span v-else class="dv-na">—</span>
             </div>
             <div class="dv-cell dv-cell--budget">
-              <template v-if="d.completed">
-                <span class="dv-val">¥{{ Math.round(d.fbBudget) }}</span>
-                <div class="dv-mini-bar"><div class="dv-mini-fill" :style="{ width: miniBarPct(d.fbBudget, maxBudget) }"></div></div>
-              </template>
+              <span v-if="d.completed" class="dv-val">¥{{ Math.round(d.fbBudget) }}</span>
               <span v-else class="dv-na">—</span>
             </div>
             <div class="dv-cell">
-              <template v-if="d.completed">
-                <span class="dv-stat">{{ d.fbCustomer || '0' }}</span>
-                <span class="dv-unit">个</span>
-              </template>
+              <span v-if="d.completed" class="dv-stat">{{ d.fbCustomer || '0' }}</span>
               <span v-else class="dv-na">—</span>
             </div>
             <div class="dv-cell dv-cell--grouped">
-              <template v-if="d.completed">
-                <span class="dv-stat dv-stat--green">{{ d.fbGrouped || '0' }}</span>
-                <span class="dv-unit">个</span>
-              </template>
+              <span v-if="d.completed" class="dv-stat dv-stat--green">{{ d.fbGrouped || '0' }}</span>
               <span v-else class="dv-na">—</span>
             </div>
             <div class="dv-cell dv-cell--st">
@@ -493,14 +481,6 @@ const dayCards = computed(() =>
     }
   })
 )
-
-// 迷你进度条
-const maxBudget = computed(() => Math.max(1, ...dayCards.value.map(d => d.fbBudget || 0)))
-const maxUsd = computed(() => Math.max(1, ...dayCards.value.map(d => d.fbUsdBudget || 0)))
-function miniBarPct(val, max) {
-  if (!val || !max) return 0
-  return Math.min(100, Math.round(val / max * 100))
-}
 
 const animatedPct = ref(0)
 
@@ -877,89 +857,70 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 
 /* ====== 每日完成表格 V2 ====== */
 .daily-table-v2 {
-  display: flex; flex-direction: column; gap: 4px;
+  display: flex; flex-direction: column;
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+  overflow: hidden;
 }
 .dv-head {
-  display: grid; grid-template-columns: 120px 1fr 1fr 80px 70px 90px;
-  gap: 6px; padding: 4px 6px; align-items: center;
+  display: grid; grid-template-columns: 110px 0.8fr 1fr 0.7fr 0.7fr 80px;
+  gap: 4px; padding: 6px 10px; align-items: center;
+  background: #f9fafb; border-bottom: 1px solid #e5e7eb;
 }
 .dv-hcell {
   font-size: 10px; font-weight: 700; color: #9ca3af;
-  text-transform: uppercase; letter-spacing: .5px; text-align: right;
+  text-transform: uppercase; letter-spacing: .3px; text-align: right;
 }
 .dv-hcell--date { text-align: left; }
 .dv-hcell--st { text-align: center; }
 
 .dv-row {
-  display: grid; grid-template-columns: 120px 1fr 1fr 80px 70px 90px;
-  gap: 6px; align-items: center;
-  padding: 10px 8px; border-radius: 10px;
-  cursor: pointer; transition: all .15s;
-  background: #fff; border: 1px solid transparent;
+  display: grid; grid-template-columns: 110px 0.8fr 1fr 0.7fr 0.7fr 80px;
+  gap: 4px; align-items: center;
+  padding: 8px 10px; border-bottom: 1px solid #f3f4f6;
+  cursor: pointer; transition: all .12s; background: #fff;
 }
-.dv-row:hover {
-  background: #f8fafc; border-color: #e5e7eb;
-  transform: translateX(3px);
-}
+.dv-row:hover { background: #fafaff; }
+.dv-row:last-of-type { border-bottom: none; }
 .dv-row.dv--today {
-  background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 50%, #fff 100%);
-  border-color: #c7d2fe;
-  box-shadow: 0 2px 8px rgba(99,102,241,.08);
+  background: linear-gradient(90deg, #eef2ff 0%, #f5f3ff 30%, #fff 100%);
 }
 .dv-row.dv--done {
   border-left: 3px solid #10b981;
 }
 
 /* 日期格 */
-.dv-cell--date { display: flex; align-items: center; gap: 8px; }
+.dv-cell--date { display: flex; align-items: center; gap: 6px; }
 .dv-date-box {
-  display: flex; flex-direction: column; align-items: center;
-  padding: 6px 10px; border-radius: 8px; background: #f3f4f6;
-  min-width: 52px; transition: all .15s;
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 0; min-width: 68px;
 }
-.dv-date-box--today {
-  background: #6366f1; color: #fff;
-}
-.dv-day-name { font-size: 10px; font-weight: 700; color: #6b7280; line-height: 1.2; }
-.dv-date-box--today .dv-day-name { color: rgba(255,255,255,.7); }
-.dv-day-num { font-size: 16px; font-weight: 800; color: #111827; line-height: 1.1; }
-.dv-date-box--today .dv-day-num { color: #fff; }
+.dv-day-name { font-size: 10px; font-weight: 700; color: #9ca3af; width: 28px; line-height: 1; }
+.dv-row.dv--today .dv-day-name { color: #6366f1; }
+.dv-day-num { font-size: 15px; font-weight: 800; color: #111827; line-height: 1; }
+.dv-row.dv--today .dv-day-num { color: #6366f1; }
 
 /* 数据格 */
 .dv-cell {
-  display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
-  padding: 0 4px;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding: 0 2px;
 }
-.dv-cell--date { flex-direction: row; }
-.dv-val { font-size: 15px; font-weight: 700; color: #1f2937; }
+.dv-cell--date { justify-content: flex-start; }
+.dv-cell--st { justify-content: center; }
+.dv-val { font-size: 14px; font-weight: 700; color: #1f2937; }
 .dv-cell--usd .dv-val { color: #a16207; }
 .dv-cell--budget .dv-val { color: #6366f1; }
-.dv-stat { font-size: 15px; font-weight: 700; color: #1f2937; }
+.dv-stat { font-size: 14px; font-weight: 700; color: #1f2937; }
 .dv-stat--green { color: #059669; }
-.dv-unit { font-size: 10px; color: #9ca3af; font-weight: 600; margin-top: -1px; }
 .dv-na { font-size: 14px; color: #d1d5db; font-weight: 600; }
 
-/* 迷你进度条 */
-.dv-mini-bar { width: 100%; height: 3px; background: #f3f4f6; border-radius: 2px; overflow: hidden; }
-.dv-mini-fill { height: 100%; border-radius: 2px; transition: width .4s ease; }
-.dv-cell--usd .dv-mini-fill { background: linear-gradient(90deg, #fcd34d, #f59e0b); }
-.dv-cell--budget .dv-mini-fill { background: linear-gradient(90deg, #818cf8, #6366f1); }
-
 /* 状态徽章 */
-.dv-cell--st { align-items: center; }
 .dv-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 4px 10px; border-radius: 20px;
-  font-size: 11px; font-weight: 700;
+  display: inline-flex; align-items: center;
+  padding: 3px 8px; border-radius: 10px;
+  font-size: 10px; font-weight: 700; white-space: nowrap;
 }
-.dv-badge--done {
-  background: #ecfdf5; color: #059669;
-  border: 1px solid rgba(5,150,105,.15);
-}
-.dv-badge--todo {
-  background: #f3f4f6; color: #9ca3af;
-  border: 1px solid rgba(0,0,0,.06);
-}
+.dv-badge--done { background: #ecfdf5; color: #059669; }
+.dv-badge--todo { background: #f3f4f6; color: #9ca3af; }
 
 /* ====== 弹窗 ====== */
 .preview-card {
@@ -974,6 +935,6 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 @media (max-width:900px) {
   .overview-strip { grid-template-columns:repeat(2,1fr); }
   .mid-layout { grid-template-columns:1fr; }
-  .dv-head, .dv-row { grid-template-columns: 100px 1fr 1fr 60px 50px 80px; gap: 2px; }
+  .dv-head, .dv-row { grid-template-columns: 100px 1fr 1fr 60px 50px 70px; }
 }
 </style>
