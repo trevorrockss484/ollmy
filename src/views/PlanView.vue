@@ -147,7 +147,6 @@
             <span class="dv-hcell dv-hcell--date">日期</span>
             <span class="dv-hcell">美金</span>
             <span class="dv-hcell">消耗</span>
-            <span class="dv-hcell">汇率</span>
             <span class="dv-hcell">新客户</span>
             <span class="dv-hcell">拉群</span>
             <span class="dv-hcell">客均</span>
@@ -169,10 +168,6 @@
             </div>
             <div class="dv-cell">
               <span v-if="d.completed" class="dv-num dv-num--rmb">¥{{ Math.round(d.fbBudget) }}</span>
-              <span v-else class="dv-empty">—</span>
-            </div>
-            <div class="dv-cell">
-              <span v-if="d.completed && d.fbUsdBudget" class="dv-num dv-num--rate">{{ fmtRate(d.fbBudget, d.fbUsdBudget) }}</span>
               <span v-else class="dv-empty">—</span>
             </div>
             <div class="dv-cell">
@@ -467,11 +462,6 @@ async function copyWeekSummary() {
 function fmtK(n) {
   const v = Math.round(n || 0)
   return v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(v)
-}
-
-function fmtRate(rmb, usd) {
-  if (!usd) return '—'
-  return (rmb / usd).toFixed(2)
 }
 
 const dayCards = computed(() =>
@@ -873,7 +863,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 }
 .dv-head {
   display: grid;
-  grid-template-columns: 120px repeat(7, 1fr);
+  grid-template-columns: 120px repeat(6, 1fr);
   padding: 10px 20px; align-items: center;
   background: #f9fafb; border-bottom: 1px solid #e5e7eb;
 }
@@ -886,7 +876,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 
 .dv-row {
   display: grid;
-  grid-template-columns: 120px repeat(7, 1fr);
+  grid-template-columns: 120px repeat(6, 1fr);
   padding: 14px 20px; align-items: center;
   border-bottom: 1px solid #f3f4f6;
   cursor: pointer; transition: background .12s; background: #fff;
@@ -911,7 +901,6 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 .dv-num { font-size: 15px; font-weight: 700; color: #1f2937; }
 .dv-num--usd { color: #a16207; }
 .dv-num--rmb { color: #6366f1; }
-.dv-num--rate { color: #6b7280; font-size: 13px; }
 .dv-num--green { color: #059669; }
 .dv-empty { font-size: 15px; color: #d1d5db; }
 
@@ -937,6 +926,6 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 @media (max-width:900px) {
   .overview-strip { grid-template-columns:repeat(2,1fr); }
   .mid-layout { grid-template-columns:1fr; }
-  .dv-head, .dv-row { grid-template-columns: 80px repeat(7, 1fr); padding: 10px 12px; }
+  .dv-head, .dv-row { grid-template-columns: 80px repeat(6, 1fr); padding: 10px 12px; }
 }
 </style>
