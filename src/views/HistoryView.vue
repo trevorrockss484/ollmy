@@ -268,12 +268,13 @@ const rangeAgg = computed(() => {
     agg[c].customer += r.fbCustomer || 0
     agg[c].grouped += r.fbGrouped || 0
     if (r._fb) {
-      if (r._fb.groupDetail) agg[c].details.push(r._fb.groupDetail)
-      // 新格式 groupEntries → 转为【】字符串
+      // 优先 groupEntries，fallback groupDetail
       if (r._fb.groupEntries && Array.isArray(r._fb.groupEntries)) {
         for (const entry of r._fb.groupEntries) {
           if (entry.text) agg[c].details.push('【' + entry.text + (entry.status ? '，' + entry.status : '') + '】')
         }
+      } else if (r._fb.groupDetail) {
+        agg[c].details.push(r._fb.groupDetail)
       }
       if (r._fb.budgetNote) agg[c].budgetNote = r._fb.budgetNote
       if (r._fb.customerNote) agg[c].customerNote = r._fb.customerNote
@@ -672,9 +673,9 @@ function handleResize() { chartInstance?.resize() }
 }
 .ci-details-title { font-size:13px; font-weight:800; color:#374151; margin-bottom:8px; }
 .ci-detail-line {
-  line-height:1.7; font-size:13px; color:#374151;
-  background:#fff; border:1px solid #eef2ff; border-radius:10px;
-  padding:8px 10px; margin-top:6px; word-break:break-word;
+  display: block; line-height:1.7; font-size:13px; color:#374151;
+  background:#fff; border:1px solid #e5e7eb; border-radius:8px;
+  padding:10px 14px; margin-top:4px;
 }
 
 .copy-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
