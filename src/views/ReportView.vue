@@ -12,16 +12,46 @@
         <el-tag v-else type="info" effect="plain" size="small" round>新日期</el-tag>
       </div>
       <div class="top-right">
-        <span v-if="activeCountries.length" class="week-label">当前国家</span>
-        <el-tag v-for="c in activeCountries" :key="c" size="small" effect="plain" round class="country-chip" closable @close="removeCountry(c)">{{ c }}</el-tag>
-        <el-dropdown v-if="addableCountries.length" trigger="click" @command="addCountry">
-          <el-tag size="small" effect="light" class="add-country-tag" style="cursor:pointer;border-style:dashed;color:#6366f1">+ 添加国家</el-tag>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item v-for="c in addableCountries" :key="c" :command="c">{{ c }}</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
+        <div class="country-chip-row">
+          <el-tag
+            v-for="c in activeCountries" :key="c"
+            size="default"
+            effect="plain"
+            class="country-chip"
+            closable
+            @close="removeCountry(c)"
+          >
+            <span class="fi" :class="'fi-' + flagCode(c)" style="margin-right:5px;border-radius:2px;"></span>
+            {{ c }}
+          </el-tag>
+          <el-popover
+            v-if="addableCountries.length"
+            v-model:visible="popVisible"
+            placement="bottom-end"
+            :width="220"
+            trigger="click"
+            :show-arrow="false"
+          >
+            <template #reference>
+              <span class="add-country-btn">
+                <el-icon :size="14"><Plus /></el-icon> 添加国家
+              </span>
+            </template>
+            <el-input v-model="countrySearch" placeholder="搜索国家..." size="small" clearable class="country-search-input" />
+            <div class="country-pop-list">
+              <div
+                v-for="c in filteredAddable"
+                :key="c"
+                class="country-pop-item"
+                @click="addCountry(c); countrySearch=''; popVisible=false"
+              >
+                <span class="fi" :class="'fi-' + flagCode(c)" style="margin-right:6px;border-radius:2px;"></span>
+                {{ c }}
+              </div>
+              <div v-if="!filteredAddable.length" class="country-pop-empty">无匹配国家</div>
+            </div>
+          </el-popover>
+        </div>
       </div>
     </div>
 
@@ -247,6 +277,17 @@ const allCountries = [
 
 const activeCountries = ref([])
 const addableCountries = computed(() => allCountries.filter(c => !activeCountries.value.includes(c)))
+const countrySearch = ref('')
+const popVisible = ref(false)
+const filteredAddable = computed(() => {
+  const q = countrySearch.value.trim().toLowerCase()
+  if (!q) return addableCountries.value
+  return addableCountries.value.filter(c => c.toLowerCase().includes(q))
+})
+
+// 国旗代码映射
+const flagMap = { 印度尼西亚:"id", 印尼:"id", 越南:"vn", 泰国:"th", 菲律宾:"ph", 马来西亚:"my", 新加坡:"sg", 缅甸:"mm", 柬埔寨:"kh", 尼日利亚:"ng", 埃塞俄比亚:"et", 南非:"za", 肯尼亚:"ke", 加纳:"gh", 埃及:"eg", 阿联酋:"ae", 沙特阿拉伯:"sa", 沙特:"sa", 土耳其:"tr", 卡塔尔:"qa", 印度:"in", 巴基斯坦:"pk", 孟加拉国:"bd", 日本:"jp", 韩国:"kr", 巴西:"br", 墨西哥:"mx", 哥伦比亚:"co", 阿根廷:"ar", 美国:"us", 英国:"gb", 德国:"de", 法国:"fr", 澳大利亚:"au", 俄罗斯:"ru" }
+function flagCode(name) { return flagMap[name] || "" }
 
 function addCountry(c) {
   if (!activeCountries.value.includes(c)) {
@@ -589,9 +630,41 @@ onMounted(async () => {
 .top-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px 24px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
 .top-left { display: flex; align-items: center; gap: 14px; }
 .top-left h2 { font-size: 20px; font-weight: 700; margin: 0; white-space: nowrap; }
-.top-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.top-right { display: flex; align-items: center; }
 .week-label { font-size: 12px; font-weight: 600; color: #6b7280; }
-.country-chip { font-weight: 600; }
+
+/* 国家 chip 行 */
+.country-chip-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.country-chip {
+  font-weight: 600; font-size: 13px;
+  padding: 4px 10px; border-radius: 6px;
+  transition: all .15s;
+}
+.country-chip :deep(.el-tag__close) { color: #9ca3af; }
+.country-chip :deep(.el-tag__close:hover) { color: #ef4444; background: #fef2f2; }
+
+/* 添加国家按钮 */
+.add-country-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 14px; border: 1.5px dashed #c7d2fe;
+  border-radius: 6px; cursor: pointer;
+  font-size: 13px; font-weight: 700; color: #6366f1;
+  background: #f5f3ff; transition: all .15s; user-select: none;
+}
+.add-country-btn:hover { background: #eef2ff; border-color: #818cf8; }
+
+/* 国家搜索 */
+.country-search-input { margin-bottom: 6px; }
+.country-pop-list { max-height: 240px; overflow-y: auto; }
+.country-pop-item {
+  padding: 7px 12px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: #374151;
+  display: flex; align-items: center; transition: background .12s;
+}
+.country-pop-item:hover { background: #f3f4f6; }
+.country-pop-empty { padding: 12px; text-align: center; color: #9ca3af; font-size: 12px; }
 
 /* ====== 操作栏 ====== */
 .action-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px 20px; margin-bottom: 16px; }
@@ -621,7 +694,6 @@ onMounted(async () => {
 /* 拉群全局 */
 .gd-global { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px; }
 .gd-global-label { font-size: 13px; font-weight: 700; color: #374151; white-space: nowrap; min-width: 120px; }
-.gd-global-val { font-size: 13px; color: #6b7280; line-height: 1.6; }
 
 /* ====== 区块标题 ====== */
 .section-header { font-size: 16px; font-weight: 700; color: #1f2937; padding: 8px 0 4px; display: flex; align-items: center; gap: 10px; }
@@ -636,8 +708,6 @@ onMounted(async () => {
 .cc-name { font-size: 15px; font-weight: 700; color: #1f2937; }
 .cc-remove-btn { flex-shrink:0; font-size:12px; padding:2px 8px; opacity:.6; }
 .cc-remove-btn:hover { opacity:1; }
-.add-country-tag { transition: all .2s; }
-.add-country-tag:hover { background:#eef2ff; border-color:#818cf8; }
 .cc-body { padding: 16px 18px; }
 .cc-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
 .cc-field { flex: 1; min-width: 100px; }
@@ -648,20 +718,32 @@ onMounted(async () => {
 .cc-unit { font-size: 11px; color: #9ca3af; margin-left: 4px; }
 .cc-field.cc-computed { background: #f5f3ff; border-radius: 8px; padding: 6px 10px; }
 .cc-computed-val { font-size: 18px; font-weight: 700; color: #6366f1; height: 36px; display: flex; align-items: center; }
-.cc-gd label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-.cc-gd-input :deep(.el-input__wrapper) { border-radius: 8px; }
-.cc-gd-input :deep(.el-input__inner) { font-size: 13px; }
+.cc-gd label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px; }
 
 /* 客户详情条目 */
-.gd-entries { display:flex; flex-direction:column; gap:6px; }
-.gd-entry-row { display:flex; align-items:center; gap:8px; }
+.gd-entries { display:flex; flex-direction:column; gap:8px; }
+.gd-entry-row {
+  display:flex; align-items:center; gap:8px;
+  background:#f9fafb; border:1px solid #e5e7eb;
+  border-radius:8px; padding:8px 10px;
+  transition: border-color .15s;
+}
+.gd-entry-row:hover { border-color:#c7d2fe; background:#fff; }
 .gd-entry-text { flex:1; }
+.gd-entry-text :deep(.el-input__wrapper) { background:#fff; }
 .gd-entry-status { width:110px; flex-shrink:0; }
-.gd-add-btn { align-self:flex-start; padding:4px 0; }
+.gd-add-btn {
+  align-self:flex-start; padding:6px 12px;
+  border:1px dashed #d1d5db; border-radius:8px;
+  font-weight:600; color:#6b7280; transition:all .15s;
+}
+.gd-add-btn:hover { border-color:#6366f1; color:#6366f1; background:#f5f3ff; }
 .gd-entry-pill {
-  display:inline-block; font-size:12px; color:#374151; margin-right:2px;
+  display:inline-block; font-size:12px; color:#374151; margin:2px 4px 2px 0;
+  padding:2px 8px; background:#f3f4f6; border-radius:5px;
   white-space:nowrap;
 }
+.gd-global-val { font-size: 13px; color: #6b7280; line-height: 1.8; }
 
 /* ====== 总结优化 ====== */
 .so-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 18px; }
