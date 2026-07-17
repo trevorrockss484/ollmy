@@ -355,6 +355,12 @@ function buildWeekReportText() {
       countryAgg[name].customer += Number(fb.newCustomer || 0)
       countryAgg[name].grouped += Number(fb.grouped || 0)
       if (fb.groupDetail) countryAgg[name].details.push(fb.groupDetail)
+      // 新格式 groupEntries
+      if (fb.groupEntries && Array.isArray(fb.groupEntries)) {
+        for (const entry of fb.groupEntries) {
+          if (entry.text) countryAgg[name].details.push('【' + entry.text + (entry.status ? '，' + entry.status : '') + '】')
+        }
+      }
     }
   }
   const countries = Object.entries(countryAgg)
