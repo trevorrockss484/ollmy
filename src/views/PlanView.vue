@@ -171,7 +171,7 @@
       </div>
 
       <!-- ====== 设置弹窗 ====== -->
-      <el-dialog v-model="settingsOpen" title="本周设置" width="620px" destroy-on-close>
+      <el-dialog v-model="settingsOpen" title="本周设置" width="620px" @opened="onSettingsOpened">
         <el-form label-width="80px" size="default">
           <el-row :gutter="12">
             <el-col :span="12"><el-form-item label="开始日期"><el-date-picker v-model="form.startDate" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item></el-col>
@@ -181,7 +181,7 @@
             <el-col :span="12"><el-form-item label="询盘目标"><el-input-number v-model="form.inquiryGoal" :min="0" style="width:100%" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="拉群目标"><el-input-number v-model="form.groupGoal" :min="0" style="width:100%" /></el-form-item></el-col>
             <el-col :span="24"><el-form-item label="覆盖国家">
-              <el-tree ref="treeRef" :data="countryTreeData" show-checkbox node-key="key" :props="{ label:'label', children:'children' }" default-expand-all @check="onTreeCheck" style="max-height:280px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;padding:8px;" />
+              <el-tree ref="treeRef" :data="countryTreeData" show-checkbox node-key="key" :default-checked-keys="form.countries" :props="{ label:'label', children:'children' }" default-expand-all @check="onTreeCheck" style="max-height:280px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;padding:8px;" />
             </el-form-item></el-col>
           </el-row>
         </el-form>
@@ -308,31 +308,110 @@ function goalLabel(key) {
 const flagMap = { 印度尼西亚:"id", 印尼:"id", 越南:"vn", 泰国:"th", 菲律宾:"ph", 马来西亚:"my", 新加坡:"sg", 缅甸:"mm", 柬埔寨:"kh", 尼日利亚:"ng", 埃塞俄比亚:"et", 南非:"za", 肯尼亚:"ke", 加纳:"gh", 埃及:"eg", 阿联酋:"ae", 沙特阿拉伯:"sa", 沙特:"sa", 土耳其:"tr", 卡塔尔:"qa", 印度:"in", 巴基斯坦:"pk", 孟加拉国:"bd", 孟加拉:"bd", 日本:"jp", 韩国:"kr", 巴西:"br", 墨西哥:"mx", 哥伦比亚:"co", 阿根廷:"ar", 美国:"us", 英国:"gb", 德国:"de", 法国:"fr", 澳大利亚:"au", 俄罗斯:"ru" }
 function flagCode(name) { return flagMap[name] || "" }
 
+function fmtReportMoney(n) {
+  const v = Number(n || 0)
+  return v ? (Math.round(v * 100) / 100).toFixed(2) : '0.00'
+}
+function fmtReportCost(n) {
+  const v = Number(n || 0)
+  return v ? (Math.round(v * 100) / 100).toFixed(2) : '0.00'
+}
+function splitDetails(text) {
+  const t = (text || '').trim()
+  if (!t) return []
+  const m = t.match(/【[^】]*】/g)
+  if (m && m.length) return m
+  return ['【' + t + '】']
+}
+function buildWeekReportText() {
+  if (!week.value) return ''
+  const countryAgg = {}
+  for (const record of Object.values(dailyData.value || {})) {
+    const countries = record?.countries || {}
+    for (const [name, fb] of Object.entries(countries)) {
+      if (!countryAgg[name]) countryAgg[name] = { budget: 0, customer: 0, grouped: 0, details: [] }
+      countryAgg[name].budget += Number(fb.budget || 0)
+      countryAgg[name].customer += Number(fb.newCustomer || 0)
+      countryAgg[name].grouped += Number(fb.grouped || 0)
+      if (fb.groupDetail) countryAgg[name].details.push(fb.groupDetail)
+    }
+  }
+  const countries = Object.entries(countryAgg)
+    .map(([name, v]) => ({
+      name,
+      budget: Math.round(v.budget * 100) / 100,
+      customer: v.customer,
+      grouped: v.grouped,
+      details: splitDetails(v.details.join('')),
+    }))
+    .sort((a, b) => (b.budget - a.budget) || (b.grouped - a.grouped))
+  if (!countries.length) return ''
+
+  const totalBudget = countries.reduce((sum, c) => sum + c.budget, 0)
+  const totalCustomer = countries.reduce((sum, c) => sum + c.customer, 0)
+  const totalGrouped = countries.reduce((sum, c) => sum + c.grouped, 0)
+  const groupBreakdown = countries.filter(c => c.grouped > 0).map(c => `${c.name}+${c.grouped}`).join('  ')
+  const title = `${shortDate(week.value.startDate)} - ${shortDate(week.value.endDate)} 海外投流数据总结`
+
+  let text = `${title}
+
+一、今日海外整体汇总
+
+1. 总费用：${fmtReportMoney(totalBudget)}
+2. 总客资：${totalCustomer}
+3. 总拉群及客户详情：${totalGrouped}`
+  if (groupBreakdown) text += `
+▷
+（${groupBreakdown}）
+▷`
+  text += `
+4. 询盘客价：${fmtReportCost(totalCustomer ? totalBudget / totalCustomer : 0)} 元
+5. 有效客价：${fmtReportCost(totalGrouped ? totalBudget / totalGrouped : 0)} 元
+
+二、每个国家明细`
+
+  for (const c of countries) {
+    const avg = c.customer ? c.budget / c.customer : 0
+    const eff = c.grouped ? c.budget / c.grouped : 0
+    text += `
+
+----------
+
+▌${c.name}
+
+1. 费用：${fmtReportMoney(c.budget)} 元
+2. 客资：${c.customer} 个
+3. 总拉群及客户详情：${c.grouped} 个`
+    if (c.details.length) text += `
+▷
+${c.details.join('\n')}
+▷`
+    text += `
+4. 询盘客价：${fmtReportCost(avg)} / 元
+5. 有效客价：${fmtReportCost(eff)} / 元`
+  }
+  text += `
+
+----------`
+  return text
+}
+
 async function copyWeekSummary() {
-  if (!week.value) { ElMessage.warning('暂无数据'); return }
-  const w = week.value
-  const start = formatDate(w.startDate), end = formatDate(w.endDate)
-  const daysCnt = days.value.length
-  const t = s // reactive stats
-  const effCost = t.fbGrouped > 0 ? (t.fbBudget / t.fbGrouped).toFixed(1) : '—'
-  const avgDaily = t.fbBudget > 0 ? Math.round(t.fbBudget / daysCnt) : '—'
-  const inquiryCost = t.fbCustomer > 0 ? (t.fbBudget / t.fbCustomer).toFixed(0) : '—'
-  const countries = (w.countries||[]).join('-')
-  const text = `⭐${start} — ${end}（${Math.floor(daysCnt)}天）：
-国家：${countries}
-1.总询盘客户：${t.fbCustomer}个
-2.已拉群客户：${t.fbGrouped}个
-3.总消耗：${t.fbBudget}元
-4.有效客户成本：${effCost}元
-5.日均成本：${avgDaily}元
-6.询盘客户成本：${inquiryCost}元`
+  const text = buildWeekReportText()
+  if (!text) { ElMessage.warning('本周暂无可复制数据'); return }
   try {
     await navigator.clipboard.writeText(text)
-    ElMessage.success('周报汇总已复制')
+    ElMessage.success('本周汇总已复制')
   } catch {
-    const ta = document.createElement('textarea'); ta.value = text
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy')
-    document.body.removeChild(ta); ElMessage.success('周报汇总已复制')
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.left = '-9999px'
+    document.body.appendChild(ta)
+    ta.select()
+    try { document.execCommand('copy'); ElMessage.success('本周汇总已复制') }
+    catch { ElMessage.error('复制失败，请手动复制') }
+    document.body.removeChild(ta)
   }
 }
 
@@ -344,9 +423,17 @@ function fmtK(n) {
 const dayCards = computed(() =>
   days.value.map(date => {
     const d = dailyData.value[date]
+    let fbBudget = 0, fbCustomer = 0, fbGrouped = 0
+    if (d?.countries) {
+      Object.values(d.countries).forEach(c => {
+        fbBudget += c.budget || 0
+        fbCustomer += c.newCustomer || 0
+        fbGrouped += c.grouped || 0
+      })
+    }
     return {
       date, dayName: getDayName(date), completed: !!d, isToday: date === todayStr(),
-      fbBudget: d?.fb?.budget || 0, fbCustomer: d?.fb?.newCustomer || 0, fbGrouped: d?.fb?.grouped || 0
+      fbBudget, fbCustomer, fbGrouped
     }
   })
 )
@@ -420,13 +507,17 @@ const form = ref({ startDate: '', endDate: '', dailyBudget: 300, weekBudget: 150
 
 function openSettings() {
   if (week.value) {
-    // 确保从 store 拿到最新的当前周数据
     const w = weekStore.currentWeek
     if (!w) return
     form.value = { startDate: w.startDate, endDate: w.endDate, dailyBudget: w.dailyBudget, weekBudget: w.weekBudget, inquiryGoal: w.inquiryGoal, groupGoal: w.groupGoal, countries: [...(w.countries || [])] }
-    nextTick(() => { if (treeRef.value) treeRef.value.setCheckedKeys(w.countries || []) })
   }
   settingsOpen.value = true
+}
+
+function onSettingsOpened() {
+  if (treeRef.value && form.value.countries.length) {
+    treeRef.value.setCheckedKeys(form.value.countries)
+  }
 }
 
 async function saveSettings() {

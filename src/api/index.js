@@ -50,9 +50,10 @@ export const api = {
     switchWeek: (id) => request('/config/current', { method: 'PUT', body: JSON.stringify({ id }) }),
   },
   daily: {
-    get: (date) => request('/daily/' + date),
+    accounts: () => request('/daily/accounts/list'),
+    get: (date, params = {}) => request('/daily/' + date + (Object.keys(params).length ? '?' + new URLSearchParams(params) : '')),
     list: (params) => request('/daily/query/list?' + new URLSearchParams(params)),
-    save: (date, data) => request('/daily/' + date, { method: 'POST', body: JSON.stringify(data) }),
+    save: (date, data, params = {}) => request('/daily/' + date + (Object.keys(params).length ? '?' + new URLSearchParams(params) : ''), { method: 'POST', body: JSON.stringify(data) }),
     delete: (date) => request('/daily/' + date, { method: 'DELETE' }),
   },
   summary: {

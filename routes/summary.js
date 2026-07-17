@@ -21,20 +21,26 @@ router.get('/monthly/:month', (req, res) => {
 
     dates.forEach(date => {
       const d = all[date];
-      const fb = d.fb || {};
-      summary.fbBudget += fb.budget || 0;
-      summary.fbCustomer += fb.newCustomer || 0;
-      summary.fbGrouped += fb.grouped || 0;
-      summary.fbCatNoReply += fb.catNoReply || 0;
-      summary.fbMsgIgnore += fb.msgIgnore || 0;
-      summary.fbLowBudget += fb.lowBudget || 0;
-      summary.fbCompetitor += fb.competitor || 0;
-      summary.fbHarass += fb.harass || 0;
-      summary.fbVisitPending += fb.visitPending || 0;
+      // 新格式：遍历所有国家汇总
+      const countries = d.countries || {};
+      let dayBudget = 0, dayGrouped = 0;
+      Object.values(countries).forEach(c => {
+        summary.fbBudget += c.budget || 0;
+        summary.fbCustomer += c.newCustomer || 0;
+        summary.fbGrouped += c.grouped || 0;
+        summary.fbCatNoReply += c.catNoReply || 0;
+        summary.fbMsgIgnore += c.msgIgnore || 0;
+        summary.fbLowBudget += c.lowBudget || 0;
+        summary.fbCompetitor += c.competitor || 0;
+        summary.fbHarass += c.harass || 0;
+        summary.fbVisitPending += c.visitPending || 0;
+        dayBudget += c.budget || 0;
+        dayGrouped += c.grouped || 0;
+      });
       summary.daily[date] = {
-        country: d.country,
-        fbBudget: fb.budget || 0,
-        fbGrouped: fb.grouped || 0,
+        countries: Object.keys(countries),
+        fbBudget: dayBudget,
+        fbGrouped: dayGrouped,
       };
     });
 
@@ -62,10 +68,12 @@ router.get('/weekly', (req, res) => {
 
     dates.forEach(date => {
       const d = all[date];
-      const fb = d.fb || {};
-      summary.fbBudget += fb.budget || 0;
-      summary.fbCustomer += fb.newCustomer || 0;
-      summary.fbGrouped += fb.grouped || 0;
+      const countries = d.countries || {};
+      Object.values(countries).forEach(c => {
+        summary.fbBudget += c.budget || 0;
+        summary.fbCustomer += c.newCustomer || 0;
+        summary.fbGrouped += c.grouped || 0;
+      });
     });
 
     summary.totalBudget = summary.fbBudget;

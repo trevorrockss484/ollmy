@@ -32,11 +32,30 @@ function withWriteLock(fn) {
   });
 }
 
+// 默认广告账号
+const DEFAULT_ACCOUNTS = [
+  { id: 'lisa-office', name: '莉莎办公家具', businessLine: '办公家具', enabled: true, sort: 1 },
+  { id: 'zhenshan-office', name: '甄珊办公家具', businessLine: '办公家具', enabled: true, sort: 2 },
+  { id: 'xiege-office', name: '谢哥办公家具', businessLine: '办公家具', enabled: true, sort: 3 },
+]
+
+function getDefaultAccountId() { return DEFAULT_ACCOUNTS[0].id }
+function normalizeAccountId(accountId) {
+  if (!accountId || accountId === 'default') return getDefaultAccountId()
+  return String(accountId)
+}
+function getAccountMeta(accountId) {
+  const id = normalizeAccountId(accountId)
+  return DEFAULT_ACCOUNTS.find(a => a.id === id) || { id, name: id, businessLine: '', enabled: true, sort: 99 }
+}
+
 // 默认数据结构
 function defaultData() {
   return {
     weeks: [],
     currentWeekId: null,
+    accounts: DEFAULT_ACCOUNTS,
+    currentAccountId: getDefaultAccountId(),
     dailyData: {},
     vpsList: [],
     prompts: [],
@@ -284,9 +303,91 @@ function setCurrentWeek(id) {
 }
 
 // ==================== 日报操作 ====================
-function getDailyData(date) {
+
+// 将旧格式 { country, fb: {..., summary, optimize} } 转为新格式，并补齐 accounts 账号维度
+function _migrateDailyRecord(record) {
+  if (!record) return null
+
+  let base = record
+  if (!base.countries) {
+    const fb = base.fb || {}
+    const { summary, optimize, ...fbData } = fb
+    base = {
+      ...base,
+      countries: { [base.country || '综合']: fbData },
+      summary: summary || '',
+      optimize: optimize || '',
+      savedAt: base.savedAt || null
+    }
+  }
+
+  const savedAt = base.savedAt || null
+  const accounts = {}
+  if (base.accounts && typeof base.accounts === 'object') {
+    for (const [rawId, acc] of Object.entries(base.accounts)) {
+      const accountId = normalizeAccountId(acc?.accountId || rawId)
+      const meta = getAccountMeta(accountId)
+      accounts[accountId] = {
+        accountId,
+        accountName: acc?.accountName || meta.name,
+        businessLine: acc?.businessLine || meta.businessLine || '',
+        countries: acc?.countries || {},
+        summary: acc?.summary || '',
+        optimize: acc?.optimize || '',
+        savedAt: acc?.savedAt || savedAt
+      }
+    }
+  }
+
+  if (!Object.keys(accounts).length) {
+    const accountId = getDefaultAccountId()
+    const meta = getAccountMeta(accountId)
+    accounts[accountId] = {
+      accountId,
+      accountName: meta.name,
+      businessLine: meta.businessLine,
+      countries: base.countries || {},
+      summary: base.summary || '',
+      optimize: base.optimize || '',
+      savedAt
+    }
+  }
+
+  const defaultAcc = accounts[getDefaultAccountId()] || Object.values(accounts)[0]
+  return {
+    ...base,
+    accounts,
+    countries: base.countries || defaultAcc?.countries || {},
+    summary: base.summary || defaultAcc?.summary || '',
+    optimize: base.optimize || defaultAcc?.optimize || '',
+    savedAt
+  }
+}
+
+function pickAccountRecord(record, accountId) {
+  const migrated = _migrateDailyRecord(record)
+  if (!migrated) return null
+  const id = normalizeAccountId(accountId)
+  if (id === 'all') return migrated
+  const acc = migrated.accounts?.[id]
+  if (!acc) return null
+  return {
+    countries: acc.countries || {},
+    summary: acc.summary || '',
+    optimize: acc.optimize || '',
+    accountId: acc.accountId || id,
+    accountName: acc.accountName || getAccountMeta(id).name,
+    businessLine: acc.businessLine || '',
+    accounts: { [id]: acc },
+    savedAt: acc.savedAt || migrated.savedAt || null
+  }
+}
+
+function getDailyData(date, options = {}) {
   const data = read();
-  return data.dailyData[date] || null;
+  const record = data.dailyData[date];
+  if (options.accountId) return pickAccountRecord(record, options.accountId)
+  return _migrateDailyRecord(record);
 }
 
 function getAllDailyData(query = {}) {
@@ -294,16 +395,67 @@ function getAllDailyData(query = {}) {
   let entries = Object.entries(data.dailyData);
   if (query.startDate) entries = entries.filter(([d]) => d >= query.startDate);
   if (query.endDate) entries = entries.filter(([d]) => d <= query.endDate);
-  if (query.country) entries = entries.filter(([, v]) => v.country === query.country);
   entries.sort(([a], [b]) => b.localeCompare(a));
-  return Object.fromEntries(entries);
+
+  const result = {};
+  const accountId = query.accountId ? normalizeAccountId(query.accountId) : null
+  for (const [date, record] of entries) {
+    const migrated = _migrateDailyRecord(record);
+    if (!migrated) continue
+
+    let out = migrated
+    if (accountId && accountId !== 'all') {
+      out = pickAccountRecord(migrated, accountId)
+      if (!out) continue
+    }
+
+    if (query.country) {
+      const hasCountry = (r) => {
+        if (r.countries && Object.keys(r.countries).some(c => c === query.country)) return true
+        if (r.accounts) return Object.values(r.accounts).some(acc => acc.countries && Object.keys(acc.countries).some(c => c === query.country))
+        return false
+      }
+      if (!hasCountry(out)) continue
+    }
+
+    result[date] = out
+  }
+  return result;
 }
 
-function saveDailyData(date, dailyRecord) {
+function saveDailyData(date, dailyRecord, options = {}) {
   const data = read();
-  data.dailyData[date] = { ...dailyRecord, savedAt: new Date().toISOString() };
+  const accountId = normalizeAccountId(options.accountId || dailyRecord.accountId || data.currentAccountId)
+  const meta = getAccountMeta(accountId)
+  const existing = _migrateDailyRecord(data.dailyData[date]) || { accounts: {}, savedAt: null }
+  existing.accounts = existing.accounts || {}
+  existing.accounts[accountId] = {
+    accountId,
+    accountName: dailyRecord.accountName || meta.name,
+    businessLine: dailyRecord.businessLine || meta.businessLine || '',
+    countries: dailyRecord.countries || {},
+    summary: dailyRecord.summary || '',
+    optimize: dailyRecord.optimize || '',
+    savedAt: new Date().toISOString()
+  }
+
+  const defaultAcc = existing.accounts[getDefaultAccountId()] || existing.accounts[accountId]
+  data.dailyData[date] = {
+    ...existing,
+    accounts: existing.accounts,
+    countries: defaultAcc.countries || {},
+    summary: defaultAcc.summary || '',
+    optimize: defaultAcc.optimize || '',
+    savedAt: new Date().toISOString()
+  };
   write(data);
-  return data.dailyData[date];
+  return pickAccountRecord(data.dailyData[date], accountId);
+}
+
+function getAccounts() {
+  const data = read();
+  const accounts = Array.isArray(data.accounts) && data.accounts.length ? data.accounts : DEFAULT_ACCOUNTS
+  return accounts.map(a => ({ ...a, id: normalizeAccountId(a.id) })).sort((a, b) => (a.sort || 99) - (b.sort || 99))
 }
 
 function deleteDailyData(date) {
@@ -471,6 +623,7 @@ const scriptsDb = makeCrud('scripts', { title: '', content: '', contentCn: '', c
 
 module.exports = {
   getWeeks, getCurrentWeek, addWeek, updateWeek, deleteWeek, restoreWeek, permanentlyDeleteWeek, setCurrentWeek,
+  getAccounts, getDefaultAccountId, normalizeAccountId,
   getDailyData, getAllDailyData, saveDailyData, deleteDailyData,
   getVpsList, addVps, updateVps, deleteVps,
   getPrompts, getPrompt, addPrompt, updatePrompt, deletePrompt, reorderPrompts,

@@ -201,29 +201,40 @@ const weekRange = computed(() => {
 })
 // weekNum computed removed - unused
 
+// 汇总所有国家数据
+function sumCountries(d, key) {
+  if (!d?.countries) return 0
+  let total = 0
+  Object.values(d.countries).forEach(c => { total += c[key] || 0 })
+  return total
+}
+
 function todayVal(key) {
-  if (key === 'budget') return Math.round(todayData.value?.fb?.budget || 0)
-  if (key === 'newCustomer') return todayData.value?.fb?.newCustomer || 0
-  if (key === 'grouped') return todayData.value?.fb?.grouped || 0
-  return 0
+  if (!todayData.value) return 0
+  return Math.round(sumCountries(todayData.value, key))
 }
 
 const avgCost = computed(() => {
   if (!todayData.value) return 0
-  const b = todayData.value.fb?.budget || 0, c = todayData.value.fb?.newCustomer || 0
+  const b = sumCountries(todayData.value, 'budget')
+  const c = sumCountries(todayData.value, 'newCustomer')
   return c > 0 ? b / c : 0
 })
 const avgCostStr = computed(() => avgCost.value > 0 ? avgCost.value.toFixed(0) : '—')
 
 const budgetOver = computed(() => {
   if (!todayData.value || !week.value) return false
-  return (todayData.value.fb?.budget || 0) > week.value.dailyBudget
+  return sumCountries(todayData.value, 'budget') > week.value.dailyBudget
 })
 
 const todayCatCount = computed(() => {
-  if (!todayData.value?.fb) return 0
-  const f = todayData.value.fb
-  return [f.catNoReply, f.msgIgnore, f.grouped, f.lowBudget, f.competitor, f.harass, f.visitPending].filter(v => v > 0).length
+  if (!todayData.value?.countries) return 0
+  let count = 0
+  const fields = ['catNoReply', 'msgIgnore', 'grouped', 'lowBudget', 'competitor', 'harass', 'visitPending']
+  Object.values(todayData.value.countries).forEach(c => {
+    fields.forEach(f => { if (c[f] > 0) count++ })
+  })
+  return count
 })
 
 const inquiryPct = computed(() => week.value?.inquiryGoal ? Math.min(100, Math.round(weekStats.fbCustomer / week.value.inquiryGoal * 100)) : 0)
@@ -332,8 +343,10 @@ async function load() {
     const yStr = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
     const r = await api.daily.get(yStr)
     if (r.success && r.data) {
-      const fb = r.data.fb || {}
-      yesterdayData.value = { date: yStr, budget: fb.budget || 0, customer: fb.newCustomer || 0, grouped: fb.grouped || 0, data: r.data }
+      const totalBudget = sumCountries(r.data, 'budget')
+      const totalCustomer = sumCountries(r.data, 'newCustomer')
+      const totalGrouped = sumCountries(r.data, 'grouped')
+      yesterdayData.value = { date: yStr, budget: totalBudget, customer: totalCustomer, grouped: totalGrouped, data: r.data }
     }
   } catch (e) { console.error('加载昨日数据失败:', e); loadErrors.value.push('昨日数据') }
 
@@ -381,8 +394,7 @@ async function load() {
       const dates = getDateRange(start7, yStr)
       const map = {}
       Object.entries(r.data).forEach(([date, d]) => {
-        const fb = d.fb || {}
-        map[date] = { budget: fb.budget || 0, customer: fb.newCustomer || 0 }
+        map[date] = { budget: sumCountries(d, 'budget'), customer: sumCountries(d, 'newCustomer') }
       })
       trendData.value = dates.map(d => ({
         date: d,
