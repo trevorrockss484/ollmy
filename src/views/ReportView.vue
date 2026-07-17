@@ -12,9 +12,16 @@
         <el-tag v-else type="info" effect="plain" size="small" round>新日期</el-tag>
       </div>
       <div class="top-right">
-        <span v-if="weekCountries.length" class="week-label">本周国家</span>
-        <el-tag v-for="c in weekCountries" :key="c" size="small" effect="plain" round class="country-chip">{{ c }}</el-tag>
-        <span v-if="!weekCountries.length" style="color:#9ca3af;font-size:12px;">请先在周计划设置国家</span>
+        <span v-if="activeCountries.length" class="week-label">当前国家</span>
+        <el-tag v-for="c in activeCountries" :key="c" size="small" effect="plain" round class="country-chip" closable @close="removeCountry(c)">{{ c }}</el-tag>
+        <el-dropdown v-if="addableCountries.length" trigger="click" @command="addCountry">
+          <el-tag size="small" effect="light" class="add-country-tag" style="cursor:pointer;border-style:dashed;color:#6366f1">+ 添加国家</el-tag>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item v-for="c in addableCountries" :key="c" :command="c">{{ c }}</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </div>
 
@@ -27,7 +34,7 @@
       <span v-if="saveMsg" class="save-msg" :class="{ ok: saveOk, err: !saveOk }">{{ saveMsg }}</span>
     </div>
 
-    <div class="main-layout" v-if="weekCountries.length">
+    <div class="main-layout" v-if="activeCountries.length">
       <!-- ====== 左侧：国家表单 + 总结优化 ====== -->
       <div class="left-panel">
         <!-- 一、海外整体汇总 -->
@@ -71,10 +78,13 @@
           <span class="section-num">二</span> 每个国家明细
         </div>
 
-        <div v-for="(c, i) in weekCountries" :key="c" class="country-card">
+        <div v-for="(c, i) in activeCountries" :key="c" class="country-card">
           <div class="cc-header">
-            <span class="cc-num">{{ i + 1 }}</span>
-            <span class="cc-name">{{ c }}</span>
+            <div class="cc-header-left">
+              <span class="cc-num">{{ i + 1 }}</span>
+              <span class="cc-name">{{ c }}</span>
+            </div>
+            <el-button size="small" text type="danger" class="cc-remove-btn" @click="removeCountry(c)" :disabled="activeCountries.length <= 1">移除</el-button>
           </div>
           <div class="cc-body">
             <div class="cc-row">
@@ -153,8 +163,8 @@
     <!-- 无国家 -->
     <div v-else class="empty-state">
       <el-icon :size="40"><Warning /></el-icon>
-      <p>暂无本周国家</p>
-      <span>请先在「周计划」页面设置本周覆盖国家</span>
+      <p>暂无国家</p>
+      <span>请在周计划设置国家，或点击上方「+ 添加国家」手动添加</span>
     </div>
 
     <!-- ====== 粘贴识别弹窗 ====== -->
@@ -206,7 +216,33 @@ import { useWeekStore } from '../stores/week'
 import { api, formatDateCN, todayStr } from '../api'
 
 const weekStore = useWeekStore()
-const weekCountries = computed(() => weekStore.currentWeek?.countries || [])
+
+// 全量可选国家列表（与 PlanView 国家树一致）
+const allCountries = [
+  '印度尼西亚','越南','菲律宾','泰国','马来西亚','新加坡','缅甸','柬埔寨',
+  '尼日利亚','埃塞俄比亚','南非','肯尼亚','加纳','埃及',
+  '巴西','墨西哥','哥伦比亚','阿根廷',
+  '阿联酋','沙特阿拉伯','土耳其','卡塔尔',
+  '印度','巴基斯坦','孟加拉国',
+  '日本','韩国',
+  '美国','英国','德国','法国','澳大利亚','俄罗斯'
+]
+
+const activeCountries = ref([])
+const addableCountries = computed(() => allCountries.filter(c => !activeCountries.value.includes(c)))
+
+function addCountry(c) {
+  if (!activeCountries.value.includes(c)) {
+    activeCountries.value = [...activeCountries.value, c]
+    if (!(c in countryData)) countryData[c] = defaultCountryFb()
+  }
+}
+
+function removeCountry(c) {
+  if (activeCountries.value.length <= 1) { ElMessage.warning('至少保留一个国家'); return }
+  activeCountries.value = activeCountries.value.filter(x => x !== c)
+  delete countryData[c]
+}
 
 const reportDate = ref(todayStr())
 const saveMsg = ref('')
@@ -226,11 +262,15 @@ const reportSummary = ref('')
 const reportOptimize = ref('')
 
 function initCountryData(countries) {
-  for (const c of countries) {
+  // 基于周计划国家初始化 activeCountries（保留用户手动添加的）
+  const base = new Set([...countries])
+  for (const c of activeCountries.value) base.add(c)
+  activeCountries.value = [...base]
+  for (const c of activeCountries.value) {
     if (!(c in countryData)) countryData[c] = defaultCountryFb()
   }
   for (const k of Object.keys(countryData)) {
-    if (!countries.includes(k)) delete countryData[k]
+    if (!activeCountries.value.includes(k)) delete countryData[k]
   }
 }
 
@@ -264,7 +304,7 @@ const overallTotal = computed(() => {
   let budget = 0, newCustomer = 0, grouped = 0
   const gdParts = []
   const groupCountParts = []
-  for (const c of weekCountries.value) {
+  for (const c of activeCountries.value) {
     const d = countryData[c]; if (!d) continue
     budget += n(d.budget); newCustomer += n(d.newCustomer); grouped += n(d.grouped)
     if (d.groupDetail) gdParts.push(d.groupDetail)
@@ -299,7 +339,7 @@ const myTemplates = ref(loadMyTemplates())
 function loadMyTemplates() { try { const raw = localStorage.getItem(MY_TEMPLATE_KEY); return raw ? JSON.parse(raw) : { groupDetail:[], summary:[], optimize:[] } } catch(e) { return { groupDetail:[], summary:[], optimize:[] } } }
 function openTemplate(field) { templateField.value = field; templateTab.value = 'preset'; newTemplateText.value = ''; templateVisible.value = true }
 function pickTemplate(text) {
-  if (templateField.value === 'groupDetail') { for (const c of weekCountries.value) { if (c in countryData && !countryData[c].groupDetail) { countryData[c].groupDetail = text; break } } }
+  if (templateField.value === 'groupDetail') { for (const c of activeCountries.value) { if (c in countryData && !countryData[c].groupDetail) { countryData[c].groupDetail = text; break } } }
   else if (templateField.value === 'summary') reportSummary.value = text
   else if (templateField.value === 'optimize') reportOptimize.value = text
   templateVisible.value = false; ElMessage.success('模版已填入')
@@ -322,8 +362,15 @@ async function loadExistingData(d) {
     const res = await api.daily.get(d, { accountId: selectedAccountId.value }); if (seq !== loadSeq) return
     existingData.value = !!(res.success && res.data)
     if (res.success && res.data && res.data.countries) {
-      for (const [c, fb] of Object.entries(res.data.countries)) {
-        if (c in countryData) Object.keys(countryData[c]).forEach(k => { if (k in fb) countryData[c][k] = fb[k] ?? null })
+      // 把已存数据中的国家合并到 activeCountries
+      const savedCountries = Object.keys(res.data.countries)
+      for (const c of savedCountries) {
+        if (!activeCountries.value.includes(c)) {
+          activeCountries.value = [...activeCountries.value, c]
+        }
+        if (!(c in countryData)) countryData[c] = defaultCountryFb()
+        const fb = res.data.countries[c]
+        Object.keys(countryData[c]).forEach(k => { if (k in fb) countryData[c][k] = fb[k] ?? null })
       }
       reportSummary.value = res.data.summary || ''; reportOptimize.value = res.data.optimize || ''
     }
@@ -365,7 +412,7 @@ function buildReportText() {
 
 二、每个国家明细
 `
-  weekCountries.value.forEach((c) => {
+  activeCountries.value.forEach((c) => {
     const d = countryData[c]; if (!d) return
     const budget = n(d.budget), customer = n(d.newCustomer), grouped = n(d.grouped)
     const avg = (budget && customer) ? (budget / customer).toFixed(1) : '0'
@@ -411,7 +458,7 @@ async function copyReport() {
 async function saveData() {
   const date = reportDate.value; if (!date) { ElMessage.warning('请选择日期'); return }
   const countries = {}
-  for (const c of weekCountries.value) {
+  for (const c of activeCountries.value) {
     const d = countryData[c]; if (!d) continue
     countries[c] = { budget: n(d.budget), newCustomer: n(d.newCustomer), grouped: n(d.grouped), groupDetail: d.groupDetail || '', catNoReply: n(d.catNoReply), msgIgnore: n(d.msgIgnore), lowBudget: n(d.lowBudget), competitor: n(d.competitor), harass: n(d.harass), visitPending: n(d.visitPending) }
   }
@@ -425,7 +472,7 @@ async function saveData() {
 
 async function clearForm() {
   try { await ElMessageBox.confirm('确定清空表单？未保存的数据将丢失。', '确认清空', { confirmButtonText: '确认清空', cancelButtonText: '取消', type: 'warning' }) } catch { return }
-  for (const c of weekCountries.value) { if (c in countryData) Object.keys(countryData[c]).forEach(k => { countryData[c][k] = (typeof countryData[c][k] === 'number' || countryData[c][k] === null) ? null : '' }) }
+  for (const c of activeCountries.value) { if (c in countryData) Object.keys(countryData[c]).forEach(k => { countryData[c][k] = (typeof countryData[c][k] === 'number' || countryData[c][k] === null) ? null : '' }) }
   reportSummary.value = ''; reportOptimize.value = ''; saveMsg.value = ''
   ElMessage.success('表单已清空')
 }
@@ -441,7 +488,7 @@ function parsePasted() {
   let dm = firstLine.match(/(\d{4})\.(\d{1,2})\.(\d{1,2})/)
   if (!dm) dm = firstLine.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/)
   if (dm) { reportDate.value = dm[1] + '-' + dm[2].padStart(2,'0') + '-' + dm[3].padStart(2,'0'); parseDetail.value.push('日期: ' + formatDateCN(reportDate.value)) }
-  for (const c of weekCountries.value) {
+  for (const c of activeCountries.value) {
     if (!(c in countryData)) continue
     const escaped = c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const blockNew = new RegExp('▌\\s*' + escaped + '[\\s\\S]*?(?=\\n-{3,}|\\n▌|\\n7[\\.、]|$)', 'i')
@@ -525,9 +572,14 @@ onMounted(async () => {
 /* ====== 国家卡片 ====== */
 .country-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; transition: border-color .2s; }
 .country-card:hover { border-color: #c7d2fe; }
-.cc-header { display: flex; align-items: center; gap: 10px; padding: 12px 18px; background: #f8fafc; border-bottom: 1px solid #f3f4f6; }
+.cc-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: #f8fafc; border-bottom: 1px solid #f3f4f6; }
+.cc-header-left { display: flex; align-items: center; gap: 10px; }
 .cc-num { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background: #6366f1; color: #fff; font-size: 12px; font-weight: 700; }
 .cc-name { font-size: 15px; font-weight: 700; color: #1f2937; }
+.cc-remove-btn { flex-shrink:0; font-size:12px; padding:2px 8px; opacity:.6; }
+.cc-remove-btn:hover { opacity:1; }
+.add-country-tag { transition: all .2s; }
+.add-country-tag:hover { background:#eef2ff; border-color:#818cf8; }
 .cc-body { padding: 16px 18px; }
 .cc-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
 .cc-field { flex: 1; min-width: 100px; }
