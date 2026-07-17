@@ -269,6 +269,12 @@ const rangeAgg = computed(() => {
     agg[c].grouped += r.fbGrouped || 0
     if (r._fb) {
       if (r._fb.groupDetail) agg[c].details.push(r._fb.groupDetail)
+      // 新格式 groupEntries → 转为【】字符串
+      if (r._fb.groupEntries && Array.isArray(r._fb.groupEntries)) {
+        for (const entry of r._fb.groupEntries) {
+          if (entry.text) agg[c].details.push('【' + entry.text + (entry.status ? '，' + entry.status : '') + '】')
+        }
+      }
       if (r._fb.budgetNote) agg[c].budgetNote = r._fb.budgetNote
       if (r._fb.customerNote) agg[c].customerNote = r._fb.customerNote
       if (r._fb.avgCostOverride) agg[c].avgOverride = r._fb.avgCostOverride
@@ -483,11 +489,16 @@ function exportCSV() {
   let csv = '﻿' + headers.join(',') + '\n'
   list.value.forEach(r => {
     const fb = r._fb || {}
+    // 兼容旧 groupDetail 和新 groupEntries
+    let detailStr = fb.groupDetail || ''
+    if (!detailStr && fb.groupEntries && Array.isArray(fb.groupEntries)) {
+      detailStr = fb.groupEntries.filter(e => e.text).map(e => '【' + e.text + (e.status ? '，' + e.status : '') + '】').join('')
+    }
     csv += [r.rawDate, r.accountName || '', r.country, r.fbBudget, r.fbCustomer, r.fbGrouped,
       typeof r.avgCost === 'string' ? 0 : r.avgCost, r.conversion,
       fb.catNoReply || 0, fb.msgIgnore || 0, fb.lowBudget || 0,
       fb.competitor || 0, fb.harass || 0, fb.visitPending || 0,
-      '"' + (fb.groupDetail || '').replace(/"/g, '""') + '"',
+      '"' + detailStr.replace(/"/g, '""') + '"',
       '"' + (fb.summary || '').replace(/"/g, '""') + '"',
       '"' + (fb.optimize || '').replace(/"/g, '""') + '"'
     ].join(',') + '\n'
