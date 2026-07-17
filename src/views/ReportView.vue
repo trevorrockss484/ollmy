@@ -269,7 +269,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useWeekStore } from '../stores/week'
 import { api, formatDateCN, todayStr } from '../api'
@@ -309,6 +309,17 @@ const countrySearch = ref('')
 const popVisible = ref(false)
 const countryTreeRef = ref(null)
 const pendingCountryChecks = ref([])
+
+// 弹出时回显已选国家
+watch(popVisible, (v) => {
+  if (v) {
+    nextTick(() => {
+      if (countryTreeRef.value) {
+        countryTreeRef.value.setCheckedKeys(activeCountries.value)
+      }
+    })
+  }
+})
 
 const countryTreeData = [
   { key:'se-asia', label:'东南亚', children:['印度尼西亚','越南','菲律宾','泰国','马来西亚','新加坡','缅甸','柬埔寨'].map(c=>({key:c,label:c})) },
