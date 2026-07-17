@@ -288,23 +288,7 @@ const allCountries = [
   '哈萨克斯坦','乌兹别克斯坦','吉尔吉斯斯坦'
 ]
 
-const STORED_COUNTRIES_KEY = 'pan_report_countries'
-
-function loadStoredCountries() {
-  try {
-    const raw = localStorage.getItem(STORED_COUNTRIES_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch {}
-  return null
-}
-
-function saveStoredCountries() {
-  try {
-    localStorage.setItem(STORED_COUNTRIES_KEY, JSON.stringify(activeCountries.value))
-  } catch {}
-}
-
-const activeCountries = ref(loadStoredCountries() || [])
+const activeCountries = ref([])
 const addableCountries = computed(() => allCountries.filter(c => !activeCountries.value.includes(c)))
 const countrySearch = ref('')
 const popVisible = ref(false)
@@ -396,7 +380,6 @@ function confirmAddCountries() {
       if (!(c in countryData)) countryData[c] = defaultCountryFb()
     }
   }
-  saveStoredCountries()
   pendingCountryChecks.value = []
   popVisible.value = false
 }
@@ -435,7 +418,6 @@ const countryColors = [
 function addCountry(c) {
   if (!activeCountries.value.includes(c)) {
     activeCountries.value = [...activeCountries.value, c]
-    saveStoredCountries()
     if (!(c in countryData)) countryData[c] = defaultCountryFb()
   }
 }
@@ -443,7 +425,6 @@ function addCountry(c) {
 function removeCountry(c) {
   if (activeCountries.value.length <= 1) { ElMessage.warning('至少保留一个国家'); return }
   activeCountries.value = activeCountries.value.filter(x => x !== c)
-  saveStoredCountries()
   delete countryData[c]
 }
 
@@ -488,25 +469,8 @@ const reportSummary = ref('')
 const reportOptimize = ref('')
 
 function initCountryData(countries) {
-  // 本地有保存 → 优先用保存的；否则用周计划国家初始化
-  if (!activeCountries.value.length) {
-    const stored = loadStoredCountries()
-    if (stored && stored.length) {
-      activeCountries.value = stored
-    } else {
-      activeCountries.value = [...countries]
-    }
-    if (!activeCountries.value.length && countries.length) {
-      activeCountries.value = [...countries]
-    }
-  }
-  // 确保周计划国家也在列表中
-  for (const c of countries) {
-    if (!activeCountries.value.includes(c)) {
-      activeCountries.value = [...activeCountries.value, c]
-    }
-  }
-  saveStoredCountries()
+  // 始终以周计划国家为默认值
+  activeCountries.value = [...countries]
   for (const c of activeCountries.value) {
     if (!(c in countryData)) countryData[c] = defaultCountryFb()
   }
