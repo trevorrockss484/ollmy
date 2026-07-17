@@ -70,7 +70,12 @@
         <!-- 3. 总拉群及客户详情（全局汇总） -->
         <div class="gd-global">
           <div class="gd-global-label">3. 总拉群及客户详情</div>
-          <div class="gd-global-val">{{ overallTotal.groupCountSummary || '—' }}</div>
+          <div class="gd-global-val">
+            <div v-if="overallTotal.allEntries.length">
+              <span v-for="(e, idx) in overallTotal.allEntries" :key="idx" class="gd-entry-pill">【{{ e }}】</span>
+            </div>
+            <span v-else>—</span>
+          </div>
         </div>
 
         <!-- 二、每个国家明细 -->
@@ -113,11 +118,23 @@
               </div>
             </div>
             <div class="cc-gd">
-              <label>
-                总拉群及客户详情
-                <el-button size="small" link type="primary" @click="openTemplate('groupDetail')"><el-icon :size="12"><DocumentCopy /></el-icon> 模版</el-button>
-              </label>
-              <el-input v-model="countryData[c].groupDetail" placeholder="【印度x3，平面图】【沙特x2，单品】" class="cc-gd-input" />
+              <label>总拉群及客户详情</label>
+              <div class="gd-entries">
+                <div v-for="(entry, ei) in countryData[c].groupEntries" :key="entry.id" class="gd-entry-row">
+                  <el-input v-model="entry.text" placeholder="如：印度x2，平面图" size="small" class="gd-entry-text" />
+                  <el-select v-model="entry.status" placeholder="状态" size="small" class="gd-entry-status" clearable>
+                    <el-option label="到现场" value="到现场" />
+                    <el-option label="未到现场" value="未到现场" />
+                    <el-option label="待确认" value="待确认" />
+                  </el-select>
+                  <el-button size="small" text type="danger" @click="removeGroupEntry(c, entry.id)">
+                    <el-icon :size="14"><Delete /></el-icon>
+                  </el-button>
+                </div>
+                <el-button size="small" text type="primary" class="gd-add-btn" @click="addGroupEntry(c)">
+                  <el-icon :size="13"><Plus /></el-icon> 添加客户详情
+                </el-button>
+              </div>
             </div>
           </div>
         </div>
@@ -256,7 +273,30 @@ const accounts = ref([
 const selectedAccountId = ref('lisa-office')
 const selectedAccount = computed(() => accounts.value.find(a => a.id === selectedAccountId.value) || accounts.value[0])
 
-const defaultCountryFb = () => ({ budget:null, newCustomer:null, grouped:null, groupDetail:'', catNoReply:null, msgIgnore:null, lowBudget:null, competitor:null, harass:null, visitPending:null })
+let entryIdSeq = 0
+const defaultCountryFb = () => ({ budget:null, newCustomer:null, grouped:null, groupEntries:[], catNoReply:null, msgIgnore:null, lowBudget:null, competitor:null, harass:null, visitPending:null })
+
+function addGroupEntry(c) {
+  if (!countryData[c]) countryData[c] = defaultCountryFb()
+  countryData[c].groupEntries.push({ id: ++entryIdSeq, text: '', status: '' })
+}
+
+function removeGroupEntry(c, id) {
+  countryData[c].groupEntries = countryData[c].groupEntries.filter(e => e.id !== id)
+}
+
+// 将旧 groupDetail 字符串迁移为 groupEntries 数组
+function migrateGroupDetail(d) {
+  if (d.groupDetail && !d.groupEntries) {
+    const parts = splitDetails(d.groupDetail)
+    d.groupEntries = parts.map(p => {
+      const inner = p.replace(/^【|】$/g, '')
+      return { id: ++entryIdSeq, text: inner, status: '' }
+    })
+    delete d.groupDetail
+  }
+  if (!d.groupEntries) d.groupEntries = []
+}
 const countryData = reactive({})
 const reportSummary = ref('')
 const reportOptimize = ref('')
@@ -302,27 +342,27 @@ function countryEffCost(c) { const d = countryData[c]; if (!d) return 0; const b
 
 const overallTotal = computed(() => {
   let budget = 0, newCustomer = 0, grouped = 0
-  const gdParts = []
   const groupCountParts = []
+  const allEntries = []
   for (const c of activeCountries.value) {
     const d = countryData[c]; if (!d) continue
     budget += n(d.budget); newCustomer += n(d.newCustomer); grouped += n(d.grouped)
-    if (d.groupDetail) gdParts.push(d.groupDetail)
     if (n(d.grouped) > 0) groupCountParts.push(c + '+' + n(d.grouped))
+    // 收集所有客户详情条目
+    const entries = d.groupEntries || []
+    for (const e of entries) {
+      if (e.text) allEntries.push(e.status ? `${e.text}，${e.status}` : e.text)
+    }
   }
-  return { budget, newCustomer, grouped, avgCost: (budget && newCustomer) ? budget / newCustomer : 0, effCost: (budget && grouped) ? budget / grouped : 0, gdSummary: gdParts.join('；'), groupCountSummary: groupCountParts.join('  ') }
+  return { budget, newCustomer, grouped, avgCost: (budget && newCustomer) ? budget / newCustomer : 0, effCost: (budget && grouped) ? budget / grouped : 0, allEntries, groupCountSummary: groupCountParts.join('  ') }
 })
 
 function fmtNum(v) { if (v == null) return '0.00'; const r = Math.round(v * 100) / 100; return r.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 
 // ====== 模版 ======
 const templateVisible = ref(false); const templateField = ref('summary'); const templateTab = ref('preset'); const newTemplateText = ref('')
-const templateLabels = { groupDetail:'拉群详情模版', summary:'总结模版', optimize:'优化方向模版' }
+const templateLabels = { summary:'总结模版', optimize:'优化方向模版' }
 const presetTemplates = {
-  groupDetail: [
-    '【尼日利亚x3，一个有平面图，其他单品】，【印尼x1，单品】，【越南x1，中间商】',
-    '【印度x3，平面图x2，单品x1】，【尼日利亚x2，中间商】，【沙特x1，公司采购有平面图】',
-  ],
   summary: [
     '平均客户单价12元一个，今天测试新素材，需要时间测试。高预算跑东南亚，小预算跑非洲',
     '今天整体量跑不出去，更换素材去测试。很多素材跑不出去，调整高消耗无效广告组',
@@ -336,11 +376,10 @@ const presetTemplates = {
 }
 const MY_TEMPLATE_KEY = 'pan_templates'
 const myTemplates = ref(loadMyTemplates())
-function loadMyTemplates() { try { const raw = localStorage.getItem(MY_TEMPLATE_KEY); return raw ? JSON.parse(raw) : { groupDetail:[], summary:[], optimize:[] } } catch(e) { return { groupDetail:[], summary:[], optimize:[] } } }
+function loadMyTemplates() { try { const raw = localStorage.getItem(MY_TEMPLATE_KEY); return raw ? JSON.parse(raw) : { summary:[], optimize:[] } } catch(e) { return { summary:[], optimize:[] } } }
 function openTemplate(field) { templateField.value = field; templateTab.value = 'preset'; newTemplateText.value = ''; templateVisible.value = true }
 function pickTemplate(text) {
-  if (templateField.value === 'groupDetail') { for (const c of activeCountries.value) { if (c in countryData && !countryData[c].groupDetail) { countryData[c].groupDetail = text; break } } }
-  else if (templateField.value === 'summary') reportSummary.value = text
+  if (templateField.value === 'summary') reportSummary.value = text
   else if (templateField.value === 'optimize') reportOptimize.value = text
   templateVisible.value = false; ElMessage.success('模版已填入')
 }
@@ -362,7 +401,6 @@ async function loadExistingData(d) {
     const res = await api.daily.get(d, { accountId: selectedAccountId.value }); if (seq !== loadSeq) return
     existingData.value = !!(res.success && res.data)
     if (res.success && res.data && res.data.countries) {
-      // 把已存数据中的国家合并到 activeCountries
       const savedCountries = Object.keys(res.data.countries)
       for (const c of savedCountries) {
         if (!activeCountries.value.includes(c)) {
@@ -370,7 +408,16 @@ async function loadExistingData(d) {
         }
         if (!(c in countryData)) countryData[c] = defaultCountryFb()
         const fb = res.data.countries[c]
-        Object.keys(countryData[c]).forEach(k => { if (k in fb) countryData[c][k] = fb[k] ?? null })
+        // 迁移旧 groupDetail → groupEntries
+        migrateGroupDetail(fb)
+        if (fb.groupEntries) {
+          countryData[c].groupEntries = fb.groupEntries.map(e => ({ ...e }))
+        }
+        const skipKeys = ['groupDetail', 'groupEntries']
+        Object.keys(countryData[c]).forEach(k => {
+          if (skipKeys.includes(k)) return
+          if (k in fb) countryData[c][k] = fb[k] ?? null
+        })
       }
       reportSummary.value = res.data.summary || ''; reportOptimize.value = res.data.optimize || ''
     }
@@ -405,7 +452,8 @@ function buildReportText() {
 1. 总费用：${fmtNum(ot.budget)}
 2. 总客资：${ot.newCustomer}
 3. 总拉群及客户详情：${ot.grouped}`
-  if (ot.groupCountSummary) text += `\n▷\n（${ot.groupCountSummary}）\n▷`
+  if (ot.allEntries.length) text += `\n▷\n${ot.allEntries.map(e => '【' + e + '】').join('')}\n▷`
+  else if (ot.groupCountSummary) text += `\n▷\n（${ot.groupCountSummary}）\n▷`
   text += `
 4. 询盘客价：${ot.avgCost > 0 ? ot.avgCost.toFixed(1) : '0'} 元
 5. 有效客价：${ot.effCost > 0 ? ot.effCost.toFixed(1) : '0'} 元
@@ -417,7 +465,7 @@ function buildReportText() {
     const budget = n(d.budget), customer = n(d.newCustomer), grouped = n(d.grouped)
     const avg = (budget && customer) ? (budget / customer).toFixed(1) : '0'
     const eff = (budget && grouped) ? (budget / grouped).toFixed(1) : '0'
-    const details = splitDetails(d.groupDetail)
+    const entries = (d.groupEntries || []).filter(e => e.text)
     text += `
 ----------
 
@@ -426,7 +474,7 @@ function buildReportText() {
 1. 费用：${fmtNum(budget)} 元
 2. 客资：${customer} 个
 3. 总拉群及客户详情：${grouped} 个`
-    if (details.length) text += `\n▷\n${details.join('\n')}\n▷`
+    if (entries.length) text += `\n▷\n${entries.map(e => '【' + e.text + (e.status ? '，' + e.status : '') + '】').join('')}\n▷`
     text += `
 4. 询盘客价：${avg} / 元
 5. 有效客价：${eff} / 元
@@ -460,7 +508,7 @@ async function saveData() {
   const countries = {}
   for (const c of activeCountries.value) {
     const d = countryData[c]; if (!d) continue
-    countries[c] = { budget: n(d.budget), newCustomer: n(d.newCustomer), grouped: n(d.grouped), groupDetail: d.groupDetail || '', catNoReply: n(d.catNoReply), msgIgnore: n(d.msgIgnore), lowBudget: n(d.lowBudget), competitor: n(d.competitor), harass: n(d.harass), visitPending: n(d.visitPending) }
+    countries[c] = { budget: n(d.budget), newCustomer: n(d.newCustomer), grouped: n(d.grouped), groupEntries: (d.groupEntries || []).map(e => ({ text: e.text || '', status: e.status || '' })), catNoReply: n(d.catNoReply), msgIgnore: n(d.msgIgnore), lowBudget: n(d.lowBudget), competitor: n(d.competitor), harass: n(d.harass), visitPending: n(d.visitPending) }
   }
   saveMsg.value = '保存中...'; saveOk.value = true
   try {
@@ -472,7 +520,7 @@ async function saveData() {
 
 async function clearForm() {
   try { await ElMessageBox.confirm('确定清空表单？未保存的数据将丢失。', '确认清空', { confirmButtonText: '确认清空', cancelButtonText: '取消', type: 'warning' }) } catch { return }
-  for (const c of activeCountries.value) { if (c in countryData) Object.keys(countryData[c]).forEach(k => { countryData[c][k] = (typeof countryData[c][k] === 'number' || countryData[c][k] === null) ? null : '' }) }
+  for (const c of activeCountries.value) { if (c in countryData) { Object.keys(countryData[c]).forEach(k => { if (k === 'groupEntries') countryData[c][k] = []; else countryData[c][k] = (typeof countryData[c][k] === 'number' || countryData[c][k] === null) ? null : '' }) } }
   reportSummary.value = ''; reportOptimize.value = ''; saveMsg.value = ''
   ElMessage.success('表单已清空')
 }
@@ -500,7 +548,17 @@ function parsePasted() {
       const custM = b.match(/客资\s*[:]\s*(\d+\.?\d*)\s*个?/i); if (custM) { countryData[c].newCustomer = parseFloat(custM[1])||0; parseDetail.value.push(c+' 客资: '+custM[1]) }
       const grpM = b.match(/总拉群及客户详情\s*[:]\s*(\d+\.?\d*)/i)
       if (grpM) { countryData[c].grouped = parseFloat(grpM[1])||0; parseDetail.value.push(c+' 拉群: '+grpM[1]) }
-      const detailM = b.match(/【[^】]*】/g); if (detailM) countryData[c].groupDetail = detailM.join('')
+      const detailM = b.match(/【[^】]*】/g)
+      if (detailM) {
+        countryData[c].groupEntries = detailM.map(p => {
+          const inner = p.replace(/^【|】$/g, '').replace(/，到现场$/, '')
+          let status = ''
+          if (p.endsWith('，到现场】')) status = '到现场'
+          else if (p.endsWith('，未到现场】')) status = '未到现场'
+          else if (p.endsWith('，待确认】')) status = '待确认'
+          return { id: ++entryIdSeq, text: inner, status }
+        })
+      }
     }
   }
   const summM = text.match(/7[\\.、]?\\s*总结\\s*[:]([\\s\\S]*?)(?=\\n8[\\.、]|$)/i); if (summM) { reportSummary.value = summM[1].trim(); parseDetail.value.push('总结已识别') }
@@ -593,6 +651,17 @@ onMounted(async () => {
 .cc-gd label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
 .cc-gd-input :deep(.el-input__wrapper) { border-radius: 8px; }
 .cc-gd-input :deep(.el-input__inner) { font-size: 13px; }
+
+/* 客户详情条目 */
+.gd-entries { display:flex; flex-direction:column; gap:6px; }
+.gd-entry-row { display:flex; align-items:center; gap:8px; }
+.gd-entry-text { flex:1; }
+.gd-entry-status { width:110px; flex-shrink:0; }
+.gd-add-btn { align-self:flex-start; padding:4px 0; }
+.gd-entry-pill {
+  display:inline-block; font-size:12px; color:#374151; margin-right:2px;
+  white-space:nowrap;
+}
 
 /* ====== 总结优化 ====== */
 .so-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 18px; }
