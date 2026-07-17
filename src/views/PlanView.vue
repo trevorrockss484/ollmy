@@ -161,8 +161,7 @@
             @click="goToReport(d)"
           >
             <div class="dv-cell dv-cell--date">
-              <span class="dv-date-badge" :class="{ 'dv-date-badge--today': d.isToday }">{{ formatDayOnly(d.date) }}</span>
-              <span class="dv-day-name">{{ d.dayName }}</span>
+              <span class="dv-date-text" :class="{ 'dv-date-text--today': d.isToday }">{{ formatDayOnly(d.date) }} {{ d.dayName }}</span>
             </div>
             <div class="dv-cell">
               <span v-if="d.completed" class="dv-num dv-num--usd">${{ fmtK(d.fbUsdBudget) }}</span>
@@ -898,15 +897,11 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 .dv-row.dv--done { border-left: 3px solid #10b981; }
 
 /* 日期 */
-.dv-cell--date { display: flex; align-items: center; gap: 10px; }
-.dv-date-badge {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px; border-radius: 8px;
-  background: #f3f4f6; color: #374151;
-  font-size: 15px; font-weight: 800;
+.dv-cell--date { display: flex; align-items: center; }
+.dv-date-text {
+  font-size: 14px; font-weight: 700; color: #374151; white-space: nowrap;
 }
-.dv-date-badge--today { background: #6366f1; color: #fff; }
-.dv-day-name { font-size: 13px; font-weight: 700; color: #6b7280; }
+.dv-date-text--today { color: #6366f1; }
 
 /* 数据 */
 .dv-cell { display: flex; align-items: center; justify-content: flex-end; }
