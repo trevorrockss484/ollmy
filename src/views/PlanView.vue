@@ -142,34 +142,60 @@
             <el-button size="small" round @click="copyWeekSummary">复制本周汇总</el-button>
           </div>
         </div>
-        <div class="daily-table">
-          <div class="dt-head">
-            <div class="dt-th dt-th--date">日期</div>
-            <div class="dt-th">美金$</div>
-            <div class="dt-th">消耗¥</div>
-            <div class="dt-th">新客户</div>
-            <div class="dt-th">拉群</div>
-            <div class="dt-th dt-th--st">状态</div>
+        <div class="daily-table-v2">
+          <div class="dv-head">
+            <span class="dv-hcell dv-hcell--date">日期</span>
+            <span class="dv-hcell">美金 $</span>
+            <span class="dv-hcell">消耗 ¥</span>
+            <span class="dv-hcell">新客户</span>
+            <span class="dv-hcell">拉群</span>
+            <span class="dv-hcell dv-hcell--st">状态</span>
           </div>
           <div
-            v-for="(d, i) in dayCards"
+            v-for="d in dayCards"
             :key="d.date"
-            class="dt-row"
-            :class="{ completed: d.completed, today: d.isToday }"
+            class="dv-row"
+            :class="{ 'dv--done': d.completed, 'dv--today': d.isToday }"
             @click="goToReport(d)"
           >
-            <div class="dt-td dt-td--date">
-              <span class="dt-day">{{ d.dayName }}</span>
-              <span class="dt-date">{{ formatDayOnly(d.date) }}</span>
-              <el-tag v-if="d.isToday" type="primary" size="small" effect="dark" class="dt-today">今天</el-tag>
+            <div class="dv-cell dv-cell--date">
+              <div class="dv-date-box" :class="{ 'dv-date-box--today': d.isToday }">
+                <span class="dv-day-name">{{ d.dayName }}</span>
+                <span class="dv-day-num">{{ formatDayOnly(d.date) }}</span>
+              </div>
+              <el-tag v-if="d.isToday" type="primary" size="small" effect="dark" round>今天</el-tag>
             </div>
-            <div class="dt-td usd">{{ d.completed ? '$' + fmtK(d.fbUsdBudget) : '—' }}</div>
-            <div class="dt-td price">{{ d.completed ? '¥' + Math.round(d.fbBudget) : '—' }}</div>
-            <div class="dt-td">{{ d.completed ? (d.fbCustomer || '0') : '—' }}</div>
-            <div class="dt-td highlight">{{ d.completed ? (d.fbGrouped || '0') : '—' }}</div>
-            <div class="dt-td dt-td--st">
-              <span class="st-dot" :class="d.completed ? 'done' : 'empty'"></span>
-              {{ d.completed ? '已填报' : '待填写' }}
+            <div class="dv-cell dv-cell--usd">
+              <template v-if="d.completed">
+                <span class="dv-val">${{ fmtK(d.fbUsdBudget) }}</span>
+                <div class="dv-mini-bar"><div class="dv-mini-fill" :style="{ width: miniBarPct(d.fbUsdBudget, maxUsd) }"></div></div>
+              </template>
+              <span v-else class="dv-na">—</span>
+            </div>
+            <div class="dv-cell dv-cell--budget">
+              <template v-if="d.completed">
+                <span class="dv-val">¥{{ Math.round(d.fbBudget) }}</span>
+                <div class="dv-mini-bar"><div class="dv-mini-fill" :style="{ width: miniBarPct(d.fbBudget, maxBudget) }"></div></div>
+              </template>
+              <span v-else class="dv-na">—</span>
+            </div>
+            <div class="dv-cell">
+              <template v-if="d.completed">
+                <span class="dv-stat">{{ d.fbCustomer || '0' }}</span>
+                <span class="dv-unit">个</span>
+              </template>
+              <span v-else class="dv-na">—</span>
+            </div>
+            <div class="dv-cell dv-cell--grouped">
+              <template v-if="d.completed">
+                <span class="dv-stat dv-stat--green">{{ d.fbGrouped || '0' }}</span>
+                <span class="dv-unit">个</span>
+              </template>
+              <span v-else class="dv-na">—</span>
+            </div>
+            <div class="dv-cell dv-cell--st">
+              <span v-if="d.completed" class="dv-badge dv-badge--done">✓ 已填报</span>
+              <span v-else class="dv-badge dv-badge--todo">待填写</span>
             </div>
           </div>
         </div>
@@ -467,6 +493,14 @@ const dayCards = computed(() =>
     }
   })
 )
+
+// 迷你进度条
+const maxBudget = computed(() => Math.max(1, ...dayCards.value.map(d => d.fbBudget || 0)))
+const maxUsd = computed(() => Math.max(1, ...dayCards.value.map(d => d.fbUsdBudget || 0)))
+function miniBarPct(val, max) {
+  if (!val || !max) return 0
+  return Math.min(100, Math.round(val / max * 100))
+}
 
 const animatedPct = ref(0)
 
@@ -841,46 +875,91 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
   padding:10px 0; margin-bottom:6px;
 }
 
-.daily-table {
-  background:#fff; border:1px solid #e5e7eb; border-radius:14px;
-  overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.03);
+/* ====== 每日完成表格 V2 ====== */
+.daily-table-v2 {
+  display: flex; flex-direction: column; gap: 4px;
 }
-.dt-head {
-  display:grid; grid-template-columns:130px repeat(4,1fr) 80px;
-  background:#f9fafb; border-bottom:1px solid #e5e7eb;
+.dv-head {
+  display: grid; grid-template-columns: 120px 1fr 1fr 80px 70px 90px;
+  gap: 6px; padding: 4px 6px; align-items: center;
 }
-.dt-th {
-  padding:11px 14px; font-size:11px; font-weight:800; color:#9ca3af;
-  letter-spacing:.3px; text-align:right;
+.dv-hcell {
+  font-size: 10px; font-weight: 700; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: .5px; text-align: right;
 }
-.dt-th--date { text-align:left; padding-left:22px; }
-.dt-th--st { text-align:center; }
+.dv-hcell--date { text-align: left; }
+.dv-hcell--st { text-align: center; }
 
-.dt-row {
-  display:grid; grid-template-columns:130px repeat(4,1fr) 80px;
-  border-bottom:1px solid #f3f4f6; cursor:pointer;
-  transition:background .12s; background:#fff;
+.dv-row {
+  display: grid; grid-template-columns: 120px 1fr 1fr 80px 70px 90px;
+  gap: 6px; align-items: center;
+  padding: 10px 8px; border-radius: 10px;
+  cursor: pointer; transition: all .15s;
+  background: #fff; border: 1px solid transparent;
 }
-.dt-row:hover { background:#fafaff; }
-.dt-row.completed { border-left:3px solid #10b981; }
-.dt-row.today { background:linear-gradient(90deg,#eef2ff,#fafaff 50%,#fff); }
-.dt-row:last-of-type { border-bottom:none; }
+.dv-row:hover {
+  background: #f8fafc; border-color: #e5e7eb;
+  transform: translateX(3px);
+}
+.dv-row.dv--today {
+  background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 50%, #fff 100%);
+  border-color: #c7d2fe;
+  box-shadow: 0 2px 8px rgba(99,102,241,.08);
+}
+.dv-row.dv--done {
+  border-left: 3px solid #10b981;
+}
 
-.dt-td {
-  padding:14px 14px; font-size:14px; font-weight:600; color:#1f2937;
-  text-align:right; display:flex; align-items:center; justify-content:flex-end;
-  font-variant-numeric:tabular-nums;
+/* 日期格 */
+.dv-cell--date { display: flex; align-items: center; gap: 8px; }
+.dv-date-box {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 6px 10px; border-radius: 8px; background: #f3f4f6;
+  min-width: 52px; transition: all .15s;
 }
-.dt-td.price { color:#6366f1; font-weight:700; }
-.dt-td.usd { color:#a16207; font-weight:700; font-size:13px; }
-.dt-td.highlight { color:#059669; font-weight:700; }
-.dt-td--date { justify-content:flex-start; padding-left:22px; gap:8px; }
-.dt-day { font-size:15px; font-weight:800; color:#111827; }
-.dt-date { font-size:12px; color:#9ca3af; font-weight:500; }
-.dt-td--st { justify-content:center; gap:6px; font-size:12px; font-weight:600; color:#6b7280; }
-.st-dot { width:7px; height:7px; border-radius:50%; }
-.st-dot.done { background:#10b981; box-shadow:0 0 5px rgba(16,185,129,.4); }
-.st-dot.empty { background:#d1d5db; }
+.dv-date-box--today {
+  background: #6366f1; color: #fff;
+}
+.dv-day-name { font-size: 10px; font-weight: 700; color: #6b7280; line-height: 1.2; }
+.dv-date-box--today .dv-day-name { color: rgba(255,255,255,.7); }
+.dv-day-num { font-size: 16px; font-weight: 800; color: #111827; line-height: 1.1; }
+.dv-date-box--today .dv-day-num { color: #fff; }
+
+/* 数据格 */
+.dv-cell {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
+  padding: 0 4px;
+}
+.dv-cell--date { flex-direction: row; }
+.dv-val { font-size: 15px; font-weight: 700; color: #1f2937; }
+.dv-cell--usd .dv-val { color: #a16207; }
+.dv-cell--budget .dv-val { color: #6366f1; }
+.dv-stat { font-size: 15px; font-weight: 700; color: #1f2937; }
+.dv-stat--green { color: #059669; }
+.dv-unit { font-size: 10px; color: #9ca3af; font-weight: 600; margin-top: -1px; }
+.dv-na { font-size: 14px; color: #d1d5db; font-weight: 600; }
+
+/* 迷你进度条 */
+.dv-mini-bar { width: 100%; height: 3px; background: #f3f4f6; border-radius: 2px; overflow: hidden; }
+.dv-mini-fill { height: 100%; border-radius: 2px; transition: width .4s ease; }
+.dv-cell--usd .dv-mini-fill { background: linear-gradient(90deg, #fcd34d, #f59e0b); }
+.dv-cell--budget .dv-mini-fill { background: linear-gradient(90deg, #818cf8, #6366f1); }
+
+/* 状态徽章 */
+.dv-cell--st { align-items: center; }
+.dv-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+}
+.dv-badge--done {
+  background: #ecfdf5; color: #059669;
+  border: 1px solid rgba(5,150,105,.15);
+}
+.dv-badge--todo {
+  background: #f3f4f6; color: #9ca3af;
+  border: 1px solid rgba(0,0,0,.06);
+}
 
 /* ====== 弹窗 ====== */
 .preview-card {
@@ -895,6 +974,6 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 @media (max-width:900px) {
   .overview-strip { grid-template-columns:repeat(2,1fr); }
   .mid-layout { grid-template-columns:1fr; }
-  .dt-head, .dt-row { grid-template-columns:110px repeat(4,1fr) 70px; }
+  .dv-head, .dv-row { grid-template-columns: 100px 1fr 1fr 60px 50px 80px; gap: 2px; }
 }
 </style>
