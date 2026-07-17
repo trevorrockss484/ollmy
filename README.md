@@ -10,6 +10,7 @@
 | 后端 | Express (Node.js) |
 | 存储 | JSON 文件（自动多层备份） |
 | 媒体处理 | Sharp（图片） · FFmpeg（视频） · Mammoth（文档） |
+| 部署 | Docker + Docker Compose |
 
 ## 快速启动
 
@@ -38,6 +39,21 @@ npx vite --host
 
 访问 `http://localhost:5173`（Vite 自动代理 API 到后端 3456 端口）
 
+## Docker 部署
+
+```bash
+# 构建并启动
+docker compose up -d --build
+
+# 查看日志
+docker compose logs -f
+
+# 停止
+docker compose down
+```
+
+详细部署指南见 [DEPLOY.md](./DEPLOY.md)，涵盖：服务器初始化、代码上传、Nginx 反代、HTTPS 配置、数据备份、故障排查。
+
 ## 项目结构
 
 ```
@@ -48,21 +64,27 @@ npx vite --host
 │   ├── daily.js           # 日报 CRUD
 │   ├── vps.js             # VPS 管理
 │   ├── summary.js         # 月度/周汇总
-│   ├── assets.js          # AI资产管理
+│   ├── assets.js          # AI资产管理（图片+视频）
 │   ├── library.js         # 资料库（文档管理）
 │   ├── tools.js           # 图片/视频压缩工具
 │   └── prompts.js         # AI提示词模板
 ├── database/              # 数据存储
-│   ├── db.js              # JSON 数据库层
+│   ├── db.js              # JSON 数据库层（自动备份）
 │   └── data/              # 数据文件（gitignore）
 ├── src/                   # Vue3 前端源码
-│   ├── views/             # 15 个页面组件
+│   ├── views/             # 14 个页面组件
 │   ├── stores/            # Pinia 状态管理
 │   ├── router/            # Vue Router
 │   ├── api/               # API 请求层
 │   └── components/        # 公共组件
 ├── uploads/               # 上传文件目录（gitignore）
+│   ├── compress/saved/    # 压缩后图片
+│   ├── video/library/     # 视频素材库
+│   └── video/covers/      # 视频封面
 ├── dist/                  # 构建产物（gitignore）
+├── Dockerfile             # 多阶段构建
+├── docker-compose.yml     # 容器编排
+├── DEPLOY.md              # 完整部署指南
 └── vite.config.mjs        # Vite 配置（含 API 代理）
 ```
 
@@ -116,10 +138,10 @@ npx vite --host
 - 全球运营指挥中心视图
 - 国旗图标展示
 
-### 🎨 AI资产管理 (3合1页面)
-**AI资产** — 图片上传、预览、下载、分类标签管理
-**资料库** — 文档上传、docx 预览（Mammoth 渲染）、下载、标签筛选
-**AI提示词** — 按流程步骤分类、一键复制、在线编辑、拖拽排序
+### 🎨 AI资产管理 Assets（3合1页面）
+- **AI资产** — 图片上传、预览、批量下载、批量删除、分类标签管理
+- **资料库** — 文档上传、docx 预览（Mammoth 渲染）、下载、标签筛选
+- **AI提示词** — 按流程步骤分类、一键复制、在线编辑、拖拽排序、自定义步骤
 
 ### 💬 话术库 Scripts
 - 英文+中文话术卡片
@@ -132,7 +154,7 @@ npx vite --host
 - 拖拽上传，批量处理（最多20张）
 - 格式转换：支持 WebP/JPEG/PNG/AVIF/TIFF
 - 质量调节（1-100%）
-- 尺寸缩放（宽度限制）
+- 尺寸缩放（宽度限制）+ 裁切功能
 - 压缩前后对比（体积/尺寸/格式）
 - 保存到素材库
 - Sharp 服务端压缩
@@ -161,30 +183,49 @@ npx vite --host
 - 分享链接生成
 - 上传/下载/删除
 
-### 🔗 分享预览
+### 🔗 分享预览 Share
 - 图片/视频分享页带 OG 元标签
 - 微信/社交媒体分享卡片优化
 - 显示尺寸、大小、时长等元信息
 
-### 🔒 登录系统
+### 🔒 登录认证
 - Token 认证，路由守卫
 - Remember-me 自动登录
 - 401 自动跳转登录页
 
-## 部署
+## 路由表
 
-项目支持一键部署到支持 Node.js 的平台（Railway、Render、VPS 等）：
-
-```bash
-npm install
-npm run build
-npm start
-```
-
-`Procfile` 已配置：`web: node server.js`
+| 路径 | 页面 | 说明 |
+|------|------|------|
+| `/login` | 登录 | 公开访问 |
+| `/` | 仪表盘 | Dashboard |
+| `/plan` | 周计划 | 多周管理 |
+| `/report` | 日报生成 | FB/TX 双栏 |
+| `/history` | 历史查询 | 筛选+导出 |
+| `/monitor` | VPS监控 | 到期提醒 |
+| `/clock` | 全球时钟 | 3D 地球 |
+| `/assets` | AI资产管理 | 资产+资料库+提示词 |
+| `/scripts` | 话术库 | 中英文话术 |
+| `/compress` | 图片压缩 | 批量处理 |
+| `/video-compress` | 视频压缩 | FFmpeg |
+| `/video-library` | 视频素材库 | 分类管理 |
+| `/media` | 素材库 | 统一浏览 |
 
 ## 环境变量
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
 | `PORT` | 服务端口 | `3456` |
+
+## 数据持久化
+
+Docker 部署时以下目录映射到宿主机，容器删除后数据不丢失：
+
+| 容器路径 | 宿主机路径 | 内容 |
+|----------|-----------|------|
+| `/app/database/data` | `./database/data` | JSON 数据库 + 自动备份 |
+| `/app/uploads` | `./uploads` | 上传的图片、视频、压缩产物 |
+
+## License
+
+Private — 个人使用项目
