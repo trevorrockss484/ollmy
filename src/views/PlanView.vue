@@ -145,13 +145,12 @@
         <div class="daily-table-v2">
           <div class="dv-head">
             <span class="dv-hcell dv-hcell--date">日期</span>
-            <span class="dv-hcell">美金 $</span>
-            <span class="dv-hcell">消耗 ¥</span>
+            <span class="dv-hcell">美金</span>
+            <span class="dv-hcell">消耗</span>
             <span class="dv-hcell">汇率</span>
             <span class="dv-hcell">新客户</span>
             <span class="dv-hcell">拉群</span>
-            <span class="dv-hcell">转化</span>
-            <span class="dv-hcell">客均¥</span>
+            <span class="dv-hcell">客均</span>
             <span class="dv-hcell dv-hcell--st">状态</span>
           </div>
           <div
@@ -162,41 +161,36 @@
             @click="goToReport(d)"
           >
             <div class="dv-cell dv-cell--date">
+              <span class="dv-date-badge" :class="{ 'dv-date-badge--today': d.isToday }">{{ formatDayOnly(d.date) }}</span>
               <span class="dv-day-name">{{ d.dayName }}</span>
-              <span class="dv-day-num" :class="{ 'dv-day-num--today': d.isToday }">{{ formatDayOnly(d.date) }}</span>
-              <el-tag v-if="d.isToday" size="small" effect="dark" round class="dv-today-tag">今天</el-tag>
-            </div>
-            <div class="dv-cell dv-cell--usd">
-              <span v-if="d.completed" class="dv-val">${{ fmtK(d.fbUsdBudget) }}</span>
-              <span v-else class="dv-na">—</span>
-            </div>
-            <div class="dv-cell dv-cell--budget">
-              <span v-if="d.completed" class="dv-val">¥{{ Math.round(d.fbBudget) }}</span>
-              <span v-else class="dv-na">—</span>
-            </div>
-            <div class="dv-cell dv-cell--rate">
-              <span v-if="d.completed && d.fbUsdBudget" class="dv-meta">{{ fmtRate(d.fbBudget, d.fbUsdBudget) }}</span>
-              <span v-else class="dv-na">—</span>
             </div>
             <div class="dv-cell">
-              <span v-if="d.completed" class="dv-stat">{{ d.fbCustomer || 0 }}</span>
-              <span v-else class="dv-na">—</span>
+              <span v-if="d.completed" class="dv-num dv-num--usd">${{ fmtK(d.fbUsdBudget) }}</span>
+              <span v-else class="dv-empty">—</span>
             </div>
             <div class="dv-cell">
-              <span v-if="d.completed" class="dv-stat dv-stat--green">{{ d.fbGrouped || 0 }}</span>
-              <span v-else class="dv-na">—</span>
+              <span v-if="d.completed" class="dv-num dv-num--rmb">¥{{ Math.round(d.fbBudget) }}</span>
+              <span v-else class="dv-empty">—</span>
             </div>
             <div class="dv-cell">
-              <span v-if="d.completed && d.fbCustomer" class="dv-meta">{{ fmtPct(d.fbGrouped, d.fbCustomer) }}</span>
-              <span v-else class="dv-na">—</span>
+              <span v-if="d.completed && d.fbUsdBudget" class="dv-num dv-num--rate">{{ fmtRate(d.fbBudget, d.fbUsdBudget) }}</span>
+              <span v-else class="dv-empty">—</span>
             </div>
             <div class="dv-cell">
-              <span v-if="d.completed && d.fbCustomer" class="dv-meta">¥{{ Math.round(d.fbBudget / d.fbCustomer) }}</span>
-              <span v-else class="dv-na">—</span>
+              <span v-if="d.completed" class="dv-num">{{ d.fbCustomer || 0 }}</span>
+              <span v-else class="dv-empty">—</span>
+            </div>
+            <div class="dv-cell">
+              <span v-if="d.completed" class="dv-num dv-num--green">{{ d.fbGrouped || 0 }}</span>
+              <span v-else class="dv-empty">—</span>
+            </div>
+            <div class="dv-cell">
+              <span v-if="d.completed && d.fbCustomer" class="dv-num">¥{{ Math.round(d.fbBudget / d.fbCustomer) }}</span>
+              <span v-else class="dv-empty">—</span>
             </div>
             <div class="dv-cell dv-cell--st">
-              <span class="st-dot" :class="d.completed ? 'done' : 'empty'"></span>
-              <span class="st-label">{{ d.completed ? '已填报' : '待填写' }}</span>
+              <span v-if="d.completed" class="dv-status dv-status--done">已填报</span>
+              <span v-else class="dv-status">待填写</span>
             </div>
           </div>
         </div>
@@ -882,75 +876,63 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 .daily-table-v2 {
   background: #fff; border: 1px solid #e5e7eb;
   border-radius: 14px; overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,.04);
 }
 .dv-head {
   display: grid;
-  grid-template-columns: 90px 72px 80px 50px 55px 48px 48px 55px 70px;
-  gap: 0; padding: 8px 12px; align-items: center;
-  background: #f8fafc; border-bottom: 1px solid #e5e7eb;
+  grid-template-columns: 104px 1fr 1fr 60px 72px 64px 70px 80px;
+  padding: 10px 20px; align-items: center;
+  background: #f9fafb; border-bottom: 1px solid #e5e7eb;
 }
 .dv-hcell {
-  font-size: 10px; font-weight: 700; color: #9ca3af;
-  text-transform: uppercase; letter-spacing: .2px; text-align: right;
-  white-space: nowrap;
+  font-size: 12px; font-weight: 600; color: #9ca3af;
+  text-align: right;
 }
 .dv-hcell--date { text-align: left; }
 .dv-hcell--st { text-align: center; }
 
 .dv-row {
   display: grid;
-  grid-template-columns: 90px 72px 80px 50px 55px 48px 48px 55px 70px;
-  gap: 0; align-items: center;
-  padding: 10px 12px; border-bottom: 1px solid #f3f4f6;
+  grid-template-columns: 104px 1fr 1fr 60px 72px 64px 70px 80px;
+  padding: 14px 20px; align-items: center;
+  border-bottom: 1px solid #f3f4f6;
   cursor: pointer; transition: background .12s; background: #fff;
 }
-.dv-row:hover { background: #fafaff; }
+.dv-row:hover { background: #f5f3ff; }
 .dv-row:last-of-type { border-bottom: none; }
-
-.dv-row.dv--today {
-  background: linear-gradient(90deg, #eef2ff 0%, #fafaff 60%, #fff 100%);
-}
-.dv-row.dv--today .dv-day-num--today {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; border-radius: 50%;
-  background: #6366f1; color: #fff; font-size: 14px; font-weight: 800;
-}
+.dv-row.dv--today { background: #eef2ff; }
 .dv-row.dv--done { border-left: 3px solid #10b981; }
 
-/* 日期格 */
-.dv-cell--date { display: flex; align-items: center; gap: 6px; }
-.dv-day-name { font-size: 11px; font-weight: 700; color: #9ca3af; min-width: 28px; }
-.dv-day-num { font-size: 15px; font-weight: 800; color: #374151; }
-.dv-today-tag { font-size: 9px !important; padding: 1px 6px !important; }
-
-/* 数据格 */
-.dv-cell {
-  display: flex; align-items: center; justify-content: flex-end;
-  padding: 0 2px;
+/* 日期 */
+.dv-cell--date { display: flex; align-items: center; gap: 10px; }
+.dv-date-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 8px;
+  background: #f3f4f6; color: #374151;
+  font-size: 15px; font-weight: 800;
 }
+.dv-date-badge--today { background: #6366f1; color: #fff; }
+.dv-day-name { font-size: 13px; font-weight: 700; color: #6b7280; }
+
+/* 数据 */
+.dv-cell { display: flex; align-items: center; justify-content: flex-end; }
 .dv-cell--date { justify-content: flex-start; }
 .dv-cell--st { justify-content: center; }
 
-.dv-val { font-size: 14px; font-weight: 700; }
-.dv-cell--usd .dv-val { color: #a16207; }
-.dv-cell--budget .dv-val { color: #6366f1; }
-
-.dv-stat { font-size: 14px; font-weight: 700; color: #1f2937; }
-.dv-stat--green { color: #059669; }
-
-.dv-meta { font-size: 12px; font-weight: 600; color: #6b7280; }
-.dv-cell--rate .dv-meta { color: #a16207; font-size: 11px; }
-
-.dv-na { font-size: 13px; color: #d1d5db; }
+.dv-num { font-size: 15px; font-weight: 700; color: #1f2937; }
+.dv-num--usd { color: #a16207; }
+.dv-num--rmb { color: #6366f1; }
+.dv-num--rate { color: #6b7280; font-size: 13px; }
+.dv-num--green { color: #059669; }
+.dv-empty { font-size: 15px; color: #d1d5db; }
 
 /* 状态 */
-.dv-cell--st { display: flex; align-items: center; gap: 5px; }
-.st-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-.st-dot.done { background: #10b981; box-shadow: 0 0 4px rgba(16,185,129,.4); }
-.st-dot.empty { background: #d1d5db; }
-.st-label { font-size: 11px; font-weight: 600; color: #9ca3af; white-space: nowrap; }
-.dv--done .st-label { color: #059669; }
+.dv-status {
+  font-size: 12px; font-weight: 600; color: #9ca3af;
+  padding: 4px 12px; border-radius: 6px; background: #f3f4f6;
+}
+.dv-status--done {
+  color: #059669; background: #ecfdf5;
+}
 
 /* ====== 弹窗 ====== */
 .preview-card {
@@ -965,9 +947,6 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 @media (max-width:900px) {
   .overview-strip { grid-template-columns:repeat(2,1fr); }
   .mid-layout { grid-template-columns:1fr; }
-  .dv-head, .dv-row { grid-template-columns: 80px repeat(8, 1fr); }
-  .dv-hcell { font-size: 9px; }
-  .dv-val, .dv-stat { font-size: 12px; }
-  .dv-meta { font-size: 10px; }
+  .dv-head, .dv-row { grid-template-columns: 80px repeat(7, 1fr); padding: 10px 12px; }
 }
 </style>
