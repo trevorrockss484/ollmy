@@ -487,8 +487,7 @@ async function copyReportText() {
 }
 
 function exportCSV() {
-  const headers = ['日期', '账号', '国家', '美金', 'FB消耗', 'FB新客户', 'FB拉群', '客均成本',
-    '发目录未回', '发信息未理会', '低预算', '同行', '骚扰', '参观未定', '拉群详情', '总结', '优化方向']
+  const headers = ['日期', '账号', '国家', '美金', '费用(元)', '新客户', '拉群', '询盘客价', '有效客价', '拉群详情', '总结', '优化方向']
   let csv = '﻿' + headers.join(',') + '\n'
   list.value.forEach(r => {
     const fb = r._fb || {}
@@ -499,10 +498,14 @@ function exportCSV() {
     } else {
       detailStr = fb.groupDetail || ''
     }
-    csv += [r.rawDate, r.accountName || '', r.country, fb.usdBudget || 0, r.fbBudget, r.fbCustomer, r.fbGrouped,
-      typeof r.avgCost === 'string' ? 0 : r.avgCost,
-      fb.catNoReply || 0, fb.msgIgnore || 0, fb.lowBudget || 0,
-      fb.competitor || 0, fb.harass || 0, fb.visitPending || 0,
+    const budget = r.fbBudget || 0
+    const customer = r.fbCustomer || 0
+    const grouped = r.fbGrouped || 0
+    const avgCost = customer > 0 ? Math.round(budget / customer) : 0
+    const effCost = grouped > 0 ? Math.round(budget / grouped) : 0
+    csv += [
+      r.rawDate, r.accountName || '', r.country, fb.usdBudget || 0,
+      budget, customer, grouped, avgCost, effCost,
       '"' + detailStr.replace(/"/g, '""') + '"',
       '"' + (fb.summary || '').replace(/"/g, '""') + '"',
       '"' + (fb.optimize || '').replace(/"/g, '""') + '"'
