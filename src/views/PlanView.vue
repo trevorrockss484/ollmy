@@ -371,23 +371,32 @@ function buildWeekReportText() {
       countryAgg[name].budget += Number(fb.budget || 0)
       countryAgg[name].customer += Number(fb.newCustomer || 0)
       countryAgg[name].grouped += Number(fb.grouped || 0)
-      if (fb.groupDetail) countryAgg[name].details.push(fb.groupDetail)
-      // 新格式 groupEntries
+      // 优先 groupEntries，fallback groupDetail
       if (fb.groupEntries && Array.isArray(fb.groupEntries)) {
         for (const entry of fb.groupEntries) {
           if (entry.text) countryAgg[name].details.push('【' + entry.text + (entry.status ? '，' + entry.status : '') + '】')
         }
+      } else if (fb.groupDetail) {
+        countryAgg[name].details.push(fb.groupDetail)
       }
     }
   }
   const countries = Object.entries(countryAgg)
-    .map(([name, v]) => ({
-      name,
-      budget: Math.round(v.budget * 100) / 100,
-      customer: v.customer,
-      grouped: v.grouped,
-      details: splitDetails(v.details.join('')),
-    }))
+    .map(([name, v]) => {
+      // 去重：多天同一客户只保留一条
+      const seen = new Set()
+      const deduped = v.details.filter(d => {
+        const key = d.replace(/，到现场|，未到现场|，待确认/g, '').trim()
+        if (seen.has(key)) return false; seen.add(key); return true
+      })
+      return {
+        name,
+        budget: Math.round(v.budget * 100) / 100,
+        customer: v.customer,
+        grouped: v.grouped,
+        details: splitDetails(deduped.join('')),
+      }
+    })
     .sort((a, b) => (b.budget - a.budget) || (b.grouped - a.grouped))
   if (!countries.length) return ''
 

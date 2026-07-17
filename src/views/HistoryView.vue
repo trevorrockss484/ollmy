@@ -288,6 +288,14 @@ const rangeAgg = computed(() => {
   for (const c of names) {
     tB += agg[c].budget; tC += agg[c].customer; tG += agg[c].grouped
     if (agg[c].grouped > 0) gb.push({ country: c, count: agg[c].grouped })
+    // 去重：多天同一客户只保留一条
+    const seen = new Set()
+    agg[c].details = agg[c].details.filter(d => {
+      const key = d.replace(/，到现场|，未到现场|，待确认/g, '').trim()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
   }
   tB = Math.round(tB * 100) / 100
   const days = new Set(list.value.map(r => r.rawDate)).size
