@@ -435,8 +435,15 @@ function addCountry(c) {
 
 function removeCountry(c) {
   if (activeCountries.value.length <= 1) { ElMessage.warning('至少保留一个国家'); return }
-  activeCountries.value = activeCountries.value.filter(x => x !== c)
-  delete countryData[c]
+  const d = countryData[c]
+  const hasData = d && (n(d.budget) > 0 || n(d.newCustomer) > 0 || n(d.grouped) > 0 || (d.groupEntries || []).some(e => e.text))
+  const doRemove = () => { activeCountries.value = activeCountries.value.filter(x => x !== c); delete countryData[c] }
+  if (hasData) {
+    ElMessageBox.confirm(`「${c}」已有填写数据，确定移除？`, '确认移除', { confirmButtonText: '移除', cancelButtonText: '取消', type: 'warning' })
+      .then(doRemove).catch(() => {})
+  } else {
+    doRemove()
+  }
 }
 
 function moveCountry(idx, direction) {
@@ -712,6 +719,37 @@ async function copyReport() {
 
 async function saveData() {
   const date = reportDate.value; if (!date) { ElMessage.warning('请选择日期'); return }
+
+  // ====== 保存前校验 ======
+  // 1. 检查是否完全为空
+  let hasAnyData = false
+  for (const c of activeCountries.value) {
+    const d = countryData[c]; if (!d) continue
+    if (n(d.budget) > 0 || n(d.newCustomer) > 0 || n(d.grouped) > 0 || (d.groupEntries || []).some(e => e.text)) {
+      hasAnyData = true; break
+    }
+  }
+  if (!hasAnyData && !reportSummary.value && !reportOptimize.value) {
+    ElMessage.warning('请至少填写一个国家的数据，或填写总结/优化'); return
+  }
+
+  // 2. 拉群数必须等于有效详情条目数（不能多也不能少）
+  const errors = []
+  for (const c of activeCountries.value) {
+    const d = countryData[c]; if (!d) continue
+    const grouped = n(d.grouped)
+    const validEntries = (d.groupEntries || []).filter(e => e.text && e.text.trim())
+    if (grouped > 0 && validEntries.length !== grouped) {
+      errors.push(`「${c}」拉群数为 ${grouped}，但详情条目为 ${validEntries.length} 条 → 必须一致`)
+    } else if (grouped === 0 && validEntries.length > 0) {
+      errors.push(`「${c}」拉群数为 0，但有 ${validEntries.length} 条详情 → 请清除详情或填写拉群数`)
+    }
+  }
+  if (errors.length) {
+    ElMessageBox.alert(errors.join('\n'), '拉群详情校验不通过', { confirmButtonText: '知道了', type: 'warning' })
+    return
+  }
+
   const countries = {}
   for (const c of activeCountries.value) {
     const d = countryData[c]; if (!d) continue
