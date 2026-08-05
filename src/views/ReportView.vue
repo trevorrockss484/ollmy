@@ -67,7 +67,7 @@
     </div>
 
     <div class="main-layout" v-if="activeCountries.length">
-      <!-- ====== 左侧：国家表单 + 总结优化 ====== -->
+      <!-- ====== 左侧：国家表单 ====== -->
       <div class="left-panel">
         <!-- 一、海外整体汇总 -->
         <div class="overall-card">
@@ -209,27 +209,6 @@
             </el-button>
           </div>
         </div>
-
-        <!-- 7. 总结 & 8. 优化 -->
-        <div class="section-header">
-          <span class="section-num">7</span> 总结 & <span class="section-num">8</span> 优化
-        </div>
-        <div class="so-card">
-          <div class="so-field">
-            <label>
-              <span class="so-num">7.</span> 总结
-              <el-button size="small" link type="primary" @click="openTemplate('summary')"><el-icon :size="12"><DocumentCopy /></el-icon> 模版</el-button>
-            </label>
-            <el-input v-model="reportSummary" type="textarea" :rows="3" placeholder="继续去测试，调整高消耗无效广告，高预算跑东南亚，小预算跑非洲" />
-          </div>
-          <div class="so-field">
-            <label>
-              <span class="so-num">8.</span> 优化方向
-              <el-button size="small" link type="primary" @click="openTemplate('optimize')"><el-icon :size="12"><DocumentCopy /></el-icon> 模版</el-button>
-            </label>
-            <el-input v-model="reportOptimize" placeholder="提高数量，调整客户精准度，减少无效客户" />
-          </div>
-        </div>
       </div>
 
       <!-- ====== 右侧：日报预览（固定） ====== -->
@@ -267,32 +246,6 @@
         <el-button @click="pasteVisible = false">取消</el-button>
         <el-button type="primary" @click="parsePasted"><el-icon :size="14"><Search /></el-icon> 识别并填入</el-button>
       </template>
-    </el-dialog>
-
-    <!-- ====== 模版弹窗 ====== -->
-    <el-dialog v-model="templateVisible" :title="templateLabels[templateField]" width="620px">
-      <el-tabs v-model="templateTab">
-        <el-tab-pane label="预设模版" name="preset">
-          <div v-if="!presetTemplates[templateField]?.length" style="color:#9ca3af;text-align:center;padding:20px;">暂无预设模版</div>
-          <div v-for="(t, i) in presetTemplates[templateField]" :key="'p'+i" class="template-item" @click="pickTemplate(t)">
-            <div class="template-content">{{ t }}</div>
-            <el-button size="small" type="primary" link>使用</el-button>
-          </div>
-        </el-tab-pane>
-        <el-tab-pane label="我的模版" name="custom">
-          <div v-if="!myTemplates[templateField]?.length" style="color:#9ca3af;text-align:center;padding:20px;">暂无自定义模版，在下方添加</div>
-          <div v-for="(t, i) in myTemplates[templateField]" :key="'c'+i" class="template-item">
-            <div class="template-content" style="flex:1;">{{ t }}</div>
-            <el-button size="small" type="primary" link @click="pickTemplate(t)">使用</el-button>
-            <el-button size="small" type="danger" link @click="delMyTemplate(i)">删除</el-button>
-          </div>
-          <div style="display:flex;gap:8px;margin-top:12px;">
-            <el-input v-model="newTemplateText" placeholder="输入新模版内容..." size="small" style="flex:1;" />
-            <el-button size="small" type="primary" @click="saveMyTemplate"><el-icon :size="13"><Check /></el-icon> 新增模版</el-button>
-          </div>
-        </el-tab-pane>
-      </el-tabs>
-      <template #footer><el-button @click="templateVisible = false">关闭</el-button></template>
     </el-dialog>
   </div>
 </template>
@@ -571,8 +524,6 @@ function migrateGroupDetail(d) {
   if (!d.groupEntries) d.groupEntries = []
 }
 const countryData = reactive({})
-const reportSummary = ref('')
-const reportOptimize = ref('')
 
 function initCountryData(countries) {
   // 以周计划国家为底，保留用户手动添加的国家
@@ -591,8 +542,6 @@ function initCountryData(countries) {
 
 function resetFormData() {
   for (const c of Object.keys(countryData)) countryData[c] = defaultCountryFb()
-  reportSummary.value = ''
-  reportOptimize.value = ''
   existingData.value = false
 }
 
@@ -634,39 +583,6 @@ const overallTotal = computed(() => {
 
 function fmtNum(v) { if (v == null) return '0.00'; const r = Math.round(v * 100) / 100; return r.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 
-// ====== 模版 ======
-const templateVisible = ref(false); const templateField = ref('summary'); const templateTab = ref('preset'); const newTemplateText = ref('')
-const templateLabels = { summary:'总结模版', optimize:'优化方向模版' }
-const presetTemplates = {
-  summary: [
-    '平均客户单价12元一个，今天测试新素材，需要时间测试。高预算跑东南亚，小预算跑非洲',
-    '今天整体量跑不出去，更换素材去测试。很多素材跑不出去，调整高消耗无效广告组',
-    '今天整体效果量比之前多了，但无效偏多，东南亚地区效果也不好。调整细分定位，优化广告素材和落地页',
-  ],
-  optimize: [
-    '提高询盘数量，调整客户精准度，减少无效客户，优化广告素材和落地页',
-    '调整客户精准度，减少无效客户。优化广告素材，更换低CTR素材',
-    '提高数量，调整细分定位，减少无效客户。测试新国家新素材，小预算测出效果再放量',
-  ],
-}
-const MY_TEMPLATE_KEY = 'pan_templates'
-const myTemplates = ref(loadMyTemplates())
-function loadMyTemplates() { try { const raw = localStorage.getItem(MY_TEMPLATE_KEY); return raw ? JSON.parse(raw) : { summary:[], optimize:[] } } catch(e) { return { summary:[], optimize:[] } } }
-function openTemplate(field) { templateField.value = field; templateTab.value = 'preset'; newTemplateText.value = ''; templateVisible.value = true }
-function pickTemplate(text) {
-  if (templateField.value === 'summary') reportSummary.value = text
-  else if (templateField.value === 'optimize') reportOptimize.value = text
-  templateVisible.value = false; ElMessage.success('模版已填入')
-}
-function saveMyTemplate() {
-  const text = newTemplateText.value.trim(); if (!text) { ElMessage.warning('请输入模版内容'); return }
-  const field = templateField.value; if (!myTemplates.value[field]) myTemplates.value[field] = []
-  myTemplates.value[field].unshift(text)
-  try { localStorage.setItem(MY_TEMPLATE_KEY, JSON.stringify(myTemplates.value)) } catch (e) { ElMessage.error('保存失败'); return }
-  newTemplateText.value = ''; ElMessage.success('模版已保存')
-}
-function delMyTemplate(index) { const field = templateField.value; if (!myTemplates.value[field]) return; myTemplates.value[field].splice(index, 1); try { localStorage.setItem(MY_TEMPLATE_KEY, JSON.stringify(myTemplates.value)) } catch (e) { ElMessage.error('删除失败'); return } }
-
 // ====== 数据加载 ======
 async function loadExistingData(d) {
   if (!d || !weekReady.value) return
@@ -697,7 +613,6 @@ async function loadExistingData(d) {
           if (k in fb) countryData[c][k] = fb[k] ?? null
         })
       }
-      reportSummary.value = res.data.summary || ''; reportOptimize.value = res.data.optimize || ''
     }
   } catch(e) { existingData.value = false }
 }
@@ -716,7 +631,7 @@ function splitDetails(text) {
 
 function buildReportText() {
   const ot = overallTotal.value
-  const hasData = ot.budget > 0 || ot.newCustomer > 0 || ot.grouped > 0 || reportSummary.value || reportOptimize.value
+  const hasData = ot.budget > 0 || ot.newCustomer > 0 || ot.grouped > 0
   if (!hasData) return ''
 
   const parts = reportDate.value.split('-')
@@ -759,12 +674,6 @@ function buildReportText() {
   })
   text += `
 ----------`
-
-  if (reportSummary.value || reportOptimize.value) {
-    text += '\n'
-    if (reportSummary.value) text += `\n7. 总结：${reportSummary.value}`
-    if (reportOptimize.value) text += `\n8. 优化：${reportOptimize.value}`
-  }
   return text
 }
 
@@ -792,8 +701,8 @@ async function saveData() {
       hasAnyData = true; break
     }
   }
-  if (!hasAnyData && !reportSummary.value && !reportOptimize.value) {
-    ElMessage.warning('请至少填写一个国家的数据，或填写总结/优化'); return
+  if (!hasAnyData) {
+    ElMessage.warning('请至少填写一个国家的数据'); return
   }
 
   // 2. 拉群数必须等于有效详情条目数（不能多也不能少）
@@ -820,7 +729,7 @@ async function saveData() {
   }
   saveMsg.value = '保存中...'; saveOk.value = true
   try {
-    const res = await api.daily.save(date, { countries, summary: reportSummary.value, optimize: reportOptimize.value }, { accountId: selectedAccountId.value })
+    const res = await api.daily.save(date, { countries }, { accountId: selectedAccountId.value })
     if (res.success) { saveMsg.value = ' 已保存'; saveOk.value = true; existingData.value = true }
     else { saveMsg.value = '❌ ' + (res.error||'未知错误'); saveOk.value = false }
   } catch(e) { saveMsg.value = '❌ ' + e.message; saveOk.value = false }
@@ -829,7 +738,7 @@ async function saveData() {
 async function clearForm() {
   try { await ElMessageBox.confirm('确定清空表单？未保存的数据将丢失。', '确认清空', { confirmButtonText: '确认清空', cancelButtonText: '取消', type: 'warning' }) } catch { return }
   for (const c of activeCountries.value) { if (c in countryData) { Object.keys(countryData[c]).forEach(k => { if (k === 'groupEntries') countryData[c][k] = []; else countryData[c][k] = (typeof countryData[c][k] === 'number' || countryData[c][k] === null) ? null : '' }) } }
-  reportSummary.value = ''; reportOptimize.value = ''; saveMsg.value = ''
+  saveMsg.value = ''
   ElMessage.success('表单已清空')
 }
 
@@ -869,9 +778,7 @@ function parsePasted() {
       }
     }
   }
-  const summM = text.match(/7[\\.、]?\\s*总结\\s*[:]([\\s\\S]*?)(?=\\n8[\\.、]|$)/i); if (summM) { reportSummary.value = summM[1].trim(); parseDetail.value.push('总结已识别') }
-  const optM = text.match(/8[\\.、]?\\s*优化\\s*[:]([\\s\\S]*?)$/i); if (optM) { reportOptimize.value = optM[1].trim(); parseDetail.value.push('优化已识别') }
-  pasteVisible.value = false
+	  pasteVisible.value = false
   parseDetail.value.length ? ElMessage.success('识别 '+parseDetail.value.length+' 个字段') : ElMessage.warning('未识别到数据')
 }
 
@@ -882,7 +789,7 @@ onMounted(async () => {
   if (e) {
     try {
       const { date, data: d } = JSON.parse(e); reportDate.value = date
-      if (d.countries) { for (const [c, fb] of Object.entries(d.countries)) { if (c in countryData) Object.keys(countryData[c]).forEach(k => { if (k in fb) countryData[c][k] = fb[k] ?? null }) }; reportSummary.value = d.summary || ''; reportOptimize.value = d.optimize || '' }
+      if (d.countries) { for (const [c, fb] of Object.entries(d.countries)) { if (c in countryData) Object.keys(countryData[c]).forEach(k => { if (k in fb) countryData[c][k] = fb[k] ?? null }) } }
     } catch {}
     sessionStorage.removeItem('editDaily')
   }
@@ -1118,13 +1025,6 @@ onMounted(async () => {
 }
 .gd-global-val { font-size: 13px; color: #6b7280; line-height: 1.8; }
 
-/* ====== 总结优化 ====== */
-.so-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 18px; }
-.so-field { margin-bottom: 16px; }
-.so-field:last-child { margin-bottom: 0; }
-.so-field label { display: block; font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 8px; }
-.so-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: #fef2f2; color: #ef4444; font-size: 12px; margin-right: 4px; }
-
 /* ====== 预览（右侧固定） ====== */
 .preview-sticky { position: sticky; top: 16px; background: #fff; border: 2px solid #6366f1; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 16px rgba(99,102,241,.1); }
 .preview-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #f5f3ff; border-bottom: 1px solid #e0e7ff; font-weight: 700; font-size: 14px; }
@@ -1136,11 +1036,5 @@ onMounted(async () => {
 .empty-state { text-align: center; padding: 80px 20px; color: #9ca3af; background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; }
 .empty-state p { font-size: 16px; font-weight: 600; margin: 12px 0 4px; color: #6b7280; }
 .empty-state span { font-size: 13px; }
-
-/* ====== 模版弹窗 ====== */
-.template-item { display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:6px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; cursor:pointer; transition:all 0.2s; }
-.template-item:hover { border-color:#6366f1; background:#eef2ff; }
-.template-content { flex:1; font-size:12px; color:#374151; line-height:1.6; }
-
 @media (max-width: 960px) { .main-layout { flex-direction: column; } .right-panel { width: 100%; } .preview-sticky { position: static; } }
 </style>
