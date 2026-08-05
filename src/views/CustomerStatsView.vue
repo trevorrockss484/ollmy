@@ -50,10 +50,10 @@
               <div class="cs-sales-chips" v-if="selectedCountries.length">
                 <div v-for="ct in selectedCountries" :key="ct.country" class="cs-sales-chip">
                   <el-tag size="default" effect="dark" type="success" closable @close="removeCountryRow(ct.country)">{{ ct.country }}</el-tag>
-                  <el-input-number v-model="ct.count" :min="1" :controls="false" size="small" class="cs-sales-chip-n" @change="syncCountryTotal" />
+                  <el-input-number v-model="countryMap[ct.country]" :min="1" :controls="false" size="small" class="cs-sales-chip-n" @change="syncCountryTotal" />
                   <span class="cs-dunit">个</span>
-                  <button class="cs-chip-btn" @click="ct.count = Math.max(1, ct.count - 1)">−</button>
-                  <button class="cs-chip-btn cs-chip-btn--plus" @click="ct.count = (ct.count || 0) + 1">+</button>
+                  <button class="cs-chip-btn" @click="countryMap[ct.country] = Math.max(1, (countryMap[ct.country] || 1) - 1); syncCountryTotal()">−</button>
+                  <button class="cs-chip-btn cs-chip-btn--plus" @click="countryMap[ct.country] = (countryMap[ct.country] || 0) + 1; syncCountryTotal()">+</button>
                 </div>
               </div>
               <div v-else class="cs-sales-none">在树中勾选国家</div>
@@ -69,7 +69,7 @@
               <div class="cs-sales-chips" v-if="selectedSales.length">
                 <div v-for="sa in selectedSales" :key="sa.name" class="cs-sales-chip">
                   <el-tag size="default" effect="dark" closable @close="removeSalesRow(sa.name)">{{ sa.name }}</el-tag>
-                  <el-input-number v-model="sa.count" :min="1" :controls="false" size="small" class="cs-sales-chip-n" />
+                  <el-input-number v-model="salesMap[sa.name]" :min="1" :controls="false" size="small" class="cs-sales-chip-n" />
                   <span class="cs-dunit">个</span>
                   <button class="cs-chip-btn" @click="sa.count = Math.max(1, sa.count - 1)">−</button>
                   <button class="cs-chip-btn cs-chip-btn--plus" @click="sa.count = (sa.count || 0) + 1">+</button>
