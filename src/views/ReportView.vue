@@ -61,6 +61,7 @@
     <div class="action-bar">
       <el-button type="success" size="default" @click="copyReport" :disabled="!reportText"><el-icon :size="15"><DocumentCopy /></el-icon> 一键复制</el-button>
       <el-button size="default" @click="pasteVisible = true"><el-icon :size="15"><Files /></el-icon> 粘贴识别</el-button>
+      <el-button size="default" @click="syncFromStats"><el-icon :size="15"><Refresh /></el-icon> 从统计同步</el-button>
       <el-button size="default" @click="saveData"><el-icon :size="15"><Check /></el-icon> 保存</el-button>
       <el-button size="default" @click="clearForm" type="danger" plain><el-icon :size="15"><Delete /></el-icon> 清空</el-button>
       <span v-if="saveMsg" class="save-msg" :class="{ ok: saveOk, err: !saveOk }">{{ saveMsg }}</span>
@@ -780,6 +781,29 @@ function parsePasted() {
   }
 	  pasteVisible.value = false
   parseDetail.value.length ? ElMessage.success('识别 '+parseDetail.value.length+' 个字段') : ElMessage.warning('未识别到数据')
+}
+
+// 从客户统计同步国家客资
+async function syncFromStats() {
+  const d = reportDate.value; if (!d) return
+  try {
+    const res = await api.customerStats.list({ startDate: d, endDate: d, accountId: selectedAccountId.value })
+    if (!res.success || !res.data.length) { ElMessage.warning('当日无客户统计数据'); return }
+    const breakdown = res.data[0].countryBreakdown || []
+    if (!breakdown.length) { ElMessage.warning('客户统计中无国家客资数据'); return }
+    let count = 0
+    for (const cb of breakdown) {
+      if (cb.country && cb.count > 0) {
+        if (!activeCountries.value.includes(cb.country)) {
+          activeCountries.value = [...activeCountries.value, cb.country]
+        }
+        if (!(cb.country in countryData)) countryData[cb.country] = defaultCountryFb()
+        countryData[cb.country].newCustomer = cb.count
+        count++
+      }
+    }
+    ElMessage.success('已从客户统计同步 ' + count + ' 个国家客资')
+  } catch(e) { ElMessage.error('同步失败') }
 }
 
 onMounted(async () => {

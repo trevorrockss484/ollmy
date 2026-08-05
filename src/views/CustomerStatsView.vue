@@ -18,7 +18,6 @@
     <div class="cs-toolbar">
       <el-button type="primary" @click="saveData"><el-icon :size="15"><Check /></el-icon> 保存</el-button>
       <el-button @click="pasteVisible = true"><el-icon :size="15"><Files /></el-icon> 粘贴识别</el-button>
-      <el-button @click="syncFromDaily" class="cs-sync-btn"><el-icon :size="15"><Refresh /></el-icon> 从日报同步</el-button>
       <el-button @click="clearForm" class="cs-clear-btn"><el-icon :size="15"><Delete /></el-icon> 清空</el-button>
       <transition name="cs-fade">
         <span v-if="saveMsg" class="cs-save-msg" :class="{ ok: saveOk, fail: !saveOk }">{{ saveMsg }}</span>
@@ -361,8 +360,6 @@ onMounted(async () => { await loadSalesPersons(); loadData() })
 .cs-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
 .cs-toolbar .el-button{font-weight:600;border-radius:8px;}
 .cs-clear-btn{color:var(--c-soft);border-color:var(--c-border);}
-.cs-sync-btn{color:#059669;border-color:#a7f3d0;font-weight:600;border-radius:8px;}
-.cs-sync-btn:hover{color:#fff;background:#10b981;border-color:#10b981;}
 .cs-clear-btn:hover{color:var(--c-bad);border-color:var(--c-bad);background:#fef2f2;}
 .cs-save-msg{font-size:12px;font-weight:600;margin-left:6px;}
 .cs-save-msg.ok{color:var(--c-good);}.cs-save-msg.fail{color:var(--c-bad);}

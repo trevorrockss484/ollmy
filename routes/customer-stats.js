@@ -28,6 +28,21 @@ router.get('/monthly/:month', (req, res) => {
 router.post('/', (req, res) => {
   try {
     const record = db.upsertCustomerStat(req.body);
+
+    // 双向同步：把国家客资写回报日报
+    const { date, accountId, countryBreakdown } = req.body;
+    if (date && countryBreakdown && Array.isArray(countryBreakdown) && countryBreakdown.length) {
+      const existing = db.getDailyData(date, { accountId }) || { countries: {}, summary: '', optimize: '' };
+      const countries = { ...(existing.countries || {}) };
+      for (const cb of countryBreakdown) {
+        if (cb.country && cb.count > 0) {
+          if (!countries[cb.country]) countries[cb.country] = { budget: null, usdBudget: null, newCustomer: 0, grouped: null, groupEntries: [] };
+          countries[cb.country].newCustomer = cb.count || 0;
+        }
+      }
+      db.saveDailyData(date, { countries, summary: existing.summary || '', optimize: existing.optimize || '' }, { accountId });
+    }
+
     res.json({ success: true, data: record });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
