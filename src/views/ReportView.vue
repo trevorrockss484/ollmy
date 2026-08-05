@@ -126,69 +126,87 @@
           </div>
         </div>
 
-        <div v-for="(c, i) in activeCountries" :key="c" class="country-card" :style="{ '--cc-color': countryColors[i], '--cc-color-light': countryColors[i] + '18' }">
-          <div class="cc-header">
-            <div class="cc-header-left">
-              <span class="cc-num" :style="{ background: countryColors[i] }">{{ i + 1 }}</span>
-              <span class="fi" :class="'fi-' + flagCode(c)" style="border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.1);"></span>
-              <span class="cc-name">{{ c }}</span>
-            </div>
-            <div class="cc-header-right">
-              <el-button size="small" text :disabled="i === 0" @click="moveCountry(i, -1)"><el-icon :size="14"><Top /></el-icon></el-button>
-              <el-button size="small" text :disabled="i === activeCountries.length - 1" @click="moveCountry(i, 1)"><el-icon :size="14"><Bottom /></el-icon></el-button>
-              <el-button size="small" text type="danger" class="cc-remove-btn" @click="removeCountry(c)" :disabled="activeCountries.length <= 1">移除</el-button>
-            </div>
+        <div class="report-table-wrap" :class="{ 'rt--no-usd': usdCollapsed }">
+          <div class="rt-head">
+            <span class="rt-cell rt-cell--seq">#</span>
+            <span class="rt-cell rt-cell--country">国家</span>
+            <span class="rt-cell rt-cell--budget">费用(元)</span>
+            <span class="rt-cell rt-cell--usd" :class="{ collapsed: usdCollapsed }">
+              <span>美金</span>
+              <button class="rt-usd-toggle" @click="usdCollapsed = !usdCollapsed" :title="usdCollapsed ? '展开美金列' : '收起美金列'">
+                <el-icon :size="12"><ArrowRight v-if="usdCollapsed" /><ArrowDown v-else /></el-icon>
+              </button>
+            </span>
+            <span class="rt-cell rt-cell--customer">客资</span>
+            <span class="rt-cell rt-cell--grouped">拉群</span>
+            <span class="rt-cell rt-cell--cost">客价(询盘/有效)</span>
+            <span class="rt-cell rt-cell--actions"></span>
           </div>
-          <div class="cc-body">
-            <div class="cc-row">
-              <div class="cc-field">
-                <label>费用</label>
-                <el-input-number v-model="countryData[c].budget" :min="0" :precision="2" :controls="false" placeholder="0" class="cc-input" />
-                <span class="cc-unit">元</span>
-              </div>
-              <div class="cc-field cc-field-usd">
-                <label>美金 <el-tooltip content="对账用，不写入日报" placement="top"><span class="usd-hint">?</span></el-tooltip></label>
-                <el-input-number v-model="countryData[c].usdBudget" :min="0" :precision="2" :controls="false" placeholder="$" class="cc-input cc-input-usd" />
-                <span class="cc-unit">$</span>
-              </div>
-              <div class="cc-field">
-                <label>客资</label>
-                <el-input-number v-model="countryData[c].newCustomer" :min="0" :controls="false" placeholder="0" class="cc-input" />
-                <span class="cc-unit">个</span>
-              </div>
-              <div class="cc-field">
-                <label>拉群</label>
-                <el-input-number v-model="countryData[c].grouped" :min="0" :controls="false" placeholder="0" class="cc-input" />
-                <span class="cc-unit">个</span>
-              </div>
-              <div class="cc-field cc-computed">
-                <label>询盘客价</label>
-                <div class="cc-computed-val">{{ countryAvg(c) > 0 ? '¥' + countryAvg(c).toFixed(1) : '—' }}</div>
-              </div>
-              <div class="cc-field cc-computed">
-                <label>有效客价</label>
-                <div class="cc-computed-val">{{ countryEffCost(c) > 0 ? '¥' + countryEffCost(c).toFixed(1) : '—' }}</div>
-              </div>
+          <div
+            v-for="(c, i) in activeCountries"
+            :key="c"
+            class="rt-row"
+            :class="{ 'rt-row--expanded': expandedCountries.has(c) }"
+            :style="{ '--row-color': countryColors[i], '--row-color-light': countryColors[i] + '12' }"
+          >
+            <span class="rt-cell rt-cell--seq">
+              <span class="rt-seq" :style="{ background: countryColors[i] }">{{ i + 1 }}</span>
+            </span>
+            <span class="rt-cell rt-cell--country">
+              <span class="fi" :class="'fi-' + flagCode(c)" style="border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.1);"></span>
+              <span class="rt-country-name">{{ c }}</span>
+            </span>
+            <span class="rt-cell rt-cell--budget">
+              <el-input-number v-model="countryData[c].budget" :min="0" :precision="2" :controls="false" placeholder="0" class="rt-input" />
+            </span>
+            <span class="rt-cell rt-cell--usd" :class="{ collapsed: usdCollapsed }">
+              <el-input-number v-model="countryData[c].usdBudget" :min="0" :precision="2" :controls="false" placeholder="$" class="rt-input rt-input--usd" />
+            </span>
+            <span class="rt-cell rt-cell--customer">
+              <el-input-number v-model="countryData[c].newCustomer" :min="0" :controls="false" placeholder="0" class="rt-input" />
+            </span>
+            <span class="rt-cell rt-cell--grouped">
+              <el-input-number v-model="countryData[c].grouped" :min="0" :controls="false" placeholder="0" class="rt-input" @change="onGroupedChange(c)" />
+            </span>
+            <span class="rt-cell rt-cell--cost">
+              <span class="rt-cost-line">{{ countryAvg(c) > 0 ? '¥' + countryAvg(c).toFixed(1) : '—' }}</span>
+              <span class="rt-cost-line rt-cost-line--eff">{{ countryEffCost(c) > 0 ? '¥' + countryEffCost(c).toFixed(1) : '—' }}</span>
+            </span>
+            <span class="rt-cell rt-cell--actions">
+              <button class="rt-act-btn" :disabled="i===0" @click="moveCountry(i,-1)" title="上移"><el-icon :size="12"><Top /></el-icon></button>
+              <button class="rt-act-btn" :disabled="i===activeCountries.length-1" @click="moveCountry(i,1)" title="下移"><el-icon :size="12"><Bottom /></el-icon></button>
+              <button class="rt-act-btn rt-act-btn--expand" @click="toggleExpand(c)" :title="expandedCountries.has(c)?'收起详情':'展开详情'">
+                <el-icon :size="12"><ArrowDown v-if="expandedCountries.has(c)" /><ArrowRight v-else /></el-icon>
+                <span class="rt-expand-badge" v-if="n(countryData[c].grouped) > 0">{{ n(countryData[c].grouped) }}</span>
+              </button>
+              <button class="rt-act-btn rt-act-btn--del" @click="removeCountry(c)" :disabled="activeCountries.length<=1" title="移除"><el-icon :size="12"><Close /></el-icon></button>
+            </span>
+          </div>
+        </div>
+
+        <!-- 拉群详情展开区 -->
+        <div v-for="c in activeCountries.filter(c => expandedCountries.has(c))" :key="'gd-'+c" class="gd-expand">
+          <div class="gd-expand-hd" @click="toggleExpand(c)">
+            <el-icon :size="14"><ArrowDown /></el-icon>
+            <span class="fi" :class="'fi-' + flagCode(c)" style="border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.1);margin:0 6px;"></span>
+            <b>{{ c }}</b>
+            <span class="gd-expand-count">拉群 {{ n(countryData[c].grouped) }} 个 · 详情 {{ (countryData[c].groupEntries||[]).filter(e => e.text && e.text.trim()).length }} 条</span>
+          </div>
+          <div class="gd-expand-body">
+            <div v-for="entry in countryData[c].groupEntries" :key="entry.id" class="gd-compact-row">
+              <el-input v-model="entry.text" placeholder="如：印度x2，平面图" size="small" class="gd-compact-text" />
+              <el-select v-model="entry.status" placeholder="状态" size="small" class="gd-compact-status" clearable>
+                <el-option label="到现场" value="到现场" />
+                <el-option label="未到现场" value="未到现场" />
+                <el-option label="待确认" value="待确认" />
+              </el-select>
+              <el-button size="small" text type="danger" class="gd-compact-del" @click="removeGroupEntry(c, entry.id)">
+                <el-icon :size="14"><Close /></el-icon>
+              </el-button>
             </div>
-            <div class="cc-gd">
-              <label>总拉群及客户详情</label>
-              <div class="gd-entries">
-                <div v-for="(entry, ei) in countryData[c].groupEntries" :key="entry.id" class="gd-entry-row">
-                  <el-input v-model="entry.text" placeholder="如：印度x2，平面图" size="small" class="gd-entry-text" />
-                  <el-select v-model="entry.status" placeholder="状态" size="small" class="gd-entry-status" clearable>
-                    <el-option label="到现场" value="到现场" />
-                    <el-option label="未到现场" value="未到现场" />
-                    <el-option label="待确认" value="待确认" />
-                  </el-select>
-                  <el-button size="small" text type="danger" @click="removeGroupEntry(c, entry.id)">
-                    <el-icon :size="14"><Delete /></el-icon>
-                  </el-button>
-                </div>
-                <el-button size="small" text type="primary" class="gd-add-btn" @click="addGroupEntry(c)">
-                  <el-icon :size="13"><Plus /></el-icon> 添加客户详情
-                </el-button>
-              </div>
-            </div>
+            <el-button size="small" text type="primary" class="gd-compact-add" @click="addGroupEntry(c)">
+              <el-icon :size="13"><Plus /></el-icon> 添加客户详情
+            </el-button>
           </div>
         </div>
 
@@ -437,13 +455,58 @@ function removeCountry(c) {
   if (activeCountries.value.length <= 1) { ElMessage.warning('至少保留一个国家'); return }
   const d = countryData[c]
   const hasData = d && (n(d.budget) > 0 || n(d.newCustomer) > 0 || n(d.grouped) > 0 || (d.groupEntries || []).some(e => e.text))
-  const doRemove = () => { activeCountries.value = activeCountries.value.filter(x => x !== c); delete countryData[c] }
+  const doRemove = () => { activeCountries.value = activeCountries.value.filter(x => x !== c); delete countryData[c]; expandedCountries.value.delete(c) }
   if (hasData) {
     ElMessageBox.confirm(`「${c}」已有填写数据，确定移除？`, '确认移除', { confirmButtonText: '移除', cancelButtonText: '取消', type: 'warning' })
       .then(doRemove).catch(() => {})
   } else {
     doRemove()
   }
+}
+
+// 表格视图中展开/收起拉群详情
+const expandedCountries = ref(new Set())
+const usdCollapsed = ref(false)
+
+function toggleExpand(c) {
+  const s = expandedCountries.value
+  if (s.has(c)) s.delete(c); else s.add(c)
+  expandedCountries.value = new Set(s) // 触发响应式更新
+}
+
+// 拉群数变化时自动调整详情条目
+let _groupedChanging = false
+function onGroupedChange(c) {
+  if (_groupedChanging) return
+  nextTick(() => {
+    const d = countryData[c]; if (!d) return
+    const grouped = n(d.grouped)
+    const entries = d.groupEntries || []
+    const validCount = entries.filter(e => e.text && e.text.trim()).length
+
+    if (grouped > entries.length) {
+      // 增加：自动追加空条目
+      const add = grouped - entries.length
+      for (let i = 0; i < add; i++) d.groupEntries.push({ id: ++entryIdSeq, text: '', status: '' })
+      if (!expandedCountries.value.has(c)) toggleExpand(c)
+    } else if (grouped < entries.length && entries.some(e => e.text && e.text.trim())) {
+      // 减少且有数据：弹确认
+      const remove = entries.length - grouped
+      ElMessageBox.confirm(
+        `「${c}」拉群数从 ${entries.length} 减少到 ${grouped}，将删除最后 ${remove} 条详情。已有填写的条目可能丢失，确定？`,
+        '确认调整', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+      ).then(() => {
+        d.groupEntries.splice(grouped)
+      }).catch(() => {
+        _groupedChanging = true
+        d.grouped = entries.length
+        nextTick(() => { _groupedChanging = false })
+      })
+    } else if (grouped < entries.length) {
+      // 减少且全空：直接删除
+      d.groupEntries.splice(grouped)
+    }
+  })
 }
 
 function moveCountry(idx, direction) {
@@ -928,58 +991,126 @@ onMounted(async () => {
 }
 .section-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: #eef2ff; color: #6366f1; font-size: 14px; }
 
-/* ====== 国家卡片 ====== */
-.country-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; transition: border-color .2s; position: relative; }
-.country-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--cc-color, #6366f1); border-radius: 12px 0 0 12px; }
-.country-card:hover { border-color: var(--cc-color, #6366f1); }
-.cc-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: var(--cc-color-light, #f8fafc); border-bottom: 1px solid #f3f4f6; }
-.cc-header-left { display: flex; align-items: center; gap: 10px; }
-.cc-header-right { display: flex; align-items: center; gap: 2px; }
-.cc-num { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background: #6366f1; color: #fff; font-size: 12px; font-weight: 700; }
-.cc-name { font-size: 15px; font-weight: 700; color: #1f2937; }
-.cc-remove-btn { flex-shrink:0; font-size:12px; padding:2px 8px; opacity:.6; }
-.cc-remove-btn:hover { opacity:1; }
-.cc-body { padding: 16px 18px; }
-.cc-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-.cc-field { flex: 1; min-width: 100px; }
-.cc-field label { display: block; font-size: 11px; font-weight: 600; color: #9ca3af; margin-bottom: 4px; }
-.cc-input { width: 100%; }
-.cc-input :deep(.el-input__wrapper) { background: #f9fafb; border-radius: 8px; box-shadow: none; padding: 2px 10px; }
-.cc-input :deep(.el-input__inner) { font-size: 18px; font-weight: 700; color: #1f2937; height: 36px; }
+/* ====== 可编辑表格 ====== */
+.report-table-wrap {
+  background:#fff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;
+}
+.rt-head {
+  display:grid;
+  grid-template-columns:38px 130px 1fr 1fr 1fr 1fr 130px 90px;
+  padding:10px 16px; align-items:center;
+  background:#f9fafb; border-bottom:1px solid #e5e7eb;
+  gap:8px;
+}
+.rt--no-usd .rt-head { grid-template-columns:38px 130px 1fr 1fr 1fr 130px 90px; }
 
-/* 美金字段 */
-.cc-field-usd { border-left: 1px dashed #e5e7eb; padding-left: 10px; }
-.cc-input-usd :deep(.el-input__wrapper) { background: #fefce8; }
-.cc-input-usd :deep(.el-input__inner) { color: #a16207; }
-.usd-hint {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 14px; height: 14px; border-radius: 50%;
-  background: #fef3c7; color: #a16207; font-size: 10px; font-weight: 700;
-  cursor: help; margin-left: 2px;
+.rt-cell { font-size:12px; font-weight:600; color:#9ca3af; display:flex; align-items:center; }
+.rt-cell--seq { justify-content:center; }
+.rt-cell--usd { gap:4px; }
+.rt--no-usd .rt-cell--usd { display:none; }
+.rt--no-usd .rt-head .rt-cell--usd { display:flex; } /* 表头始终显示，方便点箭头切回 */
+.rt--no-usd .rt-head .rt-cell--usd span { display:none; } /* 但文字隐藏，只留箭头 */
+.rt-usd-toggle {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:16px; height:16px; border-radius:3px; border:none;
+  background:transparent; cursor:pointer; color:#9ca3af; padding:0;
 }
-.cc-unit { font-size: 11px; color: #9ca3af; margin-left: 4px; }
-.cc-field.cc-computed { background: var(--cc-color-light, #f5f3ff); border-radius: 8px; padding: 6px 10px; }
-.cc-computed-val { font-size: 18px; font-weight: 700; color: var(--cc-color, #6366f1); height: 36px; display: flex; align-items: center; }
-.cc-gd label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+.rt-usd-toggle:hover { background:#f3f4f6; color:#6366f1; }
 
-/* 客户详情条目 */
-.gd-entries { display:flex; flex-direction:column; gap:8px; }
-.gd-entry-row {
-  display:flex; align-items:center; gap:8px;
-  background:#f9fafb; border:1px solid #e5e7eb;
-  border-radius:8px; padding:8px 10px;
-  transition: border-color .15s;
+.rt-row {
+  display:grid;
+  grid-template-columns:38px 130px 1fr 1fr 1fr 1fr 130px 90px;
+  padding:8px 16px; align-items:center; gap:8px;
+  border-bottom:1px solid #f3f4f6;
+  transition:background .12s; cursor:default;
+  position:relative;
 }
-.gd-entry-row:hover { border-color:#c7d2fe; background:#fff; }
-.gd-entry-text { flex:1; }
-.gd-entry-text :deep(.el-input__wrapper) { background:#fff; }
-.gd-entry-status { width:110px; flex-shrink:0; }
-.gd-add-btn {
-  align-self:flex-start; padding:6px 12px;
-  border:1px dashed #d1d5db; border-radius:8px;
-  font-weight:600; color:#6b7280; transition:all .15s;
+.rt--no-usd .rt-row { grid-template-columns:38px 130px 1fr 1fr 1fr 130px 90px; }
+.rt-row:hover { background:var(--row-color-light, #f9fafb); }
+.rt-row--expanded { background:var(--row-color-light, #f9fafb); }
+.rt-row::before {
+  content:''; position:absolute; left:0; top:0; bottom:0;
+  width:3px; background:var(--row-color, #6366f1);
+  border-radius:0; opacity:.5;
 }
-.gd-add-btn:hover { border-color:#6366f1; color:#6366f1; background:#f5f3ff; }
+.rt-row:last-of-type { border-bottom:none; }
+
+.rt-seq {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:22px; height:22px; border-radius:5px;
+  color:#fff; font-size:11px; font-weight:700;
+}
+.rt-cell--country { gap:8px; }
+.rt-country-name { font-size:13px; font-weight:700; color:#1f2937; white-space:nowrap; }
+
+.rt-input { width:100%; }
+.rt-input :deep(.el-input__wrapper) { background:#f9fafb; border-radius:6px; box-shadow:none; padding:1px 8px; }
+.rt-input :deep(.el-input__inner) { font-size:14px; font-weight:700; color:#1f2937; height:32px; }
+.rt-input--usd :deep(.el-input__wrapper) { background:#fefce8; }
+.rt-input--usd :deep(.el-input__inner) { color:#a16207; }
+.rt-cell--usd.collapsed { display:none; }
+
+.rt-cell--cost { flex-direction:column; align-items:flex-start; gap:2px; }
+.rt-cost-line { font-size:13px; font-weight:700; color:var(--row-color, #6366f1); line-height:1.2; }
+.rt-cost-line--eff { font-size:11px; opacity:.7; }
+
+.rt-cell--actions { justify-content:flex-end; gap:2px; }
+.rt-act-btn {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:24px; height:24px; border-radius:4px;
+  border:none; background:transparent; cursor:pointer;
+  color:#9ca3af; padding:0; transition:all .12s;
+}
+.rt-act-btn:hover { background:#f3f4f6; color:#374151; }
+.rt-act-btn:disabled { opacity:.25; cursor:default; }
+.rt-act-btn--del { color:#d1d5db; }
+.rt-act-btn--del:hover { background:#fef2f2; color:#ef4444; }
+.rt-act-btn--expand { position:relative; color:#6b7280; width:auto; padding:0 4px; gap:3px; }
+.rt-act-btn--expand:hover { color:#6366f1; background:#eef2ff; }
+.rt-expand-badge {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:16px; height:16px; border-radius:8px;
+  background:#6366f1; color:#fff; font-size:10px; font-weight:700;
+  padding:0 4px; line-height:1;
+}
+
+/* ====== 拉群详情展开区 ====== */
+.gd-expand {
+  background:#fff; border:1px solid #e5e7eb; border-radius:10px;
+  margin-top:4px; overflow:hidden;
+}
+.gd-expand-hd {
+  display:flex; align-items:center; gap:4px; padding:10px 16px;
+  background:#f9fafb; cursor:pointer; user-select:none;
+  border-bottom:1px solid #f3f4f6;
+  transition:background .12s;
+}
+.gd-expand-hd:hover { background:#f3f4f6; }
+.gd-expand-count { font-size:11px; color:#9ca3af; margin-left:8px; }
+.gd-expand-body { padding:8px 16px 12px; display:flex; flex-direction:column; gap:6px; }
+
+/* 紧凑条目行 */
+.gd-compact-row {
+  display:flex; align-items:center; gap:6px;
+  padding:4px 8px; background:#f9fafb;
+  border:1px solid #e5e7eb; border-radius:6px;
+  transition:border-color .12s;
+}
+.gd-compact-row:hover { border-color:#c7d2fe; background:#fff; }
+.gd-compact-text { flex:1; }
+.gd-compact-text :deep(.el-input__wrapper) { background:#fff; }
+.gd-compact-status { width:90px; flex-shrink:0; }
+.gd-compact-del { flex-shrink:0; opacity:.5; }
+.gd-compact-del:hover { opacity:1; }
+.gd-compact-add {
+  align-self:flex-start; padding:4px 10px;
+  border:1px dashed #d1d5db; border-radius:6px;
+  font-size:12px; font-weight:600; color:#6b7280;
+  transition:all .12s;
+}
+.gd-compact-add:hover { border-color:#6366f1; color:#6366f1; background:#f5f3ff; }
+
+/* ====== 全局拉群详情pills ====== */
 .gd-entry-pill {
   display:inline-block; font-size:12px; color:#374151; margin:2px 4px 2px 0;
   padding:2px 8px; background:#f3f4f6; border-radius:5px;
