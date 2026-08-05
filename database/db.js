@@ -14,7 +14,7 @@ if (!fs.existsSync(DATA_DIR)) {
 
 // 生成唯一 ID（时间戳毫秒 + 随机后缀，保持数字类型兼容存量数据）
 function uid() {
-  return Date.now();
+  return Date.now() + Math.floor(Math.random() * 10000);
 }
 
 // 写锁：防止并发读改写覆盖

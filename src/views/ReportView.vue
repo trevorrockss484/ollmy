@@ -792,16 +792,16 @@ async function syncFromStats() {
     const breakdown = res.data[0].countryBreakdown || []
     if (!breakdown.length) { ElMessage.warning('客户统计中无国家客资数据'); return }
     let count = 0
+    const newCountries = []
     for (const cb of breakdown) {
       if (cb.country && cb.count > 0) {
-        if (!activeCountries.value.includes(cb.country)) {
-          activeCountries.value = [...activeCountries.value, cb.country]
-        }
+        if (!activeCountries.value.includes(cb.country)) newCountries.push(cb.country)
         if (!(cb.country in countryData)) countryData[cb.country] = defaultCountryFb()
         countryData[cb.country].newCustomer = cb.count
         count++
       }
     }
+    if (newCountries.length) activeCountries.value = [...activeCountries.value, ...newCountries]
     ElMessage.success('已从客户统计同步 ' + count + ' 个国家客资')
   } catch(e) { ElMessage.error('同步失败') }
 }

@@ -241,11 +241,11 @@ function formatSalesText(arr) { if (!Array.isArray(arr) || !arr.length) return '
 
 function removeSalesRow(name) { delete salesMap[name]; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys(Object.keys(salesMap)) }) }
 function removeCountryRow(country) { delete countryMap[country]; nextTick(() => { if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys(Object.keys(countryMap)) }); syncCountryTotal() }
-function restoreCountryMap(arr) {
+function restoreCountryMap(arr, skipTotal) {
   for (const k of Object.keys(countryMap)) delete countryMap[k]
   if (Array.isArray(arr)) for (const s of arr) { if (s.country) countryMap[s.country] = s.count || 1 }
   nextTick(() => { if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys(Object.keys(countryMap)) })
-  syncCountryTotal()
+  if (!skipTotal) syncCountryTotal()
 }
 function restoreSalesMap(arr) {
   for (const k of Object.keys(salesMap)) delete salesMap[k]
@@ -262,7 +262,16 @@ async function addSalesPerson() {
 function addBulkSales() {
   const raw = bulkSalesInput.value.trim(); if (!raw) return
   const names = raw.split(/[,，、\s\n\r]+/).map(s => s.trim()).filter(Boolean); if (!names.length) return
-  Promise.all(names.map(n => api.salesPersons.add(n))).then(() => { bulkSalesInput.value = ''; loadSalesPersons(); ElMessage.success('已添加 ' + names.length + ' 个') }).catch(() => ElMessage.error('部分失败'))
+  const group = newSalesGroup.value.trim() || ''
+  Promise.allSettled(names.map(n => api.salesPersons.add(n, group)))
+    .then(results => {
+      bulkSalesInput.value = ''
+      loadSalesPersons()
+      const ok = results.filter(r => r.status === 'fulfilled' && r.value.success).length
+      const fail = results.length - ok
+      if (fail) ElMessage.warning(`已添加 ${ok} 个，${fail} 个失败`)
+      else ElMessage.success('已添加 ' + ok + ' 个')
+    })
 }
 async function deleteSalesPerson(sp) { const res = await api.salesPersons.delete(sp.id); if (res.success) loadSalesPersons() }
 
@@ -274,11 +283,12 @@ async function loadData() {
     const r = res.data[0]; existingId.value = r.id
     form.newCustomers = r.newCustomers; form.repliedCustomers = r.repliedCustomers; form.registeredCustomers = r.registeredCustomers
     form.groupedWithPlan = r.groupedWithPlan; form.visitingCustomers = r.visitingCustomers; form.closedDeals = r.closedDeals
-    restoreSalesMap(r.salesAssignments); restoreCountryMap(r.countryBreakdown)
+    restoreSalesMap(r.salesAssignments); restoreCountryMap(r.countryBreakdown, true /* skipTotal: don't overwrite persisted newCustomers */)
   } else { existingId.value = null; Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k] }
   const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value); if (mRes.success) Object.assign(monthly, mRes.data)
-  const hRes = await api.customerStats.list({ accountId: accountId.value }); if (hRes.success) history.value = hRes.data.sort((a, b) => b.date.localeCompare(a.date))
-  setTimeout(() => { autoSaveSkip = false; saveMsg.value = '' }, 500)
+  // 历史仅加载当月数据
+  const hRes = await api.customerStats.list({ accountId: accountId.value, startDate: d.substring(0, 7) + '-01', endDate: d.substring(0, 7) + '-31' }); if (hRes.success) history.value = hRes.data.sort((a, b) => b.date.localeCompare(a.date))
+  autoSaveSkip = false; saveMsg.value = ''
 }
 
 let skipAutoLoad = false
@@ -292,7 +302,8 @@ async function saveData(silent) {
   try {
     const payload = { date: d, accountId: accountId.value, accountName: acc.name, newCustomers: form.newCustomers || 0, repliedCustomers: form.repliedCustomers || 0, registeredCustomers: form.registeredCustomers || 0, groupedWithPlan: form.groupedWithPlan || 0, visitingCustomers: form.visitingCustomers || 0, closedDeals: form.closedDeals || 0, salesAssignments: selectedSales.value.filter(s => s.name), countryBreakdown: selectedCountries.value.filter(c => c.country) }
     const res = await api.customerStats.save(payload)
-    if (res.success) { existingId.value = res.data.id; if (!silent) { saveMsg.value = '已保存'; saveOk.value = true }; autoSaveSkip = true; refreshMonthly(); autoSaveSkip = false } else { saveMsg.value = '❌ ' + (res.error || '未知错误'); saveOk.value = false }
+    if (res.success) { existingId.value = res.data.id; saveMsg.value = silent ? '已自动保存' : '已保存'; saveOk.value = true; autoSaveSkip = true; await refreshMonthly(); autoSaveSkip = false } else { saveMsg.value = '❌ ' + (res.error || '未知错误'); saveOk.value = false }
+    if (silent) { setTimeout(() => { if (saveMsg.value === '已自动保存') saveMsg.value = '' }, 2000) }
   } catch (e) { saveMsg.value = '❌ ' + e.message; saveOk.value = false }
 }
 
@@ -342,6 +353,7 @@ function triggerAutoSave() {
   autoSaveTimer = setTimeout(() => {
     autoSavePending = false
     autoSaveTimer = null
+    if (autoSaveSkip) return
     saveMsg.value = '自动保存中...'; saveOk.value = true
     saveData(true)
   }, 1000)

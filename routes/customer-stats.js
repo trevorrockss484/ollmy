@@ -24,25 +24,26 @@ router.get('/monthly/:month', (req, res) => {
   }
 });
 
+// 共享：将国家客资同步回日报
+function syncToDailyReport(date, accountId, countryBreakdown) {
+  if (!date || !accountId || !Array.isArray(countryBreakdown) || !countryBreakdown.length) return
+  const existing = db.getDailyData(date, { accountId }) || { countries: {}, summary: '', optimize: '' }
+  const countries = { ...(existing.countries || {}) }
+  for (const cb of countryBreakdown) {
+    if (cb.country && cb.count > 0) {
+      if (!countries[cb.country]) countries[cb.country] = { budget: null, usdBudget: null, newCustomer: 0, grouped: null, groupEntries: [] }
+      countries[cb.country].newCustomer = cb.count || 0
+    }
+  }
+  db.saveDailyData(date, { countries, summary: existing.summary || '', optimize: existing.optimize || '' }, { accountId })
+}
+
 // 新增/覆盖（同日期+账号 upsert）
 router.post('/', (req, res) => {
   try {
     const record = db.upsertCustomerStat(req.body);
-
-    // 双向同步：把国家客资写回报日报
-    const { date, accountId, countryBreakdown } = req.body;
-    if (date && countryBreakdown && Array.isArray(countryBreakdown) && countryBreakdown.length) {
-      const existing = db.getDailyData(date, { accountId }) || { countries: {}, summary: '', optimize: '' };
-      const countries = { ...(existing.countries || {}) };
-      for (const cb of countryBreakdown) {
-        if (cb.country && cb.count > 0) {
-          if (!countries[cb.country]) countries[cb.country] = { budget: null, usdBudget: null, newCustomer: 0, grouped: null, groupEntries: [] };
-          countries[cb.country].newCustomer = cb.count || 0;
-        }
-      }
-      db.saveDailyData(date, { countries, summary: existing.summary || '', optimize: existing.optimize || '' }, { accountId });
-    }
-
+    const { date, accountId, countryBreakdown } = req.body
+    syncToDailyReport(date, accountId, countryBreakdown)
     res.json({ success: true, data: record });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
@@ -53,6 +54,8 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   try {
     const record = db.upsertCustomerStat({ ...req.body, id: req.params.id });
+    const { date, accountId, countryBreakdown } = req.body
+    syncToDailyReport(date, accountId, countryBreakdown)
     res.json({ success: true, data: record });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
