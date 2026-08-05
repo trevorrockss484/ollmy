@@ -345,17 +345,14 @@ function doParsePaste() {
 
 
 // ====== 自动保存 ======
-let autoSavePending = false
 let autoSaveSkip = false
 let autoSaveReady = false
 let autoSaveTimer = null
 function triggerAutoSave() {
   if (autoSaveSkip) return
   if (!autoSaveReady) return
-  if (autoSavePending) return
-  autoSavePending = true
+  if (autoSaveTimer) clearTimeout(autoSaveTimer)
   autoSaveTimer = setTimeout(() => {
-    autoSavePending = false
     autoSaveTimer = null
     if (autoSaveSkip) return
     saveMsg.value = '自动保存中...'; saveOk.value = true
