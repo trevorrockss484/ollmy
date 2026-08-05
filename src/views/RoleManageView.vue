@@ -88,6 +88,35 @@
           <div class="dlg-sec-title">状态</div>
           <el-switch v-model="form.enabled" active-text="启用" inactive-text="禁用" size="large" />
         </div>
+
+        <!-- 同时创建用户（仅新增时） -->
+        <div class="dlg-section" v-if="!editId">
+          <div class="dlg-sec-title" style="cursor:pointer;user-select:none;" @click="createUser = !createUser">
+            <el-icon :size="14" style="transition:transform .2s;" :style="{ transform: createUser ? 'rotate(90deg)' : '' }"><ArrowRight /></el-icon>
+            同时创建登录账号
+            <el-tag size="small" type="warning" effect="plain" round>可选</el-tag>
+          </div>
+          <div v-if="createUser" class="dlg-user-fields">
+            <div class="dlg-row">
+              <div class="dlg-field">
+                <label>登录账号 <span class="dlg-required">*</span></label>
+                <el-input v-model="form.userUsername" placeholder="如：zhangsan" size="large" />
+              </div>
+              <div class="dlg-field">
+                <label>显示名称</label>
+                <el-input v-model="form.userDisplayName" :placeholder="form.displayName || '如：张三'" size="large" />
+              </div>
+            </div>
+            <div class="dlg-field" style="margin-top:12px;">
+              <label>登录密码 <span class="dlg-required">*</span></label>
+              <el-input v-model="form.userPassword" type="password" placeholder="设置密码" show-password size="large" />
+            </div>
+            <div class="dlg-user-note">
+              <el-icon :size="13"><InfoFilled /></el-icon>
+              创建后将自动分配此角色，用户可立即登录
+            </div>
+          </div>
+        </div>
       </div>
       <template #footer>
         <el-button @click="dialogVisible = false" size="large">取消</el-button>
@@ -133,8 +162,9 @@ for (const m of allMenus) menuLabels[m.path] = m.label
 const roles = ref([])
 const dialogVisible = ref(false)
 const editId = ref(null)
+const createUser = ref(false)
 
-const defaultForm = () => ({ name: '', displayName: '', menus: [], enabled: true })
+const defaultForm = () => ({ name: '', displayName: '', menus: [], enabled: true, userUsername: '', userDisplayName: '', userPassword: '' })
 const form = reactive(defaultForm())
 
 function toggleMenu(path) {
@@ -150,6 +180,7 @@ async function loadRoles() {
 
 function openAdd() {
   editId.value = null
+  createUser.value = false
   Object.assign(form, defaultForm())
   dialogVisible.value = true
 }
@@ -166,14 +197,41 @@ function openEdit(r) {
 async function saveRole() {
   if (!form.name.trim()) { ElMessage.warning('请输入角色标识'); return }
   if (!form.displayName.trim()) { ElMessage.warning('请输入显示名称'); return }
+
+  // 验证用户字段
+  if (!editId.value && createUser.value) {
+    if (!form.userUsername.trim()) { ElMessage.warning('请输入登录账号'); return }
+    if (!form.userPassword) { ElMessage.warning('请设置登录密码'); return }
+  }
+
   if (editId.value) {
     const res = await api.roles.update(editId.value, { displayName: form.displayName.trim(), menus: form.menus, enabled: form.enabled })
     if (res.success) { ElMessage.success('角色已更新'); dialogVisible.value = false; loadRoles() }
     else ElMessage.error(res.error || '更新失败')
   } else {
     const res = await api.roles.add({ name: form.name.trim(), displayName: form.displayName.trim(), menus: form.menus })
-    if (res.success) { ElMessage.success('角色已创建'); dialogVisible.value = false; loadRoles() }
-    else ElMessage.error(res.error || '创建失败')
+    if (res.success) {
+      // 同时创建用户
+      if (createUser.value) {
+        const uRes = await api.users.add({
+          username: form.userUsername.trim(),
+          password: form.userPassword,
+          role: form.name.trim(),
+          displayName: form.userDisplayName.trim() || form.displayName.trim()
+        })
+        if (uRes.success) {
+          ElMessage.success(`角色「${form.displayName.trim()}」已创建，用户「${form.userUsername.trim()}」已创建`)
+        } else {
+          ElMessage.warning(`角色已创建，但用户创建失败：${uRes.error || '未知错误'}`)
+        }
+      } else {
+        ElMessage.success('角色已创建')
+      }
+      dialogVisible.value = false
+      loadRoles()
+    } else {
+      ElMessage.error(res.error || '创建失败')
+    }
   }
 }
 
@@ -255,6 +313,18 @@ onMounted(loadRoles)
 
 .dlg-section--status { display: flex; align-items: center; gap: 20px; }
 .dlg-section--status .dlg-sec-title { margin-bottom: 0; }
+
+.dlg-user-fields {
+  margin-top: 10px;
+  padding: 14px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+}
+.dlg-user-note {
+  margin-top: 10px; font-size: 12px; color: #a16207;
+  display: flex; align-items: center; gap: 5px;
+}
 
 @media (max-width: 640px) {
   .rm-card { flex-wrap: wrap; }
