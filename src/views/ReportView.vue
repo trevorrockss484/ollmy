@@ -607,10 +607,13 @@ async function loadExistingData(d) {
     existingData.value = !!(res.success && res.data)
     if (res.success && res.data && res.data.countries) {
       const savedCountries = Object.keys(res.data.countries)
+      // 以已保存数据为准，替换初始的周计划国家列表
+      activeCountries.value = [...savedCountries]
+      // 清理不在保存数据中的 countryData
+      for (const k of Object.keys(countryData)) {
+        if (!savedCountries.includes(k)) delete countryData[k]
+      }
       for (const c of savedCountries) {
-        if (!activeCountries.value.includes(c)) {
-          activeCountries.value = [...activeCountries.value, c]
-        }
         if (!(c in countryData)) countryData[c] = defaultCountryFb()
         const fb = res.data.countries[c]
         // 迁移旧 groupDetail → groupEntries
