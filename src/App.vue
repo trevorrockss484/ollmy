@@ -66,6 +66,14 @@
  <el-icon><DataAnalysis /></el-icon>
  <template #title>客户统计</template>
  </el-menu-item>
+ <el-menu-item index="/role-manage" v-if="authStore.isAdmin()">
+ <el-icon><Key /></el-icon>
+ <template #title>角色管理</template>
+ </el-menu-item>
+ <el-menu-item index="/user-manage" v-if="authStore.isAdmin()">
+ <el-icon><User /></el-icon>
+ <template #title>用户管理</template>
+ </el-menu-item>
  <el-menu-item index="/compress">
  <el-icon><Scissor /></el-icon>
  <template #title>图片压缩</template>
