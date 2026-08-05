@@ -33,12 +33,12 @@
             <span class="cs-hd-date">{{ dailyLabel }}</span>
           </header>
           <div class="cs-daily-grid">
-            <label class="cs-ditem"><span class="cs-dnum">1</span><span class="cs-dlabel">新客户</span><span class="cs-stepper cs-stepper--lg"><button class="cs-step-btn" @click="form.newCustomers = Math.max(0, (form.newCustomers||0) - 1)">−</button><input type="number" class="cs-step-val" :value="form.newCustomers" @input="e => form.newCustomers = parseInt(e.target.value) || 0" min="0" /><button class="cs-step-btn cs-step-btn--plus" @click="form.newCustomers = (form.newCustomers||0) + 1">+</button></span><span class="cs-dunit">个</span></label>
-            <label class="cs-ditem"><span class="cs-dnum">2</span><span class="cs-dlabel">有回复</span><span class="cs-stepper cs-stepper--lg"><button class="cs-step-btn" @click="form.repliedCustomers = Math.max(0, (form.repliedCustomers||0) - 1)">−</button><input type="number" class="cs-step-val" :value="form.repliedCustomers" @input="e => form.repliedCustomers = parseInt(e.target.value) || 0" min="0" /><button class="cs-step-btn cs-step-btn--plus" @click="form.repliedCustomers = (form.repliedCustomers||0) + 1">+</button></span><span class="cs-dunit">个</span></label>
-            <label class="cs-ditem"><span class="cs-dnum">3</span><span class="cs-dlabel">已登记</span><span class="cs-stepper cs-stepper--lg"><button class="cs-step-btn" @click="form.registeredCustomers = Math.max(0, (form.registeredCustomers||0) - 1)">−</button><input type="number" class="cs-step-val" :value="form.registeredCustomers" @input="e => form.registeredCustomers = parseInt(e.target.value) || 0" min="0" /><button class="cs-step-btn cs-step-btn--plus" @click="form.registeredCustomers = (form.registeredCustomers||0) + 1">+</button></span><span class="cs-dunit">个</span></label>
-            <label class="cs-ditem"><span class="cs-dnum">4</span><span class="cs-dlabel">拉群+图</span><span class="cs-stepper cs-stepper--lg"><button class="cs-step-btn" @click="form.groupedWithPlan = Math.max(0, (form.groupedWithPlan||0) - 1)">−</button><input type="number" class="cs-step-val" :value="form.groupedWithPlan" @input="e => form.groupedWithPlan = parseInt(e.target.value) || 0" min="0" /><button class="cs-step-btn cs-step-btn--plus" @click="form.groupedWithPlan = (form.groupedWithPlan||0) + 1">+</button></span><span class="cs-dunit">个</span></label>
-            <label class="cs-ditem"><span class="cs-dnum">5</span><span class="cs-dlabel">来访</span><span class="cs-stepper cs-stepper--lg"><button class="cs-step-btn" @click="form.visitingCustomers = Math.max(0, (form.visitingCustomers||0) - 1)">−</button><input type="number" class="cs-step-val" :value="form.visitingCustomers" @input="e => form.visitingCustomers = parseInt(e.target.value) || 0" min="0" /><button class="cs-step-btn cs-step-btn--plus" @click="form.visitingCustomers = (form.visitingCustomers||0) + 1">+</button></span><span class="cs-dunit">个</span></label>
-            <label class="cs-ditem"><span class="cs-dnum">6</span><span class="cs-dlabel">成交</span><span class="cs-stepper cs-stepper--lg"><button class="cs-step-btn" @click="form.closedDeals = Math.max(0, (form.closedDeals||0) - 1)">−</button><input type="number" class="cs-step-val" :value="form.closedDeals" @input="e => form.closedDeals = parseInt(e.target.value) || 0" min="0" /><button class="cs-step-btn cs-step-btn--plus" @click="form.closedDeals = (form.closedDeals||0) + 1">+</button></span><span class="cs-dunit">个</span></label>
+            <label class="cs-ditem"><span class="cs-dnum">1</span><span class="cs-dlabel">新客户</span><el-input-number v-model="form.newCustomers" :min="0" placeholder="0" class="cs-dinput" /><span class="cs-dunit">个</span></label>
+            <label class="cs-ditem"><span class="cs-dnum">2</span><span class="cs-dlabel">有回复</span><el-input-number v-model="form.repliedCustomers" :min="0" placeholder="0" class="cs-dinput" /><span class="cs-dunit">个</span></label>
+            <label class="cs-ditem"><span class="cs-dnum">3</span><span class="cs-dlabel">已登记</span><el-input-number v-model="form.registeredCustomers" :min="0" placeholder="0" class="cs-dinput" /><span class="cs-dunit">个</span></label>
+            <label class="cs-ditem"><span class="cs-dnum">4</span><span class="cs-dlabel">拉群+图</span><el-input-number v-model="form.groupedWithPlan" :min="0" placeholder="0" class="cs-dinput" /><span class="cs-dunit">个</span></label>
+            <label class="cs-ditem"><span class="cs-dnum">5</span><span class="cs-dlabel">来访</span><el-input-number v-model="form.visitingCustomers" :min="0" placeholder="0" class="cs-dinput" /><span class="cs-dunit">个</span></label>
+            <label class="cs-ditem"><span class="cs-dnum">6</span><span class="cs-dlabel">成交</span><el-input-number v-model="form.closedDeals" :min="0" placeholder="0" class="cs-dinput" /><span class="cs-dunit">个</span></label>
           </div>
 
           <div class="cs-sales">
@@ -385,6 +385,21 @@ onMounted(async () => { await loadSalesPersons(); loadData() })
 .cs-sales-tree{flex:1;min-width:0;border:1px solid var(--c-border);border-radius:var(--rs);padding:6px;background:var(--c-bg);max-height:240px;overflow-y:auto;}
 .cs-sales-chips{flex:1;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;}
 /* Chip rows + stepper */
+.cs-dinput{width:110px;}
+.cs-dinput :deep(.el-input__wrapper){background:#fff;border-radius:8px;box-shadow:inset 0 0 0 1.5px #d1d5db;padding:2px 10px;transition:all .15s;}
+.cs-dinput :deep(.el-input__wrapper:hover){box-shadow:inset 0 0 0 2px var(--c-accent);}
+.cs-dinput :deep(.el-input__wrapper.is-focus){box-shadow:inset 0 0 0 2.5px var(--c-accent)!important;}
+.cs-dinput :deep(.el-input__inner){font-size:17px;font-weight:700;color:var(--c-text);height:38px;}
+
+.cs-stepper{display:inline-flex;align-items:center;gap:0;border-radius:8px;overflow:hidden;border:1.5px solid var(--c-border);}
+.cs-step-btn{width:28px;height:30px;border:none;background:#f9fafb;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--c-soft);cursor:pointer;transition:all .12s;padding:0;line-height:1;}
+.cs-step-btn:hover{background:var(--c-accent-light);color:var(--c-accent);}
+.cs-step-btn--plus{color:var(--c-good);}
+.cs-step-btn--plus:hover{background:#ecfdf3;color:#0e6245;}
+.cs-step-val{width:40px;height:30px;text-align:center;font-size:14px;font-weight:700;color:var(--c-text);border:none;outline:none;background:#fff;padding:0 4px;font-family:inherit;-moz-appearance:textfield;}
+.cs-step-val::-webkit-inner-spin-button,.cs-step-val::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+.cs-step-val:focus{background:var(--c-accent-light);border-radius:4px;}
+
 .cs-chip-row{display:flex;align-items:center;gap:8px;}
 .cs-stepper{display:inline-flex;align-items:center;gap:0;border-radius:8px;overflow:hidden;border:1.5px solid var(--c-border);}
 
