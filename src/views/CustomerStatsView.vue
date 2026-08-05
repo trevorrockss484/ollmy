@@ -33,12 +33,12 @@
             <span class="cs-hd-date">{{ dailyLabel }}</span>
           </header>
           <div class="cs-daily-grid">
-            <label class="cs-ditem"><span class="cs-dnum">1</span><span class="cs-dlabel">新客户</span><el-input-number v-model="form.newCustomers" :min="0" :controls="false" placeholder="—" class="cs-dinput" /><span class="cs-dunit">个</span></label>
-            <label class="cs-ditem"><span class="cs-dnum">2</span><span class="cs-dlabel">有回复</span><el-input-number v-model="form.repliedCustomers" :min="0" :controls="false" placeholder="—" class="cs-dinput" /><span class="cs-dunit">个</span></label>
-            <label class="cs-ditem"><span class="cs-dnum">3</span><span class="cs-dlabel">已登记</span><el-input-number v-model="form.registeredCustomers" :min="0" :controls="false" placeholder="—" class="cs-dinput" /><span class="cs-dunit">个</span></label>
-            <label class="cs-ditem"><span class="cs-dnum">4</span><span class="cs-dlabel">拉群+图</span><el-input-number v-model="form.groupedWithPlan" :min="0" :controls="false" placeholder="—" class="cs-dinput" /><span class="cs-dunit">个</span></label>
-            <label class="cs-ditem"><span class="cs-dnum">5</span><span class="cs-dlabel">来访</span><el-input-number v-model="form.visitingCustomers" :min="0" :controls="false" placeholder="—" class="cs-dinput" /><span class="cs-dunit">个</span></label>
-            <label class="cs-ditem"><span class="cs-dnum">6</span><span class="cs-dlabel">成交</span><el-input-number v-model="form.closedDeals" :min="0" :controls="false" placeholder="—" class="cs-dinput" /><span class="cs-dunit">个</span></label>
+            <label class="cs-ditem"><span class="cs-dnum">1</span><span class="cs-dlabel">新客户</span><span class="cs-stepper cs-stepper--lg"><button class="cs-step-btn" @click="form.newCustomers = Math.max(0, (form.newCustomers||0) - 1)">−</button><input type="number" class="cs-step-val" :value="form.newCustomers" @input="e => form.newCustomers = parseInt(e.target.value) || 0" min="0" /><button class="cs-step-btn cs-step-btn--plus" @click="form.newCustomers = (form.newCustomers||0) + 1">+</button></span><span class="cs-dunit">个</span></label>
+            <label class="cs-ditem"><span class="cs-dnum">2</span><span class="cs-dlabel">有回复</span><span class="cs-stepper cs-stepper--lg"><button class="cs-step-btn" @click="form.repliedCustomers = Math.max(0, (form.repliedCustomers||0) - 1)">−</button><input type="number" class="cs-step-val" :value="form.repliedCustomers" @input="e => form.repliedCustomers = parseInt(e.target.value) || 0" min="0" /><button class="cs-step-btn cs-step-btn--plus" @click="form.repliedCustomers = (form.repliedCustomers||0) + 1">+</button></span><span class="cs-dunit">个</span></label>
+            <label class="cs-ditem"><span class="cs-dnum">3</span><span class="cs-dlabel">已登记</span><span class="cs-stepper cs-stepper--lg"><button class="cs-step-btn" @click="form.registeredCustomers = Math.max(0, (form.registeredCustomers||0) - 1)">−</button><input type="number" class="cs-step-val" :value="form.registeredCustomers" @input="e => form.registeredCustomers = parseInt(e.target.value) || 0" min="0" /><button class="cs-step-btn cs-step-btn--plus" @click="form.registeredCustomers = (form.registeredCustomers||0) + 1">+</button></span><span class="cs-dunit">个</span></label>
+            <label class="cs-ditem"><span class="cs-dnum">4</span><span class="cs-dlabel">拉群+图</span><span class="cs-stepper cs-stepper--lg"><button class="cs-step-btn" @click="form.groupedWithPlan = Math.max(0, (form.groupedWithPlan||0) - 1)">−</button><input type="number" class="cs-step-val" :value="form.groupedWithPlan" @input="e => form.groupedWithPlan = parseInt(e.target.value) || 0" min="0" /><button class="cs-step-btn cs-step-btn--plus" @click="form.groupedWithPlan = (form.groupedWithPlan||0) + 1">+</button></span><span class="cs-dunit">个</span></label>
+            <label class="cs-ditem"><span class="cs-dnum">5</span><span class="cs-dlabel">来访</span><span class="cs-stepper cs-stepper--lg"><button class="cs-step-btn" @click="form.visitingCustomers = Math.max(0, (form.visitingCustomers||0) - 1)">−</button><input type="number" class="cs-step-val" :value="form.visitingCustomers" @input="e => form.visitingCustomers = parseInt(e.target.value) || 0" min="0" /><button class="cs-step-btn cs-step-btn--plus" @click="form.visitingCustomers = (form.visitingCustomers||0) + 1">+</button></span><span class="cs-dunit">个</span></label>
+            <label class="cs-ditem"><span class="cs-dnum">6</span><span class="cs-dlabel">成交</span><span class="cs-stepper cs-stepper--lg"><button class="cs-step-btn" @click="form.closedDeals = Math.max(0, (form.closedDeals||0) - 1)">−</button><input type="number" class="cs-step-val" :value="form.closedDeals" @input="e => form.closedDeals = parseInt(e.target.value) || 0" min="0" /><button class="cs-step-btn cs-step-btn--plus" @click="form.closedDeals = (form.closedDeals||0) + 1">+</button></span><span class="cs-dunit">个</span></label>
           </div>
 
           <div class="cs-sales">
@@ -51,8 +51,8 @@
                 <div v-for="ct in selectedCountries" :key="ct.country" class="cs-chip-row">
                   <el-tag size="default" effect="dark" type="success" closable @close="removeCountryRow(ct.country)">{{ ct.country }}</el-tag>
                   <span class="cs-stepper">
-                    <button class="cs-step-btn" @click="countryMap[ct.country] = Math.max(1, (countryMap[ct.country]||1) - 1); syncCountryTotal()">-</button>
-                    <span class="cs-step-val">{{ countryMap[ct.country] || 0 }}</span>
+                    <button class="cs-step-btn" @click="countryMap[ct.country] = Math.max(1, (countryMap[ct.country]||1) - 1); syncCountryTotal()">−</button>
+                    <input type="number" class="cs-step-val" :value="countryMap[ct.country]" @input="e => { countryMap[ct.country] = parseInt(e.target.value) || 1; syncCountryTotal() }" min="1" />
                     <button class="cs-step-btn cs-step-btn--plus" @click="countryMap[ct.country] = (countryMap[ct.country]||0) + 1; syncCountryTotal()">+</button>
                   </span>
                 </div>
@@ -71,8 +71,8 @@
                 <div v-for="sa in selectedSales" :key="sa.name" class="cs-chip-row">
                   <el-tag size="default" effect="dark" closable @close="removeSalesRow(sa.name)">{{ sa.name }}</el-tag>
                   <span class="cs-stepper">
-                    <button class="cs-step-btn" @click="salesMap[sa.name] = Math.max(1, (salesMap[sa.name]||1) - 1)">-</button>
-                    <span class="cs-step-val">{{ salesMap[sa.name] || 0 }}</span>
+                    <button class="cs-step-btn" @click="salesMap[sa.name] = Math.max(1, (salesMap[sa.name]||1) - 1)">−</button>
+                    <input type="number" class="cs-step-val" :value="salesMap[sa.name]" @input="e => salesMap[sa.name] = parseInt(e.target.value) || 1" min="1" />
                     <button class="cs-step-btn cs-step-btn--plus" @click="salesMap[sa.name] = (salesMap[sa.name]||0) + 1">+</button>
                   </span>
                 </div>
@@ -375,11 +375,6 @@ onMounted(async () => { await loadSalesPersons(); loadData() })
 .cs-ditem{display:flex;align-items:center;gap:10px;cursor:text;}
 .cs-dnum{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:var(--c-accent-light);color:var(--c-accent);font-size:11px;font-weight:700;flex-shrink:0;}
 .cs-dlabel{font-size:14px;font-weight:600;color:var(--c-soft);white-space:nowrap;width:80px;flex-shrink:0;}
-.cs-dinput{width:110px;flex-shrink:0;}
-.cs-dinput :deep(.el-input__wrapper){background:#fff;border-radius:8px;box-shadow:inset 0 0 0 1.5px #d1d5db;padding:3px 12px;transition:all .15s;}
-.cs-dinput :deep(.el-input__wrapper:hover){box-shadow:inset 0 0 0 2px var(--c-accent);}
-.cs-dinput :deep(.el-input__wrapper.is-focus){box-shadow:inset 0 0 0 2.5px var(--c-accent)!important;background:#fff;}
-.cs-dinput :deep(.el-input__inner){font-size:17px;font-weight:700;color:var(--c-text);height:40px;}
 .cs-dunit{font-size:12px;font-weight:500;color:var(--c-muted);}
 
 /* Sales */
@@ -392,6 +387,7 @@ onMounted(async () => { await loadSalesPersons(); loadData() })
 /* Chip rows + stepper */
 .cs-chip-row{display:flex;align-items:center;gap:8px;}
 .cs-stepper{display:inline-flex;align-items:center;gap:0;border-radius:8px;overflow:hidden;border:1.5px solid var(--c-border);}
+
 .cs-step-btn{
   width:28px;height:30px;border:none;background:#f9fafb;
   display:flex;align-items:center;justify-content:center;
