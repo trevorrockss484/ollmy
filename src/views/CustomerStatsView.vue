@@ -374,7 +374,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 </script>
 
 <style scoped>
-.cs-page { --c-bg:#f7f8fa;--c-card:#fff;--c-border:#eaecf0;--c-accent:#5b5fe3;--c-accent-light:#edeefc;--c-text:#1a1d2e;--c-soft:#6b7084;--c-muted:#9ba0b4;--c-good:#12b886;--c-bad:#e5484d;--r:14px;--rs:10px;max-width:1120px;margin:0 auto;padding-bottom:48px; }
+.cs-page { --c-bg:#f7f8fa;--c-card:#fff;--c-border:#eaecf0;--c-accent:#5b5fe3;--c-accent-light:#edeefc;--c-text:#1a1d2e;--c-soft:#6b7084;--c-muted:#9ba0b4;--c-good:#12b886;--c-bad:#e5484d;--r:14px;--rs:10px;max-width:1360px;margin:0 auto;padding-bottom:48px; }
 
 /* Topbar */
 .cs-topbar{display:flex;justify-content:space-between;align-items:center;padding:18px 0 14px;gap:12px;flex-wrap:wrap;}
@@ -402,7 +402,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 /* Layout */
 .cs-main{display:flex;gap:18px;align-items:flex-start;}
 .cs-left{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;}
-.cs-right{width:360px;flex-shrink:0;position:sticky;top:18px;display:flex;flex-direction:column;gap:14px;}
+.cs-right{width:420px;flex-shrink:0;position:sticky;top:18px;display:flex;flex-direction:column;gap:14px;}
 
 /* Card */
 .cs-card{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r);padding:22px 24px;}
@@ -415,7 +415,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-hd-hint{font-size:11px;font-weight:500;color:var(--c-muted);margin-left:auto;}
 
 /* Daily */
-.cs-daily-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 32px;margin-bottom:18px;}
+.cs-daily-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px 24px;margin-bottom:18px;}
 .cs-ditem{display:flex;align-items:center;gap:10px;cursor:text;}
 .cs-dnum{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:var(--c-accent-light);color:var(--c-accent);font-size:11px;font-weight:700;flex-shrink:0;}
 .cs-dlabel{font-size:14px;font-weight:600;color:var(--c-soft);white-space:nowrap;width:80px;flex-shrink:0;}
@@ -426,8 +426,8 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-sales-hd{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
 .cs-sales-cnt{font-size:12px;font-weight:600;color:var(--c-accent);margin-left:auto;}
 .cs-sales-body{display:flex;gap:14px;}
-.cs-sales-tree{flex:1;min-width:0;border:1px solid var(--c-border);border-radius:var(--rs);padding:6px;background:var(--c-bg);max-height:240px;overflow-y:auto;}
-.cs-sales-chips{flex:1;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;}
+.cs-sales-tree{width:260px;flex-shrink:0;border:1px solid var(--c-border);border-radius:var(--rs);padding:6px;background:var(--c-bg);max-height:240px;overflow-y:auto;}
+.cs-sales-chips{flex:1;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;margin-top:4px;}
 /* Chip rows + stepper */
 .cs-dinput{width:110px;}
 .cs-dinput :deep(.el-input__wrapper){background:#fff;border-radius:8px;box-shadow:inset 0 0 0 1.5px #d1d5db;padding:2px 10px;transition:all .15s;}
@@ -476,7 +476,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-ht-s{font-size:12px;color:var(--c-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* Monthly */
-.cs-mo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.cs-mo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;}
 .cs-mo-cell{background:#f9fafb;border-radius:var(--rs);padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;}
 .cs-mo-cell b{font-size:26px;font-weight:800;color:var(--c-text);line-height:1.1;}
 .cs-mo-cell span{font-size:11px;font-weight:600;color:var(--c-muted);letter-spacing:.3px;}
@@ -518,5 +518,5 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-chip-btn--plus { color: var(--c-good); border-color: #a7f3d0; }
 .cs-chip-btn--plus:hover { background: #ecfdf3; color: #0e6245; border-color: var(--c-good); }
 
-@media(max-width:860px){.cs-main{flex-direction:column;}.cs-right{width:100%;position:static;}.cs-daily-grid{grid-template-columns:1fr;}}
+@media(max-width:960px){.cs-main{flex-direction:column;}.cs-right{width:100%;position:static;}.cs-daily-grid{grid-template-columns:1fr;}.cs-mo-grid{grid-template-columns:1fr 1fr;}}
 </style>
