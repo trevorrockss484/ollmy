@@ -154,7 +154,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api, todayStr } from '../api'
 
@@ -268,6 +268,7 @@ async function deleteSalesPerson(sp) { const res = await api.salesPersons.delete
 
 async function loadData() {
   const d = formDate.value; if (!d) return
+  autoSaveSkip = true
   const res = await api.customerStats.list({ startDate: d, endDate: d, accountId: accountId.value })
   if (res.success && res.data.length) {
     const r = res.data[0]; existingId.value = r.id
@@ -277,24 +278,25 @@ async function loadData() {
   } else { existingId.value = null; Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k] }
   const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value); if (mRes.success) Object.assign(monthly, mRes.data)
   const hRes = await api.customerStats.list({ accountId: accountId.value }); if (hRes.success) history.value = hRes.data.sort((a, b) => b.date.localeCompare(a.date))
+  setTimeout(() => { autoSaveSkip = false; saveMsg.value = '' }, 500)
 }
 
 let skipAutoLoad = false
 function onDateChange() { if (skipAutoLoad) return; saveMsg.value = ''; loadData() }
 function onAccountChange() { localStorage.setItem('cs_accountId', accountId.value); loadData() }
 
-async function saveData() {
-  const d = formDate.value; if (!d) { ElMessage.warning('请选择日期'); return }
+async function saveData(silent) {
+  const d = formDate.value; if (!d) { if (!silent) ElMessage.warning('请选择日期'); return }
   const acc = accounts.value.find(a => a.id === accountId.value) || accounts.value[0]
-  saveMsg.value = '保存中...'; saveOk.value = true
+  if (!silent) { saveMsg.value = '保存中...'; saveOk.value = true }
   try {
-    const payload = { date: d, accountId: accountId.value, accountName: acc.name, newCustomers: form.newCustomers || 0, repliedCustomers: form.repliedCustomers || 0, registeredCustomers: form.registeredCustomers || 0, groupedWithPlan: form.groupedWithPlan || 0, visitingCustomers: form.visitingCustomers || 0, closedDeals: form.closedDeals || 0, salesAssignments: selectedSales.value.filter(s => s.name) }
+    const payload = { date: d, accountId: accountId.value, accountName: acc.name, newCustomers: form.newCustomers || 0, repliedCustomers: form.repliedCustomers || 0, registeredCustomers: form.registeredCustomers || 0, groupedWithPlan: form.groupedWithPlan || 0, visitingCustomers: form.visitingCustomers || 0, closedDeals: form.closedDeals || 0, salesAssignments: selectedSales.value.filter(s => s.name), countryBreakdown: selectedCountries.value.filter(c => c.country) }
     const res = await api.customerStats.save(payload)
-    if (res.success) { existingId.value = res.data.id; saveMsg.value = '已保存'; saveOk.value = true; loadData() } else { saveMsg.value = '❌ ' + (res.error || '未知错误'); saveOk.value = false }
+    if (res.success) { existingId.value = res.data.id; if (!silent) { saveMsg.value = '已保存'; saveOk.value = true }; autoSaveSkip = true; refreshMonthly(); autoSaveSkip = false } else { saveMsg.value = '❌ ' + (res.error || '未知错误'); saveOk.value = false }
   } catch (e) { saveMsg.value = '❌ ' + e.message; saveOk.value = false }
 }
 
-function clearForm() { Object.assign(form, defaultForm()); for (const k of Object.keys(countryMap)) delete countryMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; existingId.value = null; saveMsg.value = ''; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys([]) }); ElMessage.success('已清空') }
+function clearForm() { autoSaveSkip = true; Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; existingId.value = null; saveMsg.value = ''; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys([]); autoSaveSkip = false }); ElMessage.success('已清空') }
 
 function editRecord(r) { skipAutoLoad = true; if (r.accountId && r.accountId !== accountId.value) { accountId.value = r.accountId; localStorage.setItem('cs_accountId', accountId.value) }; formDate.value = r.date; skipAutoLoad = false; loadData() }
 
@@ -327,7 +329,33 @@ function doParsePaste() {
 
 
 
-onMounted(async () => { await loadSalesPersons(); loadData() })
+// ====== 自动保存 ======
+let autoSavePending = false
+let autoSaveSkip = false
+let autoSaveReady = false
+function triggerAutoSave() {
+  if (autoSaveSkip) return
+  if (!autoSaveReady) return
+  if (autoSavePending) return
+  autoSavePending = true
+  setTimeout(() => {
+    autoSavePending = false
+    saveMsg.value = '自动保存中...'; saveOk.value = true
+    saveData(true)
+  }, 1000)
+}
+
+watch(
+  () => JSON.stringify({
+    nc: form.newCustomers, rc: form.repliedCustomers, reg: form.registeredCustomers,
+    gp: form.groupedWithPlan, vc: form.visitingCustomers, cd: form.closedDeals,
+    sa: selectedSales.value.map(s => s.name + ':' + s.count).join(','),
+    cc: selectedCountries.value.map(c => c.country + ':' + c.count).join(','),
+  }),
+  () => { triggerAutoSave() }
+)
+
+onMounted(async () => { await loadSalesPersons(); await loadData(); setTimeout(() => { autoSaveReady = true }, 800) })
 </script>
 
 <style scoped>
