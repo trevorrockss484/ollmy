@@ -114,6 +114,11 @@ export const api = {
     update: (id, data) => request('/roles/' + id, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id) => request('/roles/' + id, { method: 'DELETE' }),
   },
+  salesPersons: {
+    list: () => request('/sales-persons'),
+    add: (name) => request('/sales-persons', { method: 'POST', body: JSON.stringify({ name }) }),
+    delete: (id) => request('/sales-persons/' + id, { method: 'DELETE' }),
+  },
 }
 
 // 工具函数

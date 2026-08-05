@@ -65,7 +65,8 @@ function defaultData() {
     scripts: [],
     customerStats: [],
     users: [],
-    roles: []
+    roles: [],
+    salesPersons: []
   };
 }
 
@@ -648,8 +649,10 @@ const customerStatsDb = makeCrud('customerStats', {
   date: '', accountId: '', accountName: '',
   newCustomers: 0, repliedCustomers: 0, registeredCustomers: 0,
   groupedWithPlan: 0, visitingCustomers: 0, closedDeals: 0,
-  salesAssignments: ''
-});
+  salesAssignments: []
+})
+
+const salesPersonsDb = makeCrud('salesPersons', { name: '' });
 
 // 按日期范围和账号查询客户统计数据
 function queryCustomerStats({ startDate, endDate, accountId } = {}) {
@@ -691,11 +694,17 @@ function getCustomerStatsMonthly(month, accountId) {
     groupedWithPlan: list.reduce((s, r) => s + (r.groupedWithPlan || 0), 0),
     visitingCustomers: list.reduce((s, r) => s + (r.visitingCustomers || 0), 0),
     closedDeals: list.reduce((s, r) => s + (r.closedDeals || 0), 0),
-    // 合并所有分配销售文本
-    salesAssignments: list
-      .map(r => r.salesAssignments || '')
-      .filter(Boolean)
-      .join(' '),
+    // 合并所有分配销售（按销售名分组累加）
+    salesAssignments: (() => {
+      const agg = {}
+      for (const r of list) {
+        const arr = Array.isArray(r.salesAssignments) ? r.salesAssignments : []
+        for (const sa of arr) {
+          if (sa.name) agg[sa.name] = (agg[sa.name] || 0) + (sa.count || 0)
+        }
+      }
+      return Object.entries(agg).map(([name, count]) => ({ name, count }))
+    })(),
     records: list.length
   }
 }
@@ -775,4 +784,7 @@ module.exports = {
   addRole(item) { return rolesDb.add(item); },
   updateRole(id, u) { return rolesDb.update(id, u); },
   deleteRole(id) { return rolesDb.delete(id); },
+  getSalesPersons() { return salesPersonsDb.list(); },
+  addSalesPerson(item) { return salesPersonsDb.add(item); },
+  deleteSalesPerson(id) { return salesPersonsDb.delete(id); },
 };
