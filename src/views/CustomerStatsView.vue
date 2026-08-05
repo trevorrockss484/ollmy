@@ -85,6 +85,28 @@
           </div>
         </section>
 
+        <!-- 月度汇总 -->
+        <section class="cs-card cs-card--monthly">
+          <header class="cs-card-hd"><span class="cs-hd-dot cs-hd-dot--accent"></span> 月度汇总 <span class="cs-hd-sub">{{ monthLabel }} · {{ monthly.records }}天</span></header>
+          <div class="cs-mo-grid">
+            <div class="cs-mo-cell"><b>{{ monthly.newCustomers }}</b><span>总询盘</span></div>
+            <div class="cs-mo-cell"><b>{{ monthly.repliedCustomers }}</b><span>有回复</span></div>
+            <div class="cs-mo-cell"><b>{{ monthly.registeredCustomers }}</b><span>已登记</span></div>
+            <div class="cs-mo-cell"><b>{{ monthly.groupedWithPlan }}</b><span>拉群+图</span></div>
+            <div class="cs-mo-cell"><b>{{ monthly.visitingCustomers }}</b><span>来访</span></div>
+            <div class="cs-mo-cell"><b>{{ monthly.closedDeals }}</b><span>成交</span></div>
+          </div>
+          <div class="cs-mo-sales" v-if="monthly.countryBreakdown.length" style="margin-bottom:6px;">
+            <span class="cs-mo-sales-label">国家</span>
+            <span v-for="cb in monthly.countryBreakdown.slice(0, 8)" :key="cb.country" class="cs-mo-sales-item">{{ cb.country }} <b>{{ cb.count }}</b>个</span>
+            <span v-if="monthly.countryBreakdown.length > 8" class="cs-mo-sales-item">+{{ monthly.countryBreakdown.length - 8 }}</span>
+          </div>
+          <div class="cs-mo-sales" v-if="monthly.salesAssignments.length">
+            <span class="cs-mo-sales-label">分配</span>
+            <span v-for="sa in monthly.salesAssignments" :key="sa.name" class="cs-mo-sales-item">{{ sa.name }} <b>{{ sa.count }}</b>个</span>
+          </div>
+        </section>
+
         <!-- 历史记录 -->
         <section class="cs-card cs-card--history">
           <header class="cs-card-hd"><span class="cs-hd-dot cs-hd-dot--sec"></span> 历史记录 <span class="cs-hd-hint">点击可编辑</span></header>
@@ -105,29 +127,8 @@
         </section>
       </div>
 
-      <!-- 右栏 -->
+      <!-- 右栏：预览 -->
       <div class="cs-right">
-        <section class="cs-card cs-card--monthly">
-          <header class="cs-card-hd"><span class="cs-hd-dot cs-hd-dot--accent"></span> 月度汇总 <span class="cs-hd-sub">{{ monthLabel }} · {{ monthly.records }}天</span></header>
-          <div class="cs-mo-grid">
-            <div class="cs-mo-cell"><b>{{ monthly.newCustomers }}</b><span>总询盘</span></div>
-            <div class="cs-mo-cell"><b>{{ monthly.repliedCustomers }}</b><span>有回复</span></div>
-            <div class="cs-mo-cell"><b>{{ monthly.registeredCustomers }}</b><span>已登记</span></div>
-            <div class="cs-mo-cell"><b>{{ monthly.groupedWithPlan }}</b><span>拉群+图</span></div>
-            <div class="cs-mo-cell"><b>{{ monthly.visitingCustomers }}</b><span>来访</span></div>
-            <div class="cs-mo-cell"><b>{{ monthly.closedDeals }}</b><span>成交</span></div>
-          </div>
-          <div class="cs-mo-sales" v-if="monthly.countryBreakdown.length" style="margin-bottom:6px;">
-            <span class="cs-mo-sales-label">国家</span>
-            <span v-for="cb in monthly.countryBreakdown.slice(0, 6)" :key="cb.country" class="cs-mo-sales-item">{{ cb.country }} <b>{{ cb.count }}</b>个</span>
-            <span v-if="monthly.countryBreakdown.length > 6" class="cs-mo-sales-item">+{{ monthly.countryBreakdown.length - 6 }}</span>
-          </div>
-          <div class="cs-mo-sales" v-if="monthly.salesAssignments.length">
-            <span class="cs-mo-sales-label">分配</span>
-            <span v-for="sa in monthly.salesAssignments" :key="sa.name" class="cs-mo-sales-item">{{ sa.name }} <b>{{ sa.count }}</b>个</span>
-          </div>
-        </section>
-
         <section class="cs-card cs-card--preview" v-if="previewText">
           <header class="cs-card-hd cs-card-hd--tight"><span>预览</span><el-button size="small" type="primary" link @click="copyPreview">复制</el-button></header>
           <pre class="cs-preview-text">{{ previewText }}</pre>
@@ -477,7 +478,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-ht-s{font-size:12px;color:var(--c-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* Monthly */
-.cs-mo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;}
+.cs-mo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;}
 .cs-mo-cell{background:#f9fafb;border-radius:var(--rs);padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;}
 .cs-mo-cell b{font-size:26px;font-weight:800;color:var(--c-text);line-height:1.1;}
 .cs-mo-cell span{font-size:11px;font-weight:600;color:var(--c-muted);letter-spacing:.3px;}
