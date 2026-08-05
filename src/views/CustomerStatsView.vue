@@ -52,6 +52,8 @@
                   <el-tag size="default" effect="dark" type="success" closable @close="removeCountryRow(ct.country)">{{ ct.country }}</el-tag>
                   <el-input-number v-model="ct.count" :min="1" :controls="false" size="small" class="cs-sales-chip-n" @change="syncCountryTotal" />
                   <span class="cs-dunit">个</span>
+                  <button class="cs-chip-btn" @click="ct.count = Math.max(1, ct.count - 1)">−</button>
+                  <button class="cs-chip-btn cs-chip-btn--plus" @click="ct.count = (ct.count || 0) + 1">+</button>
                 </div>
               </div>
               <div v-else class="cs-sales-none">在树中勾选国家</div>
@@ -69,6 +71,8 @@
                   <el-tag size="default" effect="dark" closable @close="removeSalesRow(sa.name)">{{ sa.name }}</el-tag>
                   <el-input-number v-model="sa.count" :min="1" :controls="false" size="small" class="cs-sales-chip-n" />
                   <span class="cs-dunit">个</span>
+                  <button class="cs-chip-btn" @click="sa.count = Math.max(1, sa.count - 1)">−</button>
+                  <button class="cs-chip-btn cs-chip-btn--plus" @click="sa.count = (sa.count || 0) + 1">+</button>
                 </div>
               </div>
               <div v-else class="cs-sales-none">在树中勾选销售</div>
@@ -288,7 +292,7 @@ async function saveData() {
   } catch (e) { saveMsg.value = '❌ ' + e.message; saveOk.value = false }
 }
 
-function clearForm() { Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; existingId.value = null; saveMsg.value = ''; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys([]) }); ElMessage.success('已清空') }
+function clearForm() { Object.assign(form, defaultForm()); for (const k of Object.keys(countryMap)) delete countryMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; existingId.value = null; saveMsg.value = ''; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys([]) }); ElMessage.success('已清空') }
 
 function editRecord(r) { skipAutoLoad = true; if (r.accountId && r.accountId !== accountId.value) { accountId.value = r.accountId; localStorage.setItem('cs_accountId', accountId.value) }; formDate.value = r.date; skipAutoLoad = false; loadData() }
 
@@ -303,7 +307,7 @@ async function refreshMonthly() { const d = formDate.value; if (!d) return; cons
 
 function doParsePaste() {
   parseResults.value = []; const raw = pasteInput.value.trim(); if (!raw) { ElMessage.warning('请先粘贴内容'); return }
-  const text = raw.replace(/\r\n/g, '\n').replace(/：/g, ':').replace(/ /g, ' ')
+  const text = raw.replace(/\r\n/g, '\n').replace(/：/g, ':')
   const dm = text.match(/(\d+)月(\d+)日/); if (dm) { const y = formDate.value.split('-')[0]; formDate.value = y + '-' + dm[1].padStart(2, '0') + '-' + dm[2].padStart(2, '0'); parseResults.value.push('日期: ' + dm[1] + '月' + dm[2] + '日') }
   const daySection = text.split(/⭐月度数据|月度数据/)[0] || text
   const m1 = daySection.match(/本日新客户[:\s]*(\d+)/); if (m1) { form.newCustomers = parseInt(m1[1]) || 0; parseResults.value.push('新客户: ' + m1[1]) }
@@ -313,29 +317,12 @@ function doParsePaste() {
   const m5 = daySection.match(/来访客户[:\s]*(\d+)/); if (m5) { form.visitingCustomers = parseInt(m5[1]) || 0; parseResults.value.push('来访: ' + m5[1]) }
   const m6 = daySection.match(/成交客户[:\s]*(\d+)/); if (m6) { form.closedDeals = parseInt(m6[1]) || 0; parseResults.value.push('成交: ' + m6[1]) }
   const saLine = daySection.match(/拉群客户分配销售[:\s]*([^\n]*)/)
-  if (saLine && saLine[1] && saLine[1].trim() !== '无') { for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; const saRe = /([^\s,，、\d]+?)(\d+)个/g; let sm; while ((sm = saRe.exec(saLine[1])) !== null) { salesMap[sm[1]] = parseInt(sm[2]); parseResults.value.push('销售: ' + sm[1] + sm[2] + '个') } }
+  if (saLine && saLine[1] && saLine[1].trim() !== '无') { const saRe = /([^\s,，、\d]+?)(\d+)个/g; let sm; while ((sm = saRe.exec(saLine[1])) !== null) { salesMap[sm[1]] = parseInt(sm[2]); parseResults.value.push('销售: ' + sm[1] + sm[2] + '个') } }
   pasteVisible.value = false; parseResults.value.length ? ElMessage.success('识别 ' + parseResults.value.length + ' 个字段') : ElMessage.warning('未识别到数据')
   nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys(Object.keys(salesMap)) }); refreshMonthly()
 }
 
 
-async function syncFromDaily() {
-  const d = formDate.value; if (!d) return
-  try {
-    const res = await api.daily.get(d, { accountId: accountId.value })
-    if (!res.success || !res.data || !res.data.countries) { ElMessage.warning('当日无日报数据'); return }
-    // 清空当前选择
-    for (const k of Object.keys(countryMap)) delete countryMap[k]
-    let count = 0
-    for (const [cname, fb] of Object.entries(res.data.countries)) {
-      const nc = fb.newCustomer || 0
-      if (nc > 0) { countryMap[cname] = nc; count++ }
-    }
-    syncCountryTotal()
-    nextTick(() => { if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys(Object.keys(countryMap)) })
-    ElMessage.success('已从日报同步 ' + count + ' 个国家')
-  } catch(e) { ElMessage.error('同步失败') }
-}
 
 onMounted(async () => { await loadSalesPersons(); loadData() })
 </script>
@@ -449,6 +436,18 @@ onMounted(async () => { await loadSalesPersons(); loadData() })
 .cs-parse-result-line{font-size:12px;color:var(--c-soft);line-height:1.6;}
 
 .cs-empty{text-align:center;padding:24px;color:var(--c-muted);font-size:13px;}
+
+.cs-chip-btn {
+  width: 22px; height: 22px; border-radius: 5px;
+  border: 1px solid var(--c-border); background: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; color: var(--c-soft);
+  cursor: pointer; padding: 0; line-height: 1;
+  transition: all .12s; user-select: none;
+}
+.cs-chip-btn:hover { background: var(--c-accent-light); color: var(--c-accent); border-color: var(--c-accent); }
+.cs-chip-btn--plus { color: var(--c-good); border-color: #a7f3d0; }
+.cs-chip-btn--plus:hover { background: #ecfdf3; color: #0e6245; border-color: var(--c-good); }
 
 @media(max-width:860px){.cs-main{flex-direction:column;}.cs-right{width:100%;position:static;}.cs-daily-grid{grid-template-columns:1fr;}}
 </style>
