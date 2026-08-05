@@ -346,7 +346,7 @@ const countryTreeData = [
     ]},
   { key:'e-asia', label:'东亚',
     children:[
-      {key:'日本',label:'日本 +81'},{key:'韩国',label:'韩国 +82'},
+      {key:'中国',label:'中国 +86'},{key:'日本',label:'日本 +81'},{key:'韩国',label:'韩国 +82'},
       {key:'蒙古',label:'蒙古 +976'}
     ]},
   { key:'latam', label:'拉美',
