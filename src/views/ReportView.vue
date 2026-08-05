@@ -810,7 +810,6 @@ async function syncFromStats() {
 
 
 // ====== 自动保存 ======
-let autoSavePending = false
 let autoSaveSkip = false
 let autoSaveReady = false
 let autoSaveTimer = null
@@ -818,10 +817,8 @@ let autoSaveTimer = null
 function triggerAutoSave() {
   if (autoSaveSkip) return
   if (!autoSaveReady) return
-  if (autoSavePending) return
-  autoSavePending = true
+  if (autoSaveTimer) clearTimeout(autoSaveTimer)
   autoSaveTimer = setTimeout(() => {
-    autoSavePending = false
     autoSaveTimer = null
     if (autoSaveSkip) return
     saveData(true)
