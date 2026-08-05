@@ -209,7 +209,7 @@ const monthly = reactive({
 const history = ref([])
 
 const dailyLabel = computed(() => { const d = formDate.value; if (!d) return ''; const p = d.split('-'); return parseInt(p[1]) + '月' + parseInt(p[2]) + '日' })
-const monthLabel = computed(() => { const d = formDate.value; if (!d) return ''; return d.substring(0, 7).replace('-', '年') + '月' })
+const monthLabel = computed(() => { const d = formDate.value; if (!d) return ''; const p = d.split('-'); return parseInt(p[1]) + '月' })
 
 const salesTreeData = computed(() => {
   const groups = {}
@@ -233,7 +233,7 @@ function onCountryTreeCheck(_n, checked) {
 const selectedSales = computed(() => Object.entries(salesMap).filter(([_, v]) => v > 0).map(([name, count]) => ({ name, count })))
 const selectedCountries = computed(() => Object.entries(countryMap).filter(([_, v]) => v > 0).map(([country, count]) => ({ country, count })))
 const totalCountryCount = computed(() => selectedCountries.value.reduce((s, c) => s + (c.count || 0), 0))
-function syncCountryTotal() { form.newCustomers = totalCountryCount.value }
+function syncCountryTotal() { nextTick(() => { form.newCustomers = totalCountryCount.value }) }
 
 function shortDate(str) { if (!str) return ''; const p = str.split('-'); return parseInt(p[1]) + '/' + parseInt(p[2]) }
 function dayName(str) { if (!str) return ''; const d = new Date(str + 'T00:00:00'); return ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()] }
@@ -275,7 +275,7 @@ async function loadData() {
     form.newCustomers = r.newCustomers; form.repliedCustomers = r.repliedCustomers; form.registeredCustomers = r.registeredCustomers
     form.groupedWithPlan = r.groupedWithPlan; form.visitingCustomers = r.visitingCustomers; form.closedDeals = r.closedDeals
     restoreSalesMap(r.salesAssignments); restoreCountryMap(r.countryBreakdown)
-  } else { existingId.value = null; Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k] }
+  } else { existingId.value = null; Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k] }
   const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value); if (mRes.success) Object.assign(monthly, mRes.data)
   const hRes = await api.customerStats.list({ accountId: accountId.value }); if (hRes.success) history.value = hRes.data.sort((a, b) => b.date.localeCompare(a.date))
   setTimeout(() => { autoSaveSkip = false; saveMsg.value = '' }, 500)
