@@ -41,43 +41,45 @@
             <label class="cs-ditem"><span class="cs-dnum">6</span><span class="cs-dlabel">成交</span><el-input-number v-model="form.closedDeals" :min="0" placeholder="0" class="cs-dinput" /><span class="cs-dunit">个</span></label>
           </div>
 
-          <div class="cs-sales">
-            <div class="cs-sales-hd"><span class="cs-dnum">7</span><span class="cs-dlabel">国家客资</span><span class="cs-sales-cnt" v-if="selectedCountries.length">{{ totalCountryCount }}个</span></div>
-            <div class="cs-sales-body">
-              <div class="cs-sales-tree">
-                <el-tree ref="countryTreeRef" :data="countryTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onCountryTreeCheck" />
-              </div>
-              <div class="cs-sales-chips" v-if="selectedCountries.length">
-                <div v-for="ct in selectedCountries" :key="ct.country" class="cs-chip-row">
-                  <el-tag size="default" effect="dark" type="success" closable @close="removeCountryRow(ct.country)">{{ ct.country }}</el-tag>
-                  <span class="cs-stepper">
-                    <button class="cs-step-btn" @click="countryMap[ct.country] = Math.max(1, (countryMap[ct.country]||1) - 1); syncCountryTotal()">−</button>
-                    <input type="number" class="cs-step-val" :value="countryMap[ct.country]" @input="e => { countryMap[ct.country] = parseInt(e.target.value) || 1; syncCountryTotal() }" min="1" />
-                    <button class="cs-step-btn cs-step-btn--plus" @click="countryMap[ct.country] = (countryMap[ct.country]||0) + 1; syncCountryTotal()">+</button>
-                  </span>
+          <div class="cs-bottom-row">
+            <div class="cs-sales cs-sales--half">
+              <div class="cs-sales-hd"><span class="cs-dnum">7</span><span class="cs-dlabel">国家客资</span><span class="cs-sales-cnt" v-if="selectedCountries.length">{{ totalCountryCount }}个</span></div>
+              <div class="cs-sales-body">
+                <div class="cs-sales-tree">
+                  <el-tree ref="countryTreeRef" :data="countryTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onCountryTreeCheck" />
                 </div>
+                <div class="cs-sales-chips" v-if="selectedCountries.length">
+                  <div v-for="ct in selectedCountries" :key="ct.country" class="cs-chip-row">
+                    <el-tag size="small" effect="dark" type="success" closable @close="removeCountryRow(ct.country)">{{ ct.country }}</el-tag>
+                    <span class="cs-stepper">
+                      <button class="cs-step-btn" @click="countryMap[ct.country] = Math.max(1, (countryMap[ct.country]||1) - 1); syncCountryTotal()">−</button>
+                      <span class="cs-step-val">{{ countryMap[ct.country] || 0 }}</span>
+                      <button class="cs-step-btn cs-step-btn--plus" @click="countryMap[ct.country] = (countryMap[ct.country]||0) + 1; syncCountryTotal()">+</button>
+                    </span>
+                  </div>
+                </div>
+                <div v-else class="cs-sales-none">勾选国家</div>
               </div>
-              <div v-else class="cs-sales-none">在树中勾选国家</div>
             </div>
-          </div>
 
-          <div class="cs-sales">
-            <div class="cs-sales-hd"><span class="cs-dnum">8</span><span class="cs-dlabel">分配销售</span><span class="cs-sales-cnt" v-if="selectedSales.length">{{ selectedSales.length }}人</span></div>
-            <div class="cs-sales-body">
-              <div class="cs-sales-tree">
-                <el-tree ref="salesTreeRef" :data="salesTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onSalesTreeCheck" />
-              </div>
-              <div class="cs-sales-chips" v-if="selectedSales.length">
-                <div v-for="sa in selectedSales" :key="sa.name" class="cs-chip-row">
-                  <el-tag size="default" effect="dark" closable @close="removeSalesRow(sa.name)">{{ sa.name }}</el-tag>
-                  <span class="cs-stepper">
-                    <button class="cs-step-btn" @click="salesMap[sa.name] = Math.max(1, (salesMap[sa.name]||1) - 1)">−</button>
-                    <input type="number" class="cs-step-val" :value="salesMap[sa.name]" @input="e => salesMap[sa.name] = parseInt(e.target.value) || 1" min="1" />
-                    <button class="cs-step-btn cs-step-btn--plus" @click="salesMap[sa.name] = (salesMap[sa.name]||0) + 1">+</button>
-                  </span>
+            <div class="cs-sales cs-sales--half">
+              <div class="cs-sales-hd"><span class="cs-dnum">8</span><span class="cs-dlabel">分配销售</span><span class="cs-sales-cnt" v-if="selectedSales.length">{{ selectedSales.length }}人</span></div>
+              <div class="cs-sales-body">
+                <div class="cs-sales-tree">
+                  <el-tree ref="salesTreeRef" :data="salesTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onSalesTreeCheck" />
                 </div>
+                <div class="cs-sales-chips" v-if="selectedSales.length">
+                  <div v-for="sa in selectedSales" :key="sa.name" class="cs-chip-row">
+                    <el-tag size="small" effect="dark" closable @close="removeSalesRow(sa.name)">{{ sa.name }}</el-tag>
+                    <span class="cs-stepper">
+                      <button class="cs-step-btn" @click="salesMap[sa.name] = Math.max(1, (salesMap[sa.name]||1) - 1)">−</button>
+                      <span class="cs-step-val">{{ salesMap[sa.name] || 0 }}</span>
+                      <button class="cs-step-btn cs-step-btn--plus" @click="salesMap[sa.name] = (salesMap[sa.name]||0) + 1">+</button>
+                    </span>
+                  </div>
+                </div>
+                <div v-else class="cs-sales-none">勾选销售</div>
               </div>
-              <div v-else class="cs-sales-none">在树中勾选销售</div>
             </div>
           </div>
         </section>
@@ -422,12 +424,16 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-dunit{font-size:12px;font-weight:500;color:var(--c-muted);}
 
 /* Sales */
-.cs-sales{border-top:1px solid var(--c-accent-light);padding-top:14px;}
-.cs-sales-hd{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+
+.cs-sales-hd{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
 .cs-sales-cnt{font-size:12px;font-weight:600;color:var(--c-accent);margin-left:auto;}
-.cs-sales-body{display:flex;gap:14px;}
-.cs-sales-tree{width:260px;flex-shrink:0;border:1px solid var(--c-border);border-radius:var(--rs);padding:6px;background:var(--c-bg);max-height:240px;overflow-y:auto;}
-.cs-sales-chips{flex:1;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;margin-top:4px;}
+/* 7-8 并排 */
+.cs-bottom-row{display:flex;gap:16px;border-top:1px solid var(--c-accent-light);padding-top:14px;}
+.cs-sales--half{flex:1;min-width:0;border-top:none;padding-top:0;}
+
+.cs-sales-body{display:flex;gap:10px;}
+.cs-sales-tree{width:180px;flex-shrink:0;border:1px solid var(--c-border);border-radius:var(--rs);padding:4px;background:var(--c-bg);max-height:200px;overflow-y:auto;}
+.cs-sales-chips{flex:1;display:flex;align-items:center;gap:6px;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px;min-height:36px;}
 /* Chip rows + stepper */
 .cs-dinput{width:110px;}
 .cs-dinput :deep(.el-input__wrapper){background:#fff;border-radius:8px;box-shadow:inset 0 0 0 1.5px #d1d5db;padding:2px 10px;transition:all .15s;}
@@ -435,17 +441,15 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-dinput :deep(.el-input__wrapper.is-focus){box-shadow:inset 0 0 0 2.5px var(--c-accent)!important;}
 .cs-dinput :deep(.el-input__inner){font-size:17px;font-weight:700;color:var(--c-text);height:38px;}
 
-.cs-stepper{display:inline-flex;align-items:center;gap:0;border-radius:8px;overflow:hidden;border:1.5px solid var(--c-border);}
-.cs-step-btn{width:28px;height:30px;border:none;background:#f9fafb;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--c-soft);cursor:pointer;transition:all .12s;padding:0;line-height:1;}
+.cs-stepper{display:inline-flex;align-items:center;gap:0;border-radius:6px;overflow:hidden;border:1px solid var(--c-border);}
+.cs-step-btn{width:24px;height:26px;border:none;background:#f9fafb;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--c-soft);cursor:pointer;transition:all .12s;padding:0;line-height:1;}
 .cs-step-btn:hover{background:var(--c-accent-light);color:var(--c-accent);}
 .cs-step-btn--plus{color:var(--c-good);}
 .cs-step-btn--plus:hover{background:#ecfdf3;color:#0e6245;}
-.cs-step-val{width:40px;height:30px;text-align:center;font-size:14px;font-weight:700;color:var(--c-text);border:none;outline:none;background:#fff;padding:0 4px;font-family:inherit;-moz-appearance:textfield;}
-.cs-step-val::-webkit-inner-spin-button,.cs-step-val::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
-.cs-step-val:focus{background:var(--c-accent-light);border-radius:4px;}
+.cs-step-val{min-width:32px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--c-text);border:none;outline:none;background:#fff;padding:0 4px;font-family:inherit;}
 
-.cs-chip-row{display:flex;align-items:center;gap:8px;}
-.cs-stepper{display:inline-flex;align-items:center;gap:0;border-radius:8px;overflow:hidden;border:1.5px solid var(--c-border);}
+.cs-chip-row{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.cs-stepper{display:inline-flex;align-items:center;gap:0;border-radius:6px;overflow:hidden;border:1px solid var(--c-border);}
 
 .cs-step-btn{
   width:28px;height:30px;border:none;background:#f9fafb;
@@ -456,11 +460,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-step-btn:hover{background:var(--c-accent-light);color:var(--c-accent);}
 .cs-step-btn--plus{color:var(--c-good);}
 .cs-step-btn--plus:hover{background:#ecfdf3;color:#0e6245;}
-.cs-step-val{
-  min-width:36px;text-align:center;font-size:14px;font-weight:700;color:var(--c-text);
-  padding:0 4px;background:#fff;
-}
-.cs-sales-none{font-size:13px;color:var(--c-muted);padding:12px 0;}
+
 
 /* History */
 .cs-ht{border:1px solid var(--c-border);border-radius:var(--rs);overflow:hidden;}
