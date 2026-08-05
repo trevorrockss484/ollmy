@@ -927,7 +927,7 @@ onMounted(async () => {
 .rt-row {
   display:grid;
   grid-template-columns:38px 130px 1fr 1fr 1fr 1fr 130px 90px;
-  padding:8px 16px; align-items:center; gap:8px;
+  padding:10px 16px; align-items:center; gap:8px;
   border-bottom:1px solid #f3f4f6;
   transition:background .12s; cursor:default;
   position:relative;
@@ -951,9 +951,11 @@ onMounted(async () => {
 .rt-country-name { font-size:13px; font-weight:700; color:#1f2937; white-space:nowrap; }
 
 .rt-input { width:100%; }
-.rt-input :deep(.el-input__wrapper) { background:#f9fafb; border-radius:6px; box-shadow:none; padding:1px 8px; }
-.rt-input :deep(.el-input__inner) { font-size:14px; font-weight:700; color:#1f2937; height:32px; }
-.rt-input--usd :deep(.el-input__wrapper) { background:#fefce8; }
+.rt-input :deep(.el-input__wrapper) { background:#fff; border-radius:8px; box-shadow:0 0 0 1px #e5e7eb; padding:2px 10px; transition:box-shadow .15s; }
+.rt-input :deep(.el-input__wrapper:hover) { box-shadow:0 0 0 1.5px #c7d2fe; }
+.rt-input :deep(.el-input__wrapper.is-focus) { box-shadow:0 0 0 2px #6366f1 !important; }
+.rt-input :deep(.el-input__inner) { font-size:15px; font-weight:700; color:#1f2937; height:36px; }
+.rt-input--usd :deep(.el-input__wrapper) { background:#fffef5; }
 .rt-input--usd :deep(.el-input__inner) { color:#a16207; }
 .rt-cell--usd.collapsed { display:none; }
 
