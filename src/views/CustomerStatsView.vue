@@ -406,7 +406,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 /* Layout */
 .cs-main{display:flex;gap:18px;align-items:flex-start;}
 .cs-left{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;}
-.cs-right{width:420px;flex-shrink:0;position:sticky;top:18px;display:flex;flex-direction:column;gap:14px;}
+.cs-right{width:480px;flex-shrink:0;position:sticky;top:18px;display:flex;flex-direction:column;gap:14px;}
 
 /* Card */
 .cs-card{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r);padding:22px 24px;}
