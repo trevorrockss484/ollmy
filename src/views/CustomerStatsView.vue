@@ -308,10 +308,10 @@ onMounted(async () => { await loadSalesPersons(); loadData() })
 .cs-hd-hint{font-size:11px;font-weight:500;color:var(--c-muted);margin-left:auto;}
 
 /* Daily */
-.cs-daily-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 28px;margin-bottom:18px;}
+.cs-daily-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 32px;margin-bottom:18px;}
 .cs-ditem{display:flex;align-items:center;gap:10px;cursor:text;}
 .cs-dnum{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:var(--c-accent-light);color:var(--c-accent);font-size:11px;font-weight:700;flex-shrink:0;}
-.cs-dlabel{font-size:14px;font-weight:600;color:var(--c-soft);white-space:nowrap;}
+.cs-dlabel{font-size:14px;font-weight:600;color:var(--c-soft);white-space:nowrap;width:80px;flex-shrink:0;}
 .cs-dinput{width:110px;flex-shrink:0;}
 .cs-dinput :deep(.el-input__wrapper){background:#fff;border-radius:8px;box-shadow:inset 0 0 0 1.5px #d1d5db;padding:3px 12px;transition:all .15s;}
 .cs-dinput :deep(.el-input__wrapper:hover){box-shadow:inset 0 0 0 2px var(--c-accent);}
