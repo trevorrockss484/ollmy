@@ -29,14 +29,41 @@
       <div class="left-panel">
         <!-- 本日数据 -->
         <div class="card daily-card">
-          <div class="card-hd">⭐ 本日数据</div>
-          <div class="form-grid">
-            <div class="fg-item"><label>1. 本日新客户</label><el-input-number v-model="form.newCustomers" :min="0" :controls="false" placeholder="0" class="fg-input" /><span class="fg-unit">个</span></div>
-            <div class="fg-item"><label>2. 本日有回复的客户</label><el-input-number v-model="form.repliedCustomers" :min="0" :controls="false" placeholder="0" class="fg-input" /><span class="fg-unit">个</span></div>
-            <div class="fg-item"><label>3. 本日已登记客户</label><el-input-number v-model="form.registeredCustomers" :min="0" :controls="false" placeholder="0" class="fg-input" /><span class="fg-unit">个</span></div>
-            <div class="fg-item"><label>4. 本日已拉群且有平面图</label><el-input-number v-model="form.groupedWithPlan" :min="0" :controls="false" placeholder="0" class="fg-input" /><span class="fg-unit">个</span></div>
-            <div class="fg-item"><label>5. 本日来访客户</label><el-input-number v-model="form.visitingCustomers" :min="0" :controls="false" placeholder="0" class="fg-input" /><span class="fg-unit">个</span></div>
-            <div class="fg-item"><label>6. 本日成交客户</label><el-input-number v-model="form.closedDeals" :min="0" :controls="false" placeholder="0" class="fg-input" /><span class="fg-unit">个</span></div>
+          <div class="card-hd">⭐ 本日数据 · {{ shortDate(formDate) }}</div>
+          <div class="daily-nums">
+            <div class="dn-row">
+              <span class="dn-idx">1</span>
+              <label>本日新客户</label>
+              <el-input-number v-model="form.newCustomers" :min="0" :controls="false" placeholder="0" class="fg-input" />
+              <span class="fg-unit">个</span>
+
+              <span class="dn-idx dn-idx--r">4</span>
+              <label>拉群且有平面图</label>
+              <el-input-number v-model="form.groupedWithPlan" :min="0" :controls="false" placeholder="0" class="fg-input" />
+              <span class="fg-unit">个</span>
+            </div>
+            <div class="dn-row">
+              <span class="dn-idx">2</span>
+              <label>有回复的客户</label>
+              <el-input-number v-model="form.repliedCustomers" :min="0" :controls="false" placeholder="0" class="fg-input" />
+              <span class="fg-unit">个</span>
+
+              <span class="dn-idx dn-idx--r">5</span>
+              <label>来访客户</label>
+              <el-input-number v-model="form.visitingCustomers" :min="0" :controls="false" placeholder="0" class="fg-input" />
+              <span class="fg-unit">个</span>
+            </div>
+            <div class="dn-row">
+              <span class="dn-idx">3</span>
+              <label>已登记客户</label>
+              <el-input-number v-model="form.registeredCustomers" :min="0" :controls="false" placeholder="0" class="fg-input" />
+              <span class="fg-unit">个</span>
+
+              <span class="dn-idx dn-idx--r">6</span>
+              <label>成交客户</label>
+              <el-input-number v-model="form.closedDeals" :min="0" :controls="false" placeholder="0" class="fg-input" />
+              <span class="fg-unit">个</span>
+            </div>
           </div>
 
           <!-- 分配销售：树状选择 -->
@@ -72,7 +99,7 @@
 
         <!-- 历史记录 -->
         <div class="card history-card">
-          <div class="card-hd">📋 历史记录</div>
+          <div class="card-hd">📋 历史记录 <span class="card-hint">点击行可编辑</span></div>
           <div class="history-table-wrap" v-if="history.length">
             <div class="ht-head">
               <span class="ht-cell ht-cell--date">日期</span>
@@ -85,7 +112,7 @@
               <span class="ht-cell ht-cell--sales">分配销售</span>
             </div>
             <div v-for="r in history" :key="r.id" class="ht-row" @click="editRecord(r)">
-              <span class="ht-cell ht-cell--date">{{ shortDate(r.date) }}</span>
+              <span class="ht-cell ht-cell--date">{{ shortDate(r.date) }} <span style="font-size:10px;color:#9ca3af;font-weight:400;">{{ dayName(r.date) }}</span></span>
               <span class="ht-cell ht-cell--num">{{ r.newCustomers || 0 }}</span>
               <span class="ht-cell ht-cell--num">{{ r.repliedCustomers || 0 }}</span>
               <span class="ht-cell ht-cell--num">{{ r.registeredCustomers || 0 }}</span>
@@ -103,33 +130,27 @@
       <div class="right-panel">
         <!-- 月度汇总 -->
         <div class="card monthly-card">
-          <div class="card-hd">⭐ 月度数据（{{ formDate.substring(0, 7) }}）</div>
-          <div class="monthly-list">
-            <div class="ml-row"><span class="ml-idx">1.</span><span class="ml-label">总询盘客户</span><span class="ml-val">{{ monthly.newCustomers }}</span><span class="ml-unit">个</span></div>
-            <div class="ml-row"><span class="ml-idx">2.</span><span class="ml-label">有回复客户</span><span class="ml-val">{{ monthly.repliedCustomers }}</span><span class="ml-unit">个</span></div>
-            <div class="ml-row"><span class="ml-idx">3.</span><span class="ml-label">已登记客户</span><span class="ml-val">{{ monthly.registeredCustomers }}</span><span class="ml-unit">个</span></div>
-            <div class="ml-row"><span class="ml-idx">4.</span><span class="ml-label">拉群+平面图</span><span class="ml-val">{{ monthly.groupedWithPlan }}</span><span class="ml-unit">个</span></div>
-            <div class="ml-row"><span class="ml-idx">5.</span><span class="ml-label">来访客户</span><span class="ml-val">{{ monthly.visitingCustomers }}</span><span class="ml-unit">个</span></div>
-            <div class="ml-row"><span class="ml-idx">6.</span><span class="ml-label">成交客户</span><span class="ml-val">{{ monthly.closedDeals }}</span><span class="ml-unit">个</span></div>
-            <div class="ml-row ml-row--sales">
-              <span class="ml-idx">7.</span><span class="ml-label">分配销售</span>
-              <span class="ml-val ml-val--text">
-                <template v-if="monthly.salesAssignments.length">
-                  <el-tag v-for="sa in monthly.salesAssignments" :key="sa.name" size="small" effect="plain" style="margin:1px 4px 1px 0;">{{ sa.name }}{{ sa.count }}个</el-tag>
-                </template>
-                <span v-else style="color:#d1d5db;">—</span>
-              </span>
-            </div>
+          <div class="card-hd">⭐ 月度汇总 · {{ formDate.substring(0, 7) }} <span class="monthly-days">({{ monthly.records }}天)</span></div>
+          <div class="monthly-grid">
+            <div class="mg-cell"><span class="mg-num">{{ monthly.newCustomers }}</span><span class="mg-label">总询盘</span></div>
+            <div class="mg-cell"><span class="mg-num">{{ monthly.repliedCustomers }}</span><span class="mg-label">有回复</span></div>
+            <div class="mg-cell"><span class="mg-num">{{ monthly.registeredCustomers }}</span><span class="mg-label">已登记</span></div>
+            <div class="mg-cell"><span class="mg-num">{{ monthly.groupedWithPlan }}</span><span class="mg-label">拉群+图</span></div>
+            <div class="mg-cell"><span class="mg-num">{{ monthly.visitingCustomers }}</span><span class="mg-label">来访</span></div>
+            <div class="mg-cell"><span class="mg-num">{{ monthly.closedDeals }}</span><span class="mg-label">成交</span></div>
           </div>
-          <div class="monthly-footer">共 {{ monthly.records }} 天记录</div>
+          <div class="monthly-sales" v-if="monthly.salesAssignments.length">
+            <span class="monthly-sales-label">分配：</span>
+            <el-tag v-for="sa in monthly.salesAssignments" :key="sa.name" size="small" effect="plain" type="info">{{ sa.name }}{{ sa.count }}个</el-tag>
+          </div>
         </div>
 
         <!-- 数据预览 -->
         <div class="card preview-card" v-if="previewText">
-          <div class="preview-hd"><span>📋 数据预览</span><el-button size="small" type="primary" @click="copyPreview">一键复制</el-button></div>
+          <div class="preview-hd"><span>📋 数据预览</span><el-button size="small" type="primary" @click="copyPreview">复制</el-button></div>
           <div class="preview-content">{{ previewText }}</div>
         </div>
-        <div v-else class="preview-empty"><el-icon :size="28"><Document /></el-icon><p>填写数据后<br/>自动生成预览</p></div>
+        <div v-else class="preview-empty">填写数据后将在此展示预览</div>
       </div>
     </div>
 
@@ -256,6 +277,12 @@ function shortDate(str) {
   return parseInt(p[1]) + '/' + parseInt(p[2])
 }
 
+function dayName(str) {
+  if (!str) return ''
+  const d = new Date(str + 'T00:00:00')
+  return ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()]
+}
+
 function formatSalesText(arr) {
   if (!Array.isArray(arr) || !arr.length) return ''
   return arr.filter(s => s.name).map(s => s.name + s.count + '个').join(' ')
@@ -343,7 +370,8 @@ async function loadData() {
   if (hRes.success) history.value = hRes.data.sort((a, b) => b.date.localeCompare(a.date))
 }
 
-function onDateChange() { saveMsg.value = ''; loadData() }
+let skipAutoLoad = false
+function onDateChange() { if (skipAutoLoad) return; saveMsg.value = ''; loadData() }
 function onAccountChange() { localStorage.setItem('cs_accountId', accountId.value); loadData() }
 
 async function saveData() {
@@ -387,8 +415,13 @@ function clearForm() {
 }
 
 function editRecord(r) {
+  skipAutoLoad = true
+  if (r.accountId && r.accountId !== accountId.value) {
+    accountId.value = r.accountId
+    localStorage.setItem('cs_accountId', accountId.value)
+  }
   formDate.value = r.date
-  if (r.accountId) accountId.value = r.accountId
+  skipAutoLoad = false
   loadData()
 }
 
@@ -501,13 +534,29 @@ onMounted(async () => {
 .card-hd { font-size: 16px; font-weight: 700; color: #1f2937; margin-bottom: 16px; }
 
 /* ====== 表单 ====== */
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; margin-bottom: 14px; }
-.fg-item { display: flex; align-items: center; gap: 8px; }
-.fg-item label { font-size: 13px; font-weight: 600; color: #374151; white-space: nowrap; flex-shrink: 0; }
 .fg-input { width: 100px; flex-shrink: 0; }
-.fg-input :deep(.el-input__wrapper) { background: #fff; border-radius: 8px; box-shadow: 0 0 0 1px #e5e7eb; padding: 2px 10px; }
+.fg-input :deep(.el-input__wrapper) { background: #fff; border-radius: 8px; box-shadow: 0 0 0 1px #e5e7eb; padding: 2px 10px; transition: box-shadow .15s; }
+.fg-input :deep(.el-input__wrapper:hover) { box-shadow: 0 0 0 1.5px #c7d2fe; }
+.fg-input :deep(.el-input__wrapper.is-focus) { box-shadow: 0 0 0 2px #6366f1 !important; }
 .fg-input :deep(.el-input__inner) { font-size: 15px; font-weight: 700; color: #1f2937; height: 36px; }
 .fg-unit { font-size: 12px; color: #9ca3af; font-weight: 600; }
+
+/* 本日数据横向排列 */
+.daily-nums { display: flex; flex-direction: column; gap: 8px; }
+.dn-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; background: #f9fafb; border-radius: 10px;
+  transition: background .12s;
+}
+.dn-row:hover { background: #f3f4f6; }
+.dn-row label { font-size: 13px; font-weight: 600; color: #374151; min-width: 0; white-space: nowrap; }
+.dn-idx {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 5px;
+  background: #eef2ff; color: #6366f1; font-size: 11px; font-weight: 700;
+  flex-shrink: 0;
+}
+.dn-idx--r { margin-left: 16px; }
 
 /* 分配销售芯片 */
 .fg-sales-section { border-top: 1px solid #f3f4f6; padding-top: 14px; }
@@ -524,33 +573,37 @@ onMounted(async () => {
 .fg-sales-count :deep(.el-input__inner) { font-size: 13px; font-weight: 700; height: 28px; }
 .fg-sales-none { font-size: 12px; color: #d1d5db; }
 
-/* ====== 月度 ====== */
-.monthly-list { display: flex; flex-direction: column; gap: 6px; }
-.ml-row { display: flex; align-items: center; gap: 6px; padding: 7px 10px; background: #f9fafb; border-radius: 8px; }
-.ml-row--sales { align-items: flex-start; flex-wrap: wrap; }
-.ml-idx { font-size: 12px; font-weight: 700; color: #6366f1; width: 18px; }
-.ml-label { flex: 1; font-size: 12px; font-weight: 600; color: #374151; }
-.ml-val { font-size: 18px; font-weight: 800; color: #1f2937; }
-.ml-val--text { font-size: 12px; display: flex; flex-wrap: wrap; align-items: center; }
-.ml-unit { font-size: 11px; color: #9ca3af; }
-.monthly-footer { margin-top: 10px; font-size: 11px; color: #9ca3af; text-align: right; }
+/* ====== 月度紧凑网格 ====== */
+.monthly-days { font-size: 11px; color: #9ca3af; font-weight: 400; }
+.monthly-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.mg-cell {
+  background: #f9fafb; border-radius: 10px; padding: 10px 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.mg-num { font-size: 22px; font-weight: 800; color: #1f2937; line-height: 1.1; }
+.mg-label { font-size: 11px; font-weight: 600; color: #9ca3af; }
+.monthly-sales { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
+.monthly-sales-label { font-size: 11px; color: #9ca3af; font-weight: 600; }
 
 /* ====== 预览 ====== */
 .preview-card { border-color: #c7d2fe; }
+.preview-empty { text-align: center; padding: 36px 16px; color: #9ca3af; font-size: 13px; background: #fff; border: 1px dashed #e5e7eb; border-radius: 14px; }
+.card-hint { font-size: 11px; color: #9ca3af; font-weight: 400; margin-left: 6px; }
 .preview-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: 700; font-size: 14px; }
 .preview-content { white-space: pre-wrap; font-size: 13px; line-height: 1.8; color: #374151; max-height: 50vh; overflow-y: auto; }
-.preview-empty { text-align: center; padding: 40px 16px; color: #9ca3af; background: #fff; border: 1px dashed #e5e7eb; border-radius: 14px; }
-.preview-empty p { margin: 8px 0 0; font-size: 13px; line-height: 1.6; }
 
 /* ====== 历史 ====== */
 .history-table-wrap { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
 .ht-head { display: grid; grid-template-columns: 80px 1fr 1fr 1fr 1fr 1fr 1fr 160px; padding: 6px 12px; align-items: center; background: #f9fafb; border-bottom: 1px solid #e5e7eb; gap: 4px; }
-.ht-row { display: grid; grid-template-columns: 80px 1fr 1fr 1fr 1fr 1fr 1fr 160px; padding: 8px 12px; align-items: center; gap: 4px; border-bottom: 1px solid #f3f4f6; cursor: pointer; transition: background .12s; }
-.ht-row:hover { background: #f5f3ff; }
+.ht-row { display: grid; grid-template-columns: 80px 1fr 1fr 1fr 1fr 1fr 1fr 160px; padding: 8px 12px; align-items: center; gap: 4px; border-bottom: 1px solid #f3f4f6; cursor: pointer; transition: all .12s; position: relative; }
+.ht-row:nth-child(even) { background: #fafafa; }
+.ht-row:hover { background: #f5f3ff; box-shadow: inset 3px 0 0 #6366f1; }
+.ht-row::after { content: '✎'; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 11px; color: #d1d5db; opacity: 0; transition: opacity .12s; }
+.ht-row:hover::after { opacity: 1; color: #6366f1; }
 .ht-row:last-of-type { border-bottom: none; }
 .ht-cell { font-size: 11px; font-weight: 600; color: #9ca3af; }
 .ht-cell--date { font-size: 13px; font-weight: 700; color: #374151; }
-.ht-cell--num { font-size: 13px; font-weight: 700; color: #1f2937; text-align: center; }
+.ht-cell--num { font-size: 14px; font-weight: 700; color: #1f2937; text-align: center; }
 .ht-cell--sales { font-size: 11px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .history-empty { text-align: center; padding: 20px; color: #9ca3af; font-size: 12px; }
 
@@ -571,6 +624,7 @@ onMounted(async () => {
 @media (max-width: 860px) {
   .main-layout { flex-direction: column; }
   .right-panel { width: 100%; position: static; }
-  .form-grid { grid-template-columns: 1fr; }
+  .dn-row { flex-wrap: wrap; }
+  .dn-idx--r { margin-left: 0; }
 }
 </style>
