@@ -1,11 +1,7 @@
 <template>
-  <div class="login-page">
-    <!-- 背景装饰 -->
-    <div class="login-bg">
-      <div class="login-bg-shape login-bg-shape--1"></div>
-      <div class="login-bg-shape login-bg-shape--2"></div>
-      <div class="login-bg-shape login-bg-shape--3"></div>
-    </div>
+  <div class="login-page" ref="pageRef">
+    <!-- Three.js 画布背景 -->
+    <canvas ref="threeCanvas" class="login-canvas"></canvas>
 
     <div class="login-card">
       <div class="login-brand">
@@ -19,27 +15,12 @@
       <el-form :model="form" size="large" class="login-form" @submit.prevent="doLogin">
         <div class="login-field">
           <span class="login-field-icon"><el-icon :size="18"><User /></el-icon></span>
-          <input
-            v-model="form.username"
-            type="text"
-            placeholder="用户名"
-            class="login-input"
-            autocomplete="username"
-            @keyup.enter="$refs.pwdInput?.focus()"
-          />
+          <input v-model="form.username" type="text" placeholder="用户名" class="login-input" autocomplete="username" @keyup.enter="focusPwd" />
         </div>
 
         <div class="login-field">
           <span class="login-field-icon"><el-icon :size="18"><Lock /></el-icon></span>
-          <input
-            ref="pwdInput"
-            v-model="form.password"
-            :type="showPwd ? 'text' : 'password'"
-            placeholder="密码"
-            class="login-input"
-            autocomplete="current-password"
-            @keyup.enter="doLogin"
-          />
+          <input ref="pwdInput" v-model="form.password" :type="showPwd ? 'text' : 'password'" placeholder="密码" class="login-input" autocomplete="current-password" @keyup.enter="doLogin" />
           <span class="login-field-suf" @click="showPwd = !showPwd">
             <el-icon :size="16"><View v-if="!showPwd" /><Hide v-else /></el-icon>
           </span>
@@ -67,9 +48,10 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
+import * as THREE from 'three'
 
 const authStore = useAuthStore()
 const loading = ref(false)
@@ -78,11 +60,15 @@ const showPwd = ref(false)
 const form = reactive({ username: '', password: '' })
 const rememberMe = ref(false)
 const pwdInput = ref(null)
+const pageRef = ref(null)
+const threeCanvas = ref(null)
 
 if (authStore.rememberMe) {
   form.username = authStore.username || ''
   rememberMe.value = true
 }
+
+function focusPwd() { pwdInput.value?.focus() }
 
 async function doLogin() {
   if (!form.username || !form.password) { error.value = '请输入用户名和密码'; return }
@@ -106,44 +92,215 @@ async function doLogin() {
   }
   loading.value = false
 }
+
+// ====== Three.js 场景 ======
+let scene, camera, renderer, particles, linesMesh, orb, orbGlow
+let mouseX = 0, mouseY = 0
+let targetMouseX = 0, targetMouseY = 0
+let animationId
+
+function initThree() {
+  const canvas = threeCanvas.value
+  if (!canvas) return
+
+  const w = window.innerWidth
+  const h = window.innerHeight
+
+  // 渲染器
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
+  renderer.setSize(w, h)
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+  // 场景 + 相机
+  scene = new THREE.Scene()
+  camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 100)
+  camera.position.z = 30
+
+  // ====== 光粒子 ======
+  const particleCount = 200
+  const positions = new Float32Array(particleCount * 3)
+  const colors = new Float32Array(particleCount * 3)
+  const sizes = new Float32Array(particleCount)
+
+  for (let i = 0; i < particleCount; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * 50
+    positions[i * 3 + 1] = (Math.random() - 0.5) * 40
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 20
+
+    // 紫-蓝渐变
+    const t = Math.random()
+    colors[i * 3] = 0.35 + t * 0.25       // R
+    colors[i * 3 + 1] = 0.1 + t * 0.3      // G
+    colors[i * 3 + 2] = 0.6 + t * 0.4       // B
+
+    sizes[i] = Math.random() * 0.15 + 0.03
+  }
+
+  const particleGeo = new THREE.BufferGeometry()
+  particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  particleGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  particleGeo.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
+
+  const particleMat = new THREE.PointsMaterial({
+    size: 0.18,
+    vertexColors: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    transparent: true,
+    opacity: 0.85,
+  })
+  particles = new THREE.Points(particleGeo, particleMat)
+  scene.add(particles)
+
+  // ====== 连线（最近邻） ======
+  const linePositions = []
+  const pts = Array.from({ length: particleCount }, (_, i) => new THREE.Vector3(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]))
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      if (pts[i].distanceTo(pts[j]) < 4.5) {
+        linePositions.push(pts[i].x, pts[i].y, pts[i].z)
+        linePositions.push(pts[j].x, pts[j].y, pts[j].z)
+      }
+    }
+  }
+  if (linePositions.length) {
+    const lineGeo = new THREE.BufferGeometry()
+    lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3))
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.06, blending: THREE.AdditiveBlending, depthWrite: false })
+    linesMesh = new THREE.LineSegments(lineGeo, lineMat)
+    scene.add(linesMesh)
+  }
+
+  // ====== 中心光球 ======
+  const orbGeo = new THREE.IcosahedronGeometry(1.2, 3)
+  const orbMat = new THREE.MeshBasicMaterial({
+    color: 0x6366f1,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.12,
+    depthWrite: false,
+  })
+  orb = new THREE.Mesh(orbGeo, orbMat)
+  scene.add(orb)
+
+  // 光球光晕
+  const glowGeo = new THREE.SphereGeometry(2.5, 32, 32)
+  const glowMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color('#6366f1') } },
+    vertexShader: `varying vec3 vNormal; varying vec3 vPosition; void main() { vNormal = normalize(normalMatrix * normal); vPosition = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `varying vec3 vNormal; varying vec3 vPosition; uniform float uTime; uniform vec3 uColor; void main() { float intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0); gl_FragColor = vec4(uColor, intensity * 0.25); }`,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  })
+  orbGlow = new THREE.Mesh(glowGeo, glowMat)
+  scene.add(orbGlow)
+
+  // ====== 浮动几何体 ======
+  const geos = [new THREE.OctahedronGeometry(0.5), new THREE.TetrahedronGeometry(0.4), new THREE.TorusKnotGeometry(0.3, 0.08, 64, 8)]
+  for (let i = 0; i < 6; i++) {
+    const geo = geos[i % 3]
+    const mat = new THREE.MeshBasicMaterial({ color: 0x6366f1, wireframe: true, transparent: true, opacity: 0.08 + Math.random() * 0.06, depthWrite: false })
+    const mesh = new THREE.Mesh(geo, mat)
+    mesh.position.set((Math.random() - 0.5) * 35, (Math.random() - 0.5) * 28, (Math.random() - 0.5) * 15)
+    mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0)
+    mesh.userData = { speed: 0.003 + Math.random() * 0.01, axis: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(), offset: Math.random() * Math.PI * 2 }
+    mesh.name = 'floater'
+    scene.add(mesh)
+  }
+
+  // 事件监听
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('resize', onResize)
+  animate()
+}
+
+function onMouseMove(e) {
+  targetMouseX = (e.clientX / window.innerWidth) * 2 - 1
+  targetMouseY = -(e.clientY / window.innerHeight) * 2 + 1
+}
+
+function onResize() {
+  if (!camera || !renderer) return
+  camera.aspect = window.innerWidth / window.innerHeight
+  camera.updateProjectionMatrix()
+  renderer.setSize(window.innerWidth, window.innerHeight)
+}
+
+function animate() {
+  animationId = requestAnimationFrame(animate)
+
+  // 平滑鼠标跟随
+  mouseX += (targetMouseX - mouseX) * 0.03
+  mouseY += (targetMouseY - mouseY) * 0.03
+
+  // 整体缓慢旋转
+  particles.rotation.y += 0.0003
+  particles.rotation.x += 0.0001
+  if (linesMesh) { linesMesh.rotation.y += 0.0003; linesMesh.rotation.x += 0.0001 }
+
+  // 光球呼吸
+  const t = Date.now() * 0.001
+  const scale = 1 + Math.sin(t * 0.8) * 0.15
+  orb.scale.setScalar(scale)
+  orb.rotation.y += 0.004
+  orb.rotation.x += 0.002
+  orbGlow.scale.setScalar(scale * 1.2)
+  orbGlow.material.uniforms.uTime.value = t
+
+  // 浮动几何体自转
+  scene.children.forEach(child => {
+    if (child.name === 'floater') {
+      child.rotation.x += child.userData.speed
+      child.rotation.y += child.userData.speed * 0.7
+    }
+  })
+
+  // 鼠标视差
+  camera.position.x += (mouseX * 3 - camera.position.x) * 0.02
+  camera.position.y += (mouseY * 2 - camera.position.y) * 0.02
+  camera.lookAt(0, 0, 0)
+
+  renderer.render(scene, camera)
+}
+
+function destroyThree() {
+  if (animationId) cancelAnimationFrame(animationId)
+  window.removeEventListener('mousemove', onMouseMove)
+  window.removeEventListener('resize', onResize)
+  if (renderer) { renderer.dispose(); renderer = null }
+  if (scene) { scene.traverse(obj => { if (obj.geometry) obj.geometry.dispose(); if (obj.material) { if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose()); else obj.material.dispose() } }); scene = null }
+  particles = null; linesMesh = null; orb = null; orbGlow = null; camera = null
+}
+
+onMounted(() => { initThree() })
+onUnmounted(() => { destroyThree() })
 </script>
 
 <style scoped>
 .login-page {
   height: 100vh; display: flex; align-items: center; justify-content: center;
   flex-direction: column; gap: 24px;
-  background: #0f0f1a; position: relative; overflow: hidden;
+  background: #0a0a14; position: relative; overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
-/* ====== 背景装饰 ====== */
-.login-bg { position: absolute; inset: 0; pointer-events: none; }
-.login-bg-shape {
-  position: absolute; border-radius: 50%;
-  filter: blur(80px); opacity: .25;
-}
-.login-bg-shape--1 {
-  width: 500px; height: 500px; background: #6366f1;
-  top: -150px; right: -100px;
-}
-.login-bg-shape--2 {
-  width: 400px; height: 400px; background: #8b5cf6;
-  bottom: -100px; left: -80px; opacity: .18;
-}
-.login-bg-shape--3 {
-  width: 300px; height: 300px; background: #a78bfa;
-  top: 40%; left: 50%; transform: translate(-50%, -50%); opacity: .12;
+/* Three.js 画布 */
+.login-canvas {
+  position: fixed; inset: 0; z-index: 0;
+  width: 100%; height: 100%;
 }
 
 /* ====== 卡片 ====== */
 .login-card {
   position: relative; z-index: 1;
-  background: rgba(255,255,255,.03);
+  background: rgba(10, 10, 25, 0.65);
   backdrop-filter: blur(24px);
-  border: 1px solid rgba(255,255,255,.08);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(99, 102, 241, 0.12);
   border-radius: 24px; padding: 44px 40px 36px;
   width: 400px;
-  box-shadow: 0 0 0 1px rgba(255,255,255,.03), 0 24px 80px rgba(0,0,0,.4);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.04), 0 24px 80px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 /* ====== 品牌 ====== */
@@ -153,7 +310,7 @@ async function doLogin() {
 }
 .login-logo {
   font-size: 44px; line-height: 1;
-  filter: drop-shadow(0 4px 12px rgba(99,102,241,.4));
+  filter: drop-shadow(0 4px 12px rgba(99, 102, 241, .4));
 }
 .login-brand-text h1 {
   font-size: 26px; font-weight: 800; color: #f1f5f9;
@@ -167,27 +324,22 @@ async function doLogin() {
 /* ====== 表单 ====== */
 .login-form { display: flex; flex-direction: column; gap: 16px; }
 
-/* 输入字段 */
-.login-field {
-  position: relative; display: flex; align-items: center;
-}
+.login-field { position: relative; display: flex; align-items: center; }
 .login-field-icon {
   position: absolute; left: 16px; color: #64748b;
-  display: flex; align-items: center; pointer-events: none;
-  z-index: 1;
+  display: flex; align-items: center; pointer-events: none; z-index: 1;
 }
 .login-field-suf {
   position: absolute; right: 14px; color: #64748b;
-  cursor: pointer; display: flex; align-items: center;
-  transition: color .15s;
+  cursor: pointer; display: flex; align-items: center; transition: color .15s;
 }
 .login-field-suf:hover { color: #94a3b8; }
 
 .login-input {
   width: 100%; height: 50px;
   padding: 0 44px 0 46px;
-  background: rgba(255,255,255,.04);
-  border: 1.5px solid rgba(255,255,255,.08);
+  background: rgba(255, 255, 255, .04);
+  border: 1.5px solid rgba(255, 255, 255, .08);
   border-radius: 14px;
   font-size: 15px; font-weight: 500; color: #e2e8f0;
   outline: none; transition: all .2s;
@@ -196,24 +348,20 @@ async function doLogin() {
 .login-input::placeholder { color: #475569; }
 .login-input:focus {
   border-color: #6366f1;
-  background: rgba(99,102,241,.06);
-  box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+  background: rgba(99, 102, 241, .06);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, .1);
 }
 
-/* 记住账号 */
 .login-remember {
   display: flex; align-items: center; gap: 10px;
   font-size: 14px; color: #94a3b8; cursor: pointer;
   user-select: none; padding: 2px 0;
 }
-.login-remember input[type="checkbox"] {
-  display: none;
-}
+.login-remember input[type="checkbox"] { display: none; }
 .login-remember-mark {
   width: 18px; height: 18px; border-radius: 5px;
-  border: 2px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.02);
-  transition: all .15s; flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .02); transition: all .15s; flex-shrink: 0;
 }
 .login-remember input:checked + .login-remember-mark {
   background: #6366f1; border-color: #6366f1;
@@ -221,7 +369,6 @@ async function doLogin() {
   background-size: 12px; background-position: center; background-repeat: no-repeat;
 }
 
-/* 登录按钮 */
 .login-btn {
   width: 100%; height: 50px;
   background: linear-gradient(135deg, #6366f1, #8b5cf6);
@@ -233,28 +380,26 @@ async function doLogin() {
 }
 .login-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(99,102,241,.35);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, .35);
 }
 .login-btn:active:not(:disabled) { transform: translateY(0); }
 .login-btn:disabled { opacity: .6; cursor: not-allowed; }
 
 .login-btn-loading {
-  width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.3);
+  width: 18px; height: 18px; border: 2px solid rgba(255, 255, 255, .3);
   border-top-color: #fff; border-radius: 50%;
   animation: login-spin .6s linear infinite;
 }
 @keyframes login-spin { to { transform: rotate(360deg); } }
 
-/* 错误 */
 .login-error {
   display: flex; align-items: center; gap: 6px;
   font-size: 13px; color: #f87171; font-weight: 500;
   margin: -4px 0 0; padding: 10px 14px;
-  background: rgba(248,113,113,.08);
-  border-radius: 10px; border: 1px solid rgba(248,113,113,.15);
+  background: rgba(248, 113, 113, .08);
+  border-radius: 10px; border: 1px solid rgba(248, 113, 113, .15);
 }
 
-/* Footer */
 .login-footer {
   position: relative; z-index: 1;
   font-size: 12px; color: #475569; font-weight: 500;
