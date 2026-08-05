@@ -22,67 +22,15 @@
  router
  class="sidebar-menu"
  >
- <el-menu-item index="/">
- <el-icon><Odometer /></el-icon>
- <template #title>仪表盘</template>
- </el-menu-item>
- <el-menu-item index="/plan">
- <el-icon><Calendar /></el-icon>
- <template #title>周计划</template>
- </el-menu-item>
- <el-menu-item index="/report">
- <el-icon><Edit /></el-icon>
- <template #title>日报生成</template>
- </el-menu-item>
- <el-menu-item index="/history">
- <el-icon><Clock /></el-icon>
- <template #title>数据查询</template>
- </el-menu-item>
- <el-menu-item index="/monitor">
- <el-icon><Monitor /></el-icon>
- <template #title>监控中心</template>
- </el-menu-item>
- <el-menu-item index="/clock">
- <el-icon><Clock /></el-icon>
- <template #title>世界时钟</template>
- </el-menu-item>
- <el-menu-item index="/assets">
- <el-icon><PictureFilled /></el-icon>
- <template #title>AI资产管理</template>
- </el-menu-item>
- <el-menu-item index="/media">
- <el-icon><PictureFilled /></el-icon>
- <template #title>图片素材库</template>
- </el-menu-item>
- <el-menu-item index="/video-library">
- <el-icon><VideoCameraFilled /></el-icon>
- <template #title>视频素材库</template>
- </el-menu-item>
- <el-menu-item index="/scripts">
- <el-icon><ChatDotRound /></el-icon>
- <template #title>话术库</template>
- </el-menu-item>
- <el-menu-item index="/customer-stats">
- <el-icon><DataAnalysis /></el-icon>
- <template #title>客户统计</template>
- </el-menu-item>
- <el-menu-item index="/role-manage" v-if="authStore.isAdmin()">
- <el-icon><Key /></el-icon>
- <template #title>角色管理</template>
- </el-menu-item>
- <el-menu-item index="/user-manage" v-if="authStore.isAdmin()">
- <el-icon><User /></el-icon>
- <template #title>用户管理</template>
- </el-menu-item>
- <el-menu-item index="/compress">
- <el-icon><Scissor /></el-icon>
- <template #title>图片压缩</template>
- </el-menu-item>
- <el-menu-item index="/video-compress">
- <el-icon><VideoCameraFilled /></el-icon>
- <template #title>视频压缩</template>
- </el-menu-item>
- </el-menu>
+     <el-menu-item
+       v-for="item in visibleMenus"
+       :key="item.path"
+       :index="item.path"
+     >
+     <el-icon><component :is="item.icon" /></el-icon>
+     <template #title>{{ item.label }}</template>
+     </el-menu-item>
+     </el-menu>
 
  <!-- 侧边栏底部 -->
  <div class="sidebar-footer-status" v-show="!isCollapse">
@@ -151,6 +99,26 @@ const route = useRoute()
 const r = useRouter()
 const weekStore = useWeekStore()
 const authStore = useAuthStore()
+
+// Menu items with access control
+const allMenuItems = [
+  { path: '/', label: '仪表盘', icon: 'Odometer' },
+  { path: '/plan', label: '周计划', icon: 'Calendar' },
+  { path: '/report', label: '日报生成', icon: 'Edit' },
+  { path: '/history', label: '数据查询', icon: 'Clock' },
+  { path: '/monitor', label: '监控中心', icon: 'Monitor' },
+  { path: '/clock', label: '世界时钟', icon: 'Clock' },
+  { path: '/assets', label: 'AI资产管理', icon: 'PictureFilled' },
+  { path: '/media', label: '图片素材库', icon: 'PictureFilled' },
+  { path: '/video-library', label: '视频素材库', icon: 'VideoCameraFilled' },
+  { path: '/scripts', label: '话术库', icon: 'ChatDotRound' },
+  { path: '/customer-stats', label: '客户统计', icon: 'DataAnalysis' },
+  { path: '/role-manage', label: '角色管理', icon: 'Key' },
+  { path: '/user-manage', label: '用户管理', icon: 'User' },
+  { path: '/compress', label: '图片压缩', icon: 'Scissor' },
+  { path: '/video-compress', label: '视频压缩', icon: 'VideoCameraFilled' },
+]
+const visibleMenus = computed(() => allMenuItems.filter(m => authStore.canAccess(m.path)))
 
 const isCollapse = ref(false)
 // 返回按钮
