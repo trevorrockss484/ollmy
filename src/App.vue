@@ -183,6 +183,7 @@ const pageTitles = {
   '/scripts': '话术库',
   '/customer-stats': '客户数据统计',
   '/user-manage': '用户管理',
+  '/role-manage': '角色管理',
   '/compress': '图片压缩',
 }
 const pageTitle = computed(() => pageTitles[route.path] || 'Pan助手')

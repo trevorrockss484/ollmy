@@ -43,10 +43,9 @@
           <el-input v-model="form.password" type="password" :placeholder="editId ? '留空则不修改' : '设置密码'" show-password />
         </el-form-item>
         <el-form-item label="角色">
-          <el-radio-group v-model="form.role">
-            <el-radio value="admin">管理员</el-radio>
-            <el-radio value="staff">同事</el-radio>
-          </el-radio-group>
+          <el-select v-model="form.role" placeholder="选择角色" style="width:100%">
+            <el-option v-for="r in roleList" :key="r.name" :label="r.displayName + ' (' + r.name + ')'" :value="r.name" />
+          </el-select>
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="form.enabled" active-text="启用" inactive-text="禁用" />
@@ -66,6 +65,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 
 const users = ref([])
+const roleList = ref([])
 const dialogVisible = ref(false)
 const editId = ref(null)
 
@@ -73,8 +73,9 @@ const defaultForm = () => ({ username: '', displayName: '', password: '', role: 
 const form = reactive(defaultForm())
 
 async function loadUsers() {
-  const res = await api.users.list()
-  if (res.success) users.value = res.data
+  const [uRes, rRes] = await Promise.all([api.users.list(), api.roles.list()])
+  if (uRes.success) users.value = uRes.data
+  if (rRes.success) roleList.value = rRes.data.filter(r => r.enabled)
 }
 
 function openAdd() {

@@ -18,6 +18,7 @@ const routes = [
   { path: '/video-library', name: 'video-library', component: () => import('../views/VideoLibraryView.vue') },
   { path: '/media', name: 'media', component: () => import('../views/MediaLibraryView.vue') },
   { path: '/customer-stats', name: 'customerStats', component: () => import('../views/CustomerStatsView.vue') },
+  { path: '/role-manage', name: 'roleManage', component: () => import('../views/RoleManageView.vue') },
   { path: '/user-manage', name: 'userManage', component: () => import('../views/UserManageView.vue') },
 ]
 

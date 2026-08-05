@@ -52,6 +52,7 @@ app.use('/api/library', require('./routes/library'));
 app.use('/api/tools', require('./routes/tools'));
 app.use('/api/customer-stats', require('./routes/customer-stats'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/roles', require('./routes/roles'));
 
 // ===== 分享预览页（微信/社交 OG 卡片） =====
 const ogPage = ({ title, image, desc, type, width, height }) => `<!DOCTYPE html>

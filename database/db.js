@@ -64,7 +64,8 @@ function defaultData() {
     compressed: [],
     scripts: [],
     customerStats: [],
-    users: []
+    users: [],
+    roles: []
   };
 }
 
@@ -701,25 +702,40 @@ function getCustomerStatsMonthly(month, accountId) {
 
 // ==================== 用户管理 ====================
 const usersDb = makeCrud('users', { username: '', passwordHash: '', role: 'staff', displayName: '', enabled: true })
+const rolesDb = makeCrud('roles', { name: '', displayName: '', menus: [], enabled: true })
 
-// 初始化默认管理员
-function seedDefaultAdmin() {
+const ALL_MENUS = ['/', '/plan', '/report', '/history', '/monitor', '/clock', '/assets', '/media', '/video-library', '/scripts', '/compress', '/video-compress', '/customer-stats', '/user-manage', '/role-manage']
+
+// 种子默认角色和管理员
+function seedDefaultRoles() {
   const crypto = require('crypto')
-  const existing = usersDb.list()
-  if (existing.some(u => u.role === 'admin')) return
-  const adminUser = process.env.PAN_USER || 'admin'
-  const adminPass = process.env.PAN_PASSWORD || 'admin123'
-  usersDb.add({
-    username: adminUser,
-    passwordHash: crypto.createHash('sha256').update(adminPass).digest('hex'),
-    role: 'admin',
-    displayName: '管理员',
-    enabled: true
-  })
+  // 默认角色
+  if (!rolesDb.list().some(r => r.name === 'admin')) {
+    rolesDb.add({ name: 'admin', displayName: '管理员', menus: [...ALL_MENUS], enabled: true })
+  }
+  if (!rolesDb.list().some(r => r.name === 'staff')) {
+    rolesDb.add({ name: 'staff', displayName: '同事', menus: ['/customer-stats'], enabled: true })
+  }
+  // 默认管理员用户
+  if (!usersDb.list().some(u => u.role === 'admin')) {
+    const adminUser = process.env.PAN_USER || 'admin'
+    const adminPass = process.env.PAN_PASSWORD || 'admin123'
+    usersDb.add({
+      username: adminUser,
+      passwordHash: crypto.createHash('sha256').update(adminPass).digest('hex'),
+      role: 'admin',
+      displayName: '管理员',
+      enabled: true
+    })
+  }
 }
 
 function getUserByUsername(username) {
   return usersDb.list().find(u => u.username === username && u.enabled !== false) || null
+}
+
+function getRoleByName(name) {
+  return rolesDb.list().find(r => r.name === name && r.enabled !== false) || null
 }
 
 
@@ -750,9 +766,13 @@ module.exports = {
   upsertCustomerStat,
   deleteCustomerStat(id) { return customerStatsDb.delete(id); },
   getCustomerStatsMonthly,
-  seedDefaultAdmin, getUserByUsername,
+  seedDefaultRoles, getUserByUsername, getRoleByName,
   getUsers() { return usersDb.list(); },
   addUser(item) { return usersDb.add(item); },
   updateUser(id, u) { return usersDb.update(id, u); },
   deleteUser(id) { return usersDb.delete(id); },
+  getRoles() { return rolesDb.list(); },
+  addRole(item) { return rolesDb.add(item); },
+  updateRole(id, u) { return rolesDb.update(id, u); },
+  deleteRole(id) { return rolesDb.delete(id); },
 };

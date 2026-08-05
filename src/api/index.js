@@ -108,6 +108,12 @@ export const api = {
     update: (id, data) => request('/users/' + id, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id) => request('/users/' + id, { method: 'DELETE' }),
   },
+  roles: {
+    list: () => request('/roles'),
+    add: (data) => request('/roles', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request('/roles/' + id, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id) => request('/roles/' + id, { method: 'DELETE' }),
+  },
 }
 
 // 工具函数
