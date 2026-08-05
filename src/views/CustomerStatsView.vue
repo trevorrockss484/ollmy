@@ -18,6 +18,7 @@
     <div class="cs-toolbar">
       <el-button type="primary" @click="saveData"><el-icon :size="15"><Check /></el-icon> 保存</el-button>
       <el-button @click="pasteVisible = true"><el-icon :size="15"><Files /></el-icon> 粘贴识别</el-button>
+      <el-button @click="copyPreview"><el-icon :size="15"><DocumentCopy /></el-icon> 一键复制</el-button>
       <el-button @click="clearForm" class="cs-clear-btn"><el-icon :size="15"><Delete /></el-icon> 清空</el-button>
       <transition name="cs-fade">
         <span v-if="saveMsg" class="cs-save-msg" :class="{ ok: saveOk, fail: !saveOk }">{{ saveMsg }}</span>
