@@ -433,7 +433,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 
 .cs-sales-body{display:flex;gap:10px;}
 .cs-sales-tree{width:180px;flex-shrink:0;border:1px solid var(--c-border);border-radius:var(--rs);padding:4px;background:var(--c-bg);max-height:200px;overflow-y:auto;}
-.cs-sales-chips{flex:1;display:flex;align-items:center;gap:6px;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px;min-height:36px;}
+.cs-sales-chips{flex:1;display:flex;flex-direction:column;gap:4px;}
 /* Chip rows + stepper */
 .cs-dinput{width:110px;}
 .cs-dinput :deep(.el-input__wrapper){background:#fff;border-radius:8px;box-shadow:inset 0 0 0 1.5px #d1d5db;padding:2px 10px;transition:all .15s;}
