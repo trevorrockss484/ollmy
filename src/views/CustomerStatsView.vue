@@ -312,11 +312,11 @@ onMounted(async () => { await loadSalesPersons(); loadData() })
 .cs-ditem{display:flex;align-items:center;gap:10px;cursor:text;}
 .cs-dnum{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:var(--c-accent-light);color:var(--c-accent);font-size:11px;font-weight:700;flex-shrink:0;}
 .cs-dlabel{font-size:14px;font-weight:600;color:var(--c-soft);white-space:nowrap;}
-.cs-dinput{width:100px;flex-shrink:0;}
-.cs-dinput :deep(.el-input__wrapper){background:#f9fafb;border-radius:8px;box-shadow:none;padding:2px 10px;transition:all .15s;}
-.cs-dinput :deep(.el-input__wrapper:hover){background:#fff;box-shadow:0 0 0 1.5px var(--c-accent-light);}
-.cs-dinput :deep(.el-input__wrapper.is-focus){background:#fff;box-shadow:0 0 0 2px var(--c-accent)!important;}
-.cs-dinput :deep(.el-input__inner){font-size:15px;font-weight:700;color:var(--c-text);height:36px;}
+.cs-dinput{width:110px;flex-shrink:0;}
+.cs-dinput :deep(.el-input__wrapper){background:#fff;border-radius:8px;box-shadow:inset 0 0 0 1.5px #d1d5db;padding:3px 12px;transition:all .15s;}
+.cs-dinput :deep(.el-input__wrapper:hover){box-shadow:inset 0 0 0 2px var(--c-accent);}
+.cs-dinput :deep(.el-input__wrapper.is-focus){box-shadow:inset 0 0 0 2.5px var(--c-accent)!important;background:#fff;}
+.cs-dinput :deep(.el-input__inner){font-size:17px;font-weight:700;color:var(--c-text);height:40px;}
 .cs-dunit{font-size:12px;font-weight:500;color:var(--c-muted);}
 
 /* Sales */
