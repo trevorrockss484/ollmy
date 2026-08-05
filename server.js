@@ -48,6 +48,7 @@ app.use('/api/prompts', require('./routes/prompts'));
 app.use('/api/assets', require('./routes/assets'));
 app.use('/api/library', require('./routes/library'));
 app.use('/api/tools', require('./routes/tools'));
+app.use('/api/customer-stats', require('./routes/customer-stats'));
 
 // ===== 分享预览页（微信/社交 OG 卡片） =====
 const ogPage = ({ title, image, desc, type, width, height }) => `<!DOCTYPE html>

@@ -62,6 +62,10 @@
  <el-icon><ChatDotRound /></el-icon>
  <template #title>话术库</template>
  </el-menu-item>
+ <el-menu-item index="/customer-stats">
+ <el-icon><DataAnalysis /></el-icon>
+ <template #title>客户统计</template>
+ </el-menu-item>
  <el-menu-item index="/compress">
  <el-icon><Scissor /></el-icon>
  <template #title>图片压缩</template>
@@ -177,6 +181,7 @@ const pageTitles = {
   '/video-library': '视频素材库',
   '/video-compress': '视频压缩',
   '/scripts': '话术库',
+  '/customer-stats': '客户数据统计',
   '/compress': '图片压缩',
 }
 const pageTitle = computed(() => pageTitles[route.path] || 'Pan助手')

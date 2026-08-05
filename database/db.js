@@ -62,7 +62,8 @@ function defaultData() {
     assets: [],
     library: [],
     compressed: [],
-    scripts: []
+    scripts: [],
+    customerStats: []
   };
 }
 
@@ -641,6 +642,62 @@ function deleteCompressed(id) { return compressedDb.delete(id); }
 
 const scriptsDb = makeCrud('scripts', { title: '', content: '', contentCn: '', category: '开场白', tags: [], usageCount: 0 });
 
+const customerStatsDb = makeCrud('customerStats', {
+  date: '', accountId: '', accountName: '',
+  newCustomers: 0, repliedCustomers: 0, registeredCustomers: 0,
+  groupedWithPlan: 0, visitingCustomers: 0, closedDeals: 0,
+  salesAssignments: ''
+});
+
+// 按日期范围和账号查询客户统计数据
+function queryCustomerStats({ startDate, endDate, accountId } = {}) {
+  let list = customerStatsDb.list()
+  if (startDate) list = list.filter(r => r.date >= startDate)
+  if (endDate) list = list.filter(r => r.date <= endDate)
+  if (accountId) list = list.filter(r => r.accountId === accountId)
+  return list
+}
+
+// 按日期+账号查找唯一记录（用于 upsert）
+function findCustomerStatByDate(date, accountId) {
+  return customerStatsDb.list().find(r => r.date === date && r.accountId === accountId) || null
+}
+
+// 保存或更新（同一日期+账号只保留一条）
+function upsertCustomerStat(record) {
+  const existing = findCustomerStatByDate(record.date, record.accountId)
+  if (existing) {
+    return customerStatsDb.update(existing.id, record)
+  }
+  return customerStatsDb.add(record)
+}
+
+// 月度汇总
+function getCustomerStatsMonthly(month, accountId) {
+  const list = customerStatsDb.list().filter(r => {
+    if (!r.date) return false
+    const m = r.date.substring(0, 7)
+    if (m !== month) return false
+    if (accountId && r.accountId !== accountId) return false
+    return true
+  })
+  return {
+    month,
+    newCustomers: list.reduce((s, r) => s + (r.newCustomers || 0), 0),
+    repliedCustomers: list.reduce((s, r) => s + (r.repliedCustomers || 0), 0),
+    registeredCustomers: list.reduce((s, r) => s + (r.registeredCustomers || 0), 0),
+    groupedWithPlan: list.reduce((s, r) => s + (r.groupedWithPlan || 0), 0),
+    visitingCustomers: list.reduce((s, r) => s + (r.visitingCustomers || 0), 0),
+    closedDeals: list.reduce((s, r) => s + (r.closedDeals || 0), 0),
+    // 合并所有分配销售文本
+    salesAssignments: list
+      .map(r => r.salesAssignments || '')
+      .filter(Boolean)
+      .join(' '),
+    records: list.length
+  }
+}
+
 module.exports = {
   getWeeks, getCurrentWeek, addWeek, updateWeek, deleteWeek, restoreWeek, permanentlyDeleteWeek, setCurrentWeek,
   getWeekAccountBudgets,
@@ -663,4 +720,9 @@ module.exports = {
     if (!s) return null;
     return scriptsDb.update(id, { usageCount: (s.usageCount || 0) + 1 });
   },
+  queryCustomerStats,
+  getCustomerStat(id) { return customerStatsDb.get(id); },
+  upsertCustomerStat,
+  deleteCustomerStat(id) { return customerStatsDb.delete(id); },
+  getCustomerStatsMonthly,
 };

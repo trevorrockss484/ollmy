@@ -95,7 +95,13 @@ export const api = {
     compressUrl: '/api/tools/compress',
     downloadUrl: (filename) => '/api/tools/download/' + encodeURIComponent(filename),
     downloadAllUrl: (sessionId) => '/api/tools/download-all/' + encodeURIComponent(sessionId),
-  }
+  },
+  customerStats: {
+    list: (params) => request('/customer-stats?' + new URLSearchParams(params)),
+    save: (data) => request('/customer-stats', { method: 'POST', body: JSON.stringify(data) }),
+    delete: (id) => request('/customer-stats/' + id, { method: 'DELETE' }),
+    monthly: (month, accountId) => request('/customer-stats/monthly/' + month + (accountId ? '?accountId=' + accountId : '')),
+  },
 }
 
 // 工具函数

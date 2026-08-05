@@ -17,6 +17,7 @@ const routes = [
   { path: '/video-compress', name: 'video-compress', component: () => import('../views/VideoCompressView.vue') },
   { path: '/video-library', name: 'video-library', component: () => import('../views/VideoLibraryView.vue') },
   { path: '/media', name: 'media', component: () => import('../views/MediaLibraryView.vue') },
+  { path: '/customer-stats', name: 'customerStats', component: () => import('../views/CustomerStatsView.vue') },
 ]
 
 const router = createRouter({ history: createWebHistory(), routes })
