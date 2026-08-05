@@ -18,6 +18,7 @@
     <div class="cs-toolbar">
       <el-button type="primary" @click="saveData"><el-icon :size="15"><Check /></el-icon> 保存</el-button>
       <el-button @click="pasteVisible = true"><el-icon :size="15"><Files /></el-icon> 粘贴识别</el-button>
+      <el-button @click="syncFromDaily" class="cs-sync-btn"><el-icon :size="15"><Refresh /></el-icon> 从日报同步</el-button>
       <el-button @click="clearForm" class="cs-clear-btn"><el-icon :size="15"><Delete /></el-icon> 清空</el-button>
       <transition name="cs-fade">
         <span v-if="saveMsg" class="cs-save-msg" :class="{ ok: saveOk, fail: !saveOk }">{{ saveMsg }}</span>
@@ -42,7 +43,24 @@
           </div>
 
           <div class="cs-sales">
-            <div class="cs-sales-hd"><span class="cs-dnum">7</span><span class="cs-dlabel">分配销售</span><span class="cs-sales-cnt" v-if="selectedSales.length">{{ selectedSales.length }}人</span></div>
+            <div class="cs-sales-hd"><span class="cs-dnum">7</span><span class="cs-dlabel">国家客资</span><span class="cs-sales-cnt" v-if="selectedCountries.length">{{ totalCountryCount }}个</span></div>
+            <div class="cs-sales-body">
+              <div class="cs-sales-tree">
+                <el-tree ref="countryTreeRef" :data="countryTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onCountryTreeCheck" />
+              </div>
+              <div class="cs-sales-chips" v-if="selectedCountries.length">
+                <div v-for="ct in selectedCountries" :key="ct.country" class="cs-sales-chip">
+                  <el-tag size="default" effect="dark" type="success" closable @close="removeCountryRow(ct.country)">{{ ct.country }}</el-tag>
+                  <el-input-number v-model="ct.count" :min="1" :controls="false" size="small" class="cs-sales-chip-n" @change="syncCountryTotal" />
+                  <span class="cs-dunit">个</span>
+                </div>
+              </div>
+              <div v-else class="cs-sales-none">在树中勾选国家</div>
+            </div>
+          </div>
+
+          <div class="cs-sales">
+            <div class="cs-sales-hd"><span class="cs-dnum">8</span><span class="cs-dlabel">分配销售</span><span class="cs-sales-cnt" v-if="selectedSales.length">{{ selectedSales.length }}人</span></div>
             <div class="cs-sales-body">
               <div class="cs-sales-tree">
                 <el-tree ref="salesTreeRef" :data="salesTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onSalesTreeCheck" />
@@ -90,6 +108,11 @@
             <div class="cs-mo-cell"><b>{{ monthly.groupedWithPlan }}</b><span>拉群+图</span></div>
             <div class="cs-mo-cell"><b>{{ monthly.visitingCustomers }}</b><span>来访</span></div>
             <div class="cs-mo-cell"><b>{{ monthly.closedDeals }}</b><span>成交</span></div>
+          </div>
+          <div class="cs-mo-sales" v-if="monthly.countryBreakdown.length" style="margin-bottom:6px;">
+            <span class="cs-mo-sales-label">国家</span>
+            <span v-for="cb in monthly.countryBreakdown.slice(0, 6)" :key="cb.country" class="cs-mo-sales-item">{{ cb.country }} <b>{{ cb.count }}</b>个</span>
+            <span v-if="monthly.countryBreakdown.length > 6" class="cs-mo-sales-item">+{{ monthly.countryBreakdown.length - 6 }}</span>
           </div>
           <div class="cs-mo-sales" v-if="monthly.salesAssignments.length">
             <span class="cs-mo-sales-label">分配</span>
@@ -149,6 +172,21 @@ const pasteVisible = ref(false)
 const pasteInput = ref('')
 const parseResults = ref([])
 const salesTreeRef = ref(null)
+const countryTreeRef = ref(null)
+
+// 73国国家树
+const countryTreeData = [
+  { key:"se-asia", label:"东南亚", children:[{key:"印度尼西亚",label:"印度尼西亚"},{key:"越南",label:"越南"},{key:"菲律宾",label:"菲律宾"},{key:"泰国",label:"泰国"},{key:"马来西亚",label:"马来西亚"},{key:"新加坡",label:"新加坡"},{key:"缅甸",label:"缅甸"},{key:"柬埔寨",label:"柬埔寨"},{key:"老挝",label:"老挝"},{key:"文莱",label:"文莱"}]},
+  { key:"s-asia", label:"南亚", children:[{key:"印度",label:"印度"},{key:"巴基斯坦",label:"巴基斯坦"},{key:"孟加拉国",label:"孟加拉国"},{key:"斯里兰卡",label:"斯里兰卡"},{key:"尼泊尔",label:"尼泊尔"}]},
+  { key:"africa", label:"非洲", children:[{key:"尼日利亚",label:"尼日利亚"},{key:"埃塞俄比亚",label:"埃塞俄比亚"},{key:"南非",label:"南非"},{key:"肯尼亚",label:"肯尼亚"},{key:"加纳",label:"加纳"},{key:"埃及",label:"埃及"},{key:"坦桑尼亚",label:"坦桑尼亚"},{key:"乌干达",label:"乌干达"},{key:"摩洛哥",label:"摩洛哥"},{key:"阿尔及利亚",label:"阿尔及利亚"},{key:"安哥拉",label:"安哥拉"},{key:"科特迪瓦",label:"科特迪瓦"}]},
+  { key:"mid-east", label:"中东", children:[{key:"阿联酋",label:"阿联酋"},{key:"沙特阿拉伯",label:"沙特阿拉伯"},{key:"土耳其",label:"土耳其"},{key:"卡塔尔",label:"卡塔尔"},{key:"阿曼",label:"阿曼"},{key:"科威特",label:"科威特"},{key:"巴林",label:"巴林"},{key:"伊拉克",label:"伊拉克"},{key:"约旦",label:"约旦"},{key:"黎巴嫩",label:"黎巴嫩"},{key:"以色列",label:"以色列"},{key:"伊朗",label:"伊朗"},{key:"也门",label:"也门"}]},
+  { key:"e-asia", label:"东亚", children:[{key:"日本",label:"日本"},{key:"韩国",label:"韩国"},{key:"蒙古",label:"蒙古"}]},
+  { key:"latam", label:"拉美", children:[{key:"巴西",label:"巴西"},{key:"墨西哥",label:"墨西哥"},{key:"哥伦比亚",label:"哥伦比亚"},{key:"阿根廷",label:"阿根廷"},{key:"智利",label:"智利"},{key:"秘鲁",label:"秘鲁"},{key:"厄瓜多尔",label:"厄瓜多尔"},{key:"委内瑞拉",label:"委内瑞拉"}]},
+  { key:"emea", label:"欧美", children:[{key:"美国",label:"美国"},{key:"英国",label:"英国"},{key:"德国",label:"德国"},{key:"法国",label:"法国"},{key:"澳大利亚",label:"澳大利亚"},{key:"俄罗斯",label:"俄罗斯"},{key:"加拿大",label:"加拿大"},{key:"意大利",label:"意大利"},{key:"西班牙",label:"西班牙"},{key:"荷兰",label:"荷兰"},{key:"波兰",label:"波兰"},{key:"乌克兰",label:"乌克兰"}]},
+  { key:"central-asia", label:"中亚", children:[{key:"哈萨克斯坦",label:"哈萨克斯坦"},{key:"乌兹别克斯坦",label:"乌兹别克斯坦"},{key:"吉尔吉斯斯坦",label:"吉尔吉斯斯坦"}]}
+]
+const allCountryKeys = countryTreeData.flatMap(g => g.children.map(c => c.key))
+
 
 const defaultForm = () => ({
   newCustomers: null, repliedCustomers: null, registeredCustomers: null,
@@ -156,11 +194,12 @@ const defaultForm = () => ({
 })
 const form = reactive(defaultForm())
 const salesMap = reactive({})
+const countryMap = reactive({})
 
 const monthly = reactive({
   newCustomers: 0, repliedCustomers: 0, registeredCustomers: 0,
   groupedWithPlan: 0, visitingCustomers: 0, closedDeals: 0,
-  salesAssignments: [], records: 0,
+  salesAssignments: [], countryBreakdown: [], records: 0,
 })
 const history = ref([])
 
@@ -179,13 +218,30 @@ function onSalesTreeCheck(_n, checked) {
   for (const k of leafs) { if (!(k in salesMap)) salesMap[k] = 1 }
   for (const k of Object.keys(salesMap)) { if (!leafs.includes(k)) delete salesMap[k] }
 }
+
+function onCountryTreeCheck(_n, checked) {
+  const leafs = checked.checkedKeys.filter(k => allCountryKeys.includes(k))
+  for (const k of leafs) { if (!(k in countryMap)) countryMap[k] = 1 }
+  for (const k of Object.keys(countryMap)) { if (!leafs.includes(k)) delete countryMap[k] }
+  syncCountryTotal()
+}
 const selectedSales = computed(() => Object.entries(salesMap).filter(([_, v]) => v > 0).map(([name, count]) => ({ name, count })))
+const selectedCountries = computed(() => Object.entries(countryMap).filter(([_, v]) => v > 0).map(([country, count]) => ({ country, count })))
+const totalCountryCount = computed(() => selectedCountries.value.reduce((s, c) => s + (c.count || 0), 0))
+function syncCountryTotal() { form.newCustomers = totalCountryCount.value }
 
 function shortDate(str) { if (!str) return ''; const p = str.split('-'); return parseInt(p[1]) + '/' + parseInt(p[2]) }
 function dayName(str) { if (!str) return ''; const d = new Date(str + 'T00:00:00'); return ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()] }
 function formatSalesText(arr) { if (!Array.isArray(arr) || !arr.length) return ''; return arr.filter(s => s.name).map(s => s.name + s.count + '个').join(' ') }
 
 function removeSalesRow(name) { delete salesMap[name]; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys(Object.keys(salesMap)) }) }
+function removeCountryRow(country) { delete countryMap[country]; nextTick(() => { if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys(Object.keys(countryMap)) }); syncCountryTotal() }
+function restoreCountryMap(arr) {
+  for (const k of Object.keys(countryMap)) delete countryMap[k]
+  if (Array.isArray(arr)) for (const s of arr) { if (s.country) countryMap[s.country] = s.count || 1 }
+  nextTick(() => { if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys(Object.keys(countryMap)) })
+  syncCountryTotal()
+}
 function restoreSalesMap(arr) {
   for (const k of Object.keys(salesMap)) delete salesMap[k]
   if (Array.isArray(arr)) for (const s of arr) { if (s.name) salesMap[s.name] = s.count || 1 }
@@ -212,7 +268,7 @@ async function loadData() {
     const r = res.data[0]; existingId.value = r.id
     form.newCustomers = r.newCustomers; form.repliedCustomers = r.repliedCustomers; form.registeredCustomers = r.registeredCustomers
     form.groupedWithPlan = r.groupedWithPlan; form.visitingCustomers = r.visitingCustomers; form.closedDeals = r.closedDeals
-    restoreSalesMap(r.salesAssignments)
+    restoreSalesMap(r.salesAssignments); restoreCountryMap(r.countryBreakdown)
   } else { existingId.value = null; Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k] }
   const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value); if (mRes.success) Object.assign(monthly, mRes.data)
   const hRes = await api.customerStats.list({ accountId: accountId.value }); if (hRes.success) history.value = hRes.data.sort((a, b) => b.date.localeCompare(a.date))
@@ -233,7 +289,7 @@ async function saveData() {
   } catch (e) { saveMsg.value = '❌ ' + e.message; saveOk.value = false }
 }
 
-function clearForm() { Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k]; existingId.value = null; saveMsg.value = ''; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]) }); ElMessage.success('已清空') }
+function clearForm() { Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; existingId.value = null; saveMsg.value = ''; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys([]) }); ElMessage.success('已清空') }
 
 function editRecord(r) { skipAutoLoad = true; if (r.accountId && r.accountId !== accountId.value) { accountId.value = r.accountId; localStorage.setItem('cs_accountId', accountId.value) }; formDate.value = r.date; skipAutoLoad = false; loadData() }
 
@@ -258,9 +314,28 @@ function doParsePaste() {
   const m5 = daySection.match(/来访客户[:\s]*(\d+)/); if (m5) { form.visitingCustomers = parseInt(m5[1]) || 0; parseResults.value.push('来访: ' + m5[1]) }
   const m6 = daySection.match(/成交客户[:\s]*(\d+)/); if (m6) { form.closedDeals = parseInt(m6[1]) || 0; parseResults.value.push('成交: ' + m6[1]) }
   const saLine = daySection.match(/拉群客户分配销售[:\s]*([^\n]*)/)
-  if (saLine && saLine[1] && saLine[1].trim() !== '无') { for (const k of Object.keys(salesMap)) delete salesMap[k]; const saRe = /([^\s,，、\d]+?)(\d+)个/g; let sm; while ((sm = saRe.exec(saLine[1])) !== null) { salesMap[sm[1]] = parseInt(sm[2]); parseResults.value.push('销售: ' + sm[1] + sm[2] + '个') } }
+  if (saLine && saLine[1] && saLine[1].trim() !== '无') { for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; const saRe = /([^\s,，、\d]+?)(\d+)个/g; let sm; while ((sm = saRe.exec(saLine[1])) !== null) { salesMap[sm[1]] = parseInt(sm[2]); parseResults.value.push('销售: ' + sm[1] + sm[2] + '个') } }
   pasteVisible.value = false; parseResults.value.length ? ElMessage.success('识别 ' + parseResults.value.length + ' 个字段') : ElMessage.warning('未识别到数据')
   nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys(Object.keys(salesMap)) }); refreshMonthly()
+}
+
+
+async function syncFromDaily() {
+  const d = formDate.value; if (!d) return
+  try {
+    const res = await api.daily.get(d, { accountId: accountId.value })
+    if (!res.success || !res.data || !res.data.countries) { ElMessage.warning('当日无日报数据'); return }
+    // 清空当前选择
+    for (const k of Object.keys(countryMap)) delete countryMap[k]
+    let count = 0
+    for (const [cname, fb] of Object.entries(res.data.countries)) {
+      const nc = fb.newCustomer || 0
+      if (nc > 0) { countryMap[cname] = nc; count++ }
+    }
+    syncCountryTotal()
+    nextTick(() => { if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys(Object.keys(countryMap)) })
+    ElMessage.success('已从日报同步 ' + count + ' 个国家')
+  } catch(e) { ElMessage.error('同步失败') }
 }
 
 onMounted(async () => { await loadSalesPersons(); loadData() })
@@ -286,6 +361,8 @@ onMounted(async () => { await loadSalesPersons(); loadData() })
 .cs-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
 .cs-toolbar .el-button{font-weight:600;border-radius:8px;}
 .cs-clear-btn{color:var(--c-soft);border-color:var(--c-border);}
+.cs-sync-btn{color:#059669;border-color:#a7f3d0;font-weight:600;border-radius:8px;}
+.cs-sync-btn:hover{color:#fff;background:#10b981;border-color:#10b981;}
 .cs-clear-btn:hover{color:var(--c-bad);border-color:var(--c-bad);background:#fef2f2;}
 .cs-save-msg{font-size:12px;font-weight:600;margin-left:6px;}
 .cs-save-msg.ok{color:var(--c-good);}.cs-save-msg.fail{color:var(--c-bad);}

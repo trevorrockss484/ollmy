@@ -649,7 +649,8 @@ const customerStatsDb = makeCrud('customerStats', {
   date: '', accountId: '', accountName: '',
   newCustomers: 0, repliedCustomers: 0, registeredCustomers: 0,
   groupedWithPlan: 0, visitingCustomers: 0, closedDeals: 0,
-  salesAssignments: []
+  salesAssignments: [],
+  countryBreakdown: []
 })
 
 const salesPersonsDb = makeCrud('salesPersons', { name: '', group: '' });
@@ -704,6 +705,17 @@ function getCustomerStatsMonthly(month, accountId) {
         }
       }
       return Object.entries(agg).map(([name, count]) => ({ name, count }))
+    })(),
+    // 按国家聚合客资
+    countryBreakdown: (() => {
+      const agg = {}
+      for (const r of list) {
+        const arr = Array.isArray(r.countryBreakdown) ? r.countryBreakdown : []
+        for (const cb of arr) {
+          if (cb.country) agg[cb.country] = (agg[cb.country] || 0) + (cb.count || 0)
+        }
+      }
+      return Object.entries(agg).map(([country, count]) => ({ country, count })).sort((a, b) => b.count - a.count)
     })(),
     records: list.length
   }
