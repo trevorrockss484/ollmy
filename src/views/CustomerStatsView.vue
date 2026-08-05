@@ -48,12 +48,13 @@
                 <el-tree ref="countryTreeRef" :data="countryTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onCountryTreeCheck" />
               </div>
               <div class="cs-sales-chips" v-if="selectedCountries.length">
-                <div v-for="ct in selectedCountries" :key="ct.country" class="cs-sales-chip">
+                <div v-for="ct in selectedCountries" :key="ct.country" class="cs-chip-row">
                   <el-tag size="default" effect="dark" type="success" closable @close="removeCountryRow(ct.country)">{{ ct.country }}</el-tag>
-                  <el-input-number v-model="countryMap[ct.country]" :min="1" :controls="false" size="small" class="cs-sales-chip-n" @change="syncCountryTotal" />
-                  <span class="cs-dunit">个</span>
-                  <button class="cs-chip-btn" @click="countryMap[ct.country] = Math.max(1, (countryMap[ct.country] || 1) - 1); syncCountryTotal()">−</button>
-                  <button class="cs-chip-btn cs-chip-btn--plus" @click="countryMap[ct.country] = (countryMap[ct.country] || 0) + 1; syncCountryTotal()">+</button>
+                  <span class="cs-stepper">
+                    <button class="cs-step-btn" @click="countryMap[ct.country] = Math.max(1, (countryMap[ct.country]||1) - 1); syncCountryTotal()">-</button>
+                    <span class="cs-step-val">{{ countryMap[ct.country] || 0 }}</span>
+                    <button class="cs-step-btn cs-step-btn--plus" @click="countryMap[ct.country] = (countryMap[ct.country]||0) + 1; syncCountryTotal()">+</button>
+                  </span>
                 </div>
               </div>
               <div v-else class="cs-sales-none">在树中勾选国家</div>
@@ -67,12 +68,13 @@
                 <el-tree ref="salesTreeRef" :data="salesTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onSalesTreeCheck" />
               </div>
               <div class="cs-sales-chips" v-if="selectedSales.length">
-                <div v-for="sa in selectedSales" :key="sa.name" class="cs-sales-chip">
+                <div v-for="sa in selectedSales" :key="sa.name" class="cs-chip-row">
                   <el-tag size="default" effect="dark" closable @close="removeSalesRow(sa.name)">{{ sa.name }}</el-tag>
-                  <el-input-number v-model="salesMap[sa.name]" :min="1" :controls="false" size="small" class="cs-sales-chip-n" />
-                  <span class="cs-dunit">个</span>
-                  <button class="cs-chip-btn" @click="sa.count = Math.max(1, sa.count - 1)">−</button>
-                  <button class="cs-chip-btn cs-chip-btn--plus" @click="sa.count = (sa.count || 0) + 1">+</button>
+                  <span class="cs-stepper">
+                    <button class="cs-step-btn" @click="salesMap[sa.name] = Math.max(1, (salesMap[sa.name]||1) - 1)">-</button>
+                    <span class="cs-step-val">{{ salesMap[sa.name] || 0 }}</span>
+                    <button class="cs-step-btn cs-step-btn--plus" @click="salesMap[sa.name] = (salesMap[sa.name]||0) + 1">+</button>
+                  </span>
                 </div>
               </div>
               <div v-else class="cs-sales-none">在树中勾选销售</div>
@@ -387,10 +389,22 @@ onMounted(async () => { await loadSalesPersons(); loadData() })
 .cs-sales-body{display:flex;gap:14px;}
 .cs-sales-tree{flex:1;min-width:0;border:1px solid var(--c-border);border-radius:var(--rs);padding:6px;background:var(--c-bg);max-height:240px;overflow-y:auto;}
 .cs-sales-chips{flex:1;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;}
-.cs-sales-chip{display:flex;align-items:center;gap:6px;}
-.cs-sales-chip-n{width:64px;}
-.cs-sales-chip-n :deep(.el-input__wrapper){background:#fff;border-radius:6px;box-shadow:0 0 0 1px var(--c-border);padding:1px 8px;}
-.cs-sales-chip-n :deep(.el-input__inner){font-size:13px;font-weight:700;height:26px;}
+/* Chip rows + stepper */
+.cs-chip-row{display:flex;align-items:center;gap:8px;}
+.cs-stepper{display:inline-flex;align-items:center;gap:0;border-radius:8px;overflow:hidden;border:1.5px solid var(--c-border);}
+.cs-step-btn{
+  width:28px;height:30px;border:none;background:#f9fafb;
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:700;color:var(--c-soft);cursor:pointer;
+  transition:all .12s;padding:0;line-height:1;
+}
+.cs-step-btn:hover{background:var(--c-accent-light);color:var(--c-accent);}
+.cs-step-btn--plus{color:var(--c-good);}
+.cs-step-btn--plus:hover{background:#ecfdf3;color:#0e6245;}
+.cs-step-val{
+  min-width:36px;text-align:center;font-size:14px;font-weight:700;color:var(--c-text);
+  padding:0 4px;background:#fff;
+}
 .cs-sales-none{font-size:13px;color:var(--c-muted);padding:12px 0;}
 
 /* History */
