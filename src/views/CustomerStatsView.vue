@@ -489,7 +489,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 
 /* Preview */
 .cs-card--preview{border-color:var(--c-accent-light);}
-.cs-preview-text{white-space:pre-wrap;font-size:13px;line-height:1.85;color:var(--c-soft);max-height:45vh;overflow-y:auto;font-family:inherit;margin:0;}
+.cs-preview-text{white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.9;color:var(--c-soft);overflow-y:auto;font-family:inherit;margin:0;}
 .cs-preview-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:32px 16px;color:var(--c-muted);font-size:13px;text-align:center;background:var(--c-card);border:1px dashed var(--c-border);border-radius:var(--r);}
 
 /* Dialog */
