@@ -6,13 +6,9 @@
       <div class="vl-title">
         <h2><el-icon :size="24"><VideoCameraFilled /></el-icon> 视频素材库</h2>
         <div class="vl-tabs">
-          <button class="vl-tab" :class="{ active: activeTab === 'normal' }" @click="activeTab = 'normal'">
+          <button class="vl-tab active">
             🏭 工厂展厅视频
-            <span class="vl-tab-n">{{ countByPurpose('normal') }}</span>
-          </button>
-          <button class="vl-tab" :class="{ active: activeTab === 'tiktok' }" @click="activeTab = 'tiktok'">
-            📱 发布视频
-            <span class="vl-tab-n">{{ countByPurpose('tiktok') }}</span>
+            <span class="vl-tab-n">{{ list.length }}</span>
           </button>
         </div>
       </div>
@@ -30,10 +26,10 @@
     <div v-if="!filteredList.length && !search" class="vl-empty">
       <el-icon :size="64" color="#d1d5db"><VideoCameraFilled /></el-icon>
       <p style="font-size:16px;font-weight:600;color:#6b7280;margin:16px 0 6px;">
-        {{ activeTab === 'normal' ? '还没有工厂展厅视频' : '还没有发布视频素材' }}
+        还没有视频素材
       </p>
       <p style="font-size:14px;color:#9ca3af;margin-bottom:20px;">
-        {{ activeTab === 'tiktok' ? '上传时附加竖屏封面' : '上传展厅、产线等视频素材' }}
+        上传展厅、产线等视频素材
       </p>
       <el-button type="primary" size="large" round @click="openUpload"><el-icon><Plus /></el-icon> 上传视频</el-button>
     </div>
@@ -81,20 +77,7 @@
           <div class="db-player">
             <video :src="detailItem.previewUrl" controls autoplay preload="auto" class="db-video" />
           </div>
-          <!-- 只有 TK Tab 显示封面卡片 -->
-          <div v-if="activeTab === 'tiktok'" class="db-cover-card">
-            <span class="db-cover-label">封面</span>
-            <div v-if="detailItem.coverUrl" class="db-cover-img-wrap">
-              <img :src="detailItem.coverUrl" />
-            </div>
-            <div v-else class="db-cover-empty">
-              <el-icon :size="28"><Picture /></el-icon>
-              <span>未设置</span>
-            </div>
-            <el-button v-if="detailItem.coverUrl" size="small" round class="db-cover-dl" @click="downloadCover(detailItem)">
-              <el-icon :size="14"><Download /></el-icon> 下载封面
-            </el-button>
-          </div>
+
         </div>
 
         <div class="db-info">
@@ -195,7 +178,7 @@
         <div class="dlg-footer">
           <el-button size="large" round @click="uploadVisible = false">取消</el-button>
           <el-button size="large" round type="primary" :loading="upLoading" :disabled="!upFiles.length" @click="doUpload">
-            <el-icon v-if="!upLoading"><Check /></el-icon> 上传至 {{ upForTiktok ? '发布视频' : '工厂展厅' }} ({{ upFiles.length }})
+            <el-icon v-if="!upLoading"><Check /></el-icon> 上传至 工厂展厅 ({{ upFiles.length }})
           </el-button>
         </div>
       </template>
@@ -207,14 +190,12 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
 import { formatSize, authUrl } from '../api'
+import { Search } from '@element-plus/icons-vue'
 
 const list = ref([])
 const search = ref('')
 const sortBy = ref('newest')
-const activeTab = ref('normal')
-
 const presetCategories = ['工厂展厅', '产品实拍', '生产线', '安装视频', '宣传片', '社交媒体', '原始素材']
 const dynamicCategories = ref([])
 const allCategories = computed(() => [...new Set([...presetCategories, ...dynamicCategories.value])].sort())
@@ -226,7 +207,7 @@ function formatDuration(sec) {
 }
 
 const filteredList = computed(() => {
-  let arr = list.value.filter(v => v.purpose === activeTab.value || (!v.purpose && activeTab.value === 'normal'))
+  let arr = list.value.filter(v => v.purpose !== 'tiktok')
   if (search.value) {
     const kw = search.value.toLowerCase()
     arr = arr.filter(item => (item.name || item.originalName || '').toLowerCase().includes(kw))
@@ -239,11 +220,6 @@ const filteredList = computed(() => {
   }
   return arr
 })
-
-function countByPurpose(p) {
-  if (p === 'normal') return list.value.filter(v => v.purpose === 'normal' || !v.purpose).length
-  return list.value.filter(v => v.purpose === 'tiktok').length
-}
 
 const detailVisible = ref(false)
 const detailItem = ref(null)
@@ -298,7 +274,6 @@ function downloadCover(item) {
 
 // 上传
 const uploadVisible = ref(false)
-const upForTiktok = ref(true)
 const upFiles = ref([])
 const upPreviews = ref([])
 const upDrag = ref(false)
@@ -312,7 +287,6 @@ const totalUpSize = computed(() => upFiles.value.reduce((s, f) => s + f.size, 0)
 function openUpload() {
   upName.value = ''; upCategory.value = ''
   upFiles.value = []; upPreviews.value = []
-  upForTiktok.value = activeTab.value === 'tiktok'
   uploadVisible.value = true
 }
 function onUpDrop(e) { upDrag.value = false; addUpFiles(e.dataTransfer.files) }
@@ -334,11 +308,11 @@ async function doUpload() {
     const fd = new FormData()
     for (const f of upFiles.value) fd.append('files', f)
     fd.append('name', upName.value); fd.append('category', upCategory.value)
-    fd.append('purpose', upForTiktok.value ? 'tiktok' : 'normal')
+    fd.append('purpose', 'normal')
     const token = localStorage.getItem('pan_token') || ''
     const res = await fetch('/api/tools/upload-video-media', { method: 'POST', headers: { 'X-Auth-Token': token }, body: fd })
     const json = await res.json()
-    if (json.success) { ElMessage.success(`已上传 ${json.data.length} 个视频`); uploadVisible.value = false; activeTab.value = upForTiktok.value ? 'tiktok' : 'normal'; await load() }
+    if (json.success) { ElMessage.success(`已上传 ${json.data.length} 个视频`); uploadVisible.value = false; await load() }
     else ElMessage.error(json.error || '上传失败')
   } catch (e) { ElMessage.error('上传失败') }
   finally { upLoading.value = false }
@@ -359,7 +333,7 @@ async function load() {
 }
 onMounted(() => load())
 onUnmounted(() => {})
-watch([activeTab, search, sortBy], () => {})
+watch([search, sortBy], () => {})
 </script>
 
 <style scoped>
