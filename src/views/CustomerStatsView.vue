@@ -544,19 +544,19 @@ onMounted(async () => {
 /* 本日数据横向排列 */
 .daily-nums { display: flex; flex-direction: column; gap: 8px; }
 .dn-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 14px; background: #f9fafb; border-radius: 10px;
+  display: grid; grid-template-columns: 22px 1fr 110px auto 22px 1fr 110px auto;
+  align-items: center; gap: 8px;
+  padding: 10px 16px; background: #f9fafb; border-radius: 10px;
   transition: background .12s;
 }
 .dn-row:hover { background: #f3f4f6; }
-.dn-row label { font-size: 13px; font-weight: 600; color: #374151; min-width: 0; white-space: nowrap; }
+.dn-row label { font-size: 14px; font-weight: 600; color: #374151; white-space: nowrap; }
 .dn-idx {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 20px; height: 20px; border-radius: 5px;
-  background: #eef2ff; color: #6366f1; font-size: 11px; font-weight: 700;
+  width: 22px; height: 22px; border-radius: 6px;
+  background: #eef2ff; color: #6366f1; font-size: 12px; font-weight: 700;
   flex-shrink: 0;
 }
-.dn-idx--r { margin-left: 16px; }
 
 /* 分配销售芯片 */
 .fg-sales-section { border-top: 1px solid #f3f4f6; padding-top: 14px; }
@@ -594,17 +594,17 @@ onMounted(async () => {
 
 /* ====== 历史 ====== */
 .history-table-wrap { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
-.ht-head { display: grid; grid-template-columns: 80px 1fr 1fr 1fr 1fr 1fr 1fr 160px; padding: 6px 12px; align-items: center; background: #f9fafb; border-bottom: 1px solid #e5e7eb; gap: 4px; }
-.ht-row { display: grid; grid-template-columns: 80px 1fr 1fr 1fr 1fr 1fr 1fr 160px; padding: 8px 12px; align-items: center; gap: 4px; border-bottom: 1px solid #f3f4f6; cursor: pointer; transition: all .12s; position: relative; }
+.ht-head { display: grid; grid-template-columns: 90px 1fr 1fr 1fr 1fr 1fr 1fr 170px; padding: 8px 14px; align-items: center; background: #f9fafb; border-bottom: 1px solid #e5e7eb; gap: 6px; }
+.ht-row { display: grid; grid-template-columns: 90px 1fr 1fr 1fr 1fr 1fr 1fr 170px; padding: 12px 14px; align-items: center; gap: 6px; border-bottom: 1px solid #f3f4f6; cursor: pointer; transition: all .12s; position: relative; }
 .ht-row:nth-child(even) { background: #fafafa; }
 .ht-row:hover { background: #f5f3ff; box-shadow: inset 3px 0 0 #6366f1; }
 .ht-row::after { content: '✎'; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 11px; color: #d1d5db; opacity: 0; transition: opacity .12s; }
 .ht-row:hover::after { opacity: 1; color: #6366f1; }
 .ht-row:last-of-type { border-bottom: none; }
-.ht-cell { font-size: 11px; font-weight: 600; color: #9ca3af; }
-.ht-cell--date { font-size: 13px; font-weight: 700; color: #374151; }
-.ht-cell--num { font-size: 14px; font-weight: 700; color: #1f2937; text-align: center; }
-.ht-cell--sales { font-size: 11px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ht-cell { font-size: 12px; font-weight: 600; color: #9ca3af; }
+.ht-cell--date { font-size: 14px; font-weight: 700; color: #374151; }
+.ht-cell--num { font-size: 16px; font-weight: 700; color: #1f2937; text-align: center; }
+.ht-cell--sales { font-size: 12px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .history-empty { text-align: center; padding: 20px; color: #9ca3af; font-size: 12px; }
 
 /* ====== 销售管理弹窗 ====== */
@@ -625,6 +625,6 @@ onMounted(async () => {
   .main-layout { flex-direction: column; }
   .right-panel { width: 100%; position: static; }
   .dn-row { flex-wrap: wrap; }
-  .dn-idx--r { margin-left: 0; }
+
 }
 </style>
