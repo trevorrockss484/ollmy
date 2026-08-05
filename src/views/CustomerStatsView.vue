@@ -154,7 +154,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api, todayStr } from '../api'
 
@@ -333,13 +333,15 @@ function doParsePaste() {
 let autoSavePending = false
 let autoSaveSkip = false
 let autoSaveReady = false
+let autoSaveTimer = null
 function triggerAutoSave() {
   if (autoSaveSkip) return
   if (!autoSaveReady) return
   if (autoSavePending) return
   autoSavePending = true
-  setTimeout(() => {
+  autoSaveTimer = setTimeout(() => {
     autoSavePending = false
+    autoSaveTimer = null
     saveMsg.value = '自动保存中...'; saveOk.value = true
     saveData(true)
   }, 1000)
@@ -356,6 +358,7 @@ watch(
 )
 
 onMounted(async () => { await loadSalesPersons(); await loadData(); setTimeout(() => { autoSaveReady = true }, 800) })
+onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 </script>
 
 <style scoped>
