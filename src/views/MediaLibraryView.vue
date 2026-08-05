@@ -18,6 +18,9 @@
           <el-option label="名称 A-Z" value="name" />
           <el-option label="体积最大" value="size" />
         </el-select>
+        <el-button round @click="batchMode = !batchMode; selected.length = 0">
+          <el-icon><List /></el-icon> {{ batchMode ? '取消选择' : '批量选择' }}
+        </el-button>
         <el-button type="primary" round @click="openUpload"><el-icon><Plus /></el-icon> 上传素材</el-button>
       </div>
     </div>
@@ -36,9 +39,18 @@
 
     <!-- 内容区 -->
     <div v-else class="ml-content">
+      <!-- 多选操作栏 -->
+      <div v-if="batchMode" class="ml-batch-bar">
+        <el-checkbox :model-value="allChecked" :indeterminate="selected.length > 0 && selected.length < filteredList.length" @change="toggleAll">全选</el-checkbox>
+        <span class="ml-batch-n">{{ selected.length }} / {{ filteredList.length }} 个</span>
+        <span style="flex:1;"></span>
+        <el-button size="default" @click="downloadSelected"><el-icon :size="14"><Download /></el-icon> 批量下载</el-button>
+        <el-button size="default" @click="batchMode = false; selected.length = 0">取消</el-button>
+      </div>
       <div class="ml-grid">
-        <div v-for="item in filteredList" :key="item.id" class="ml-card" @click="openDetail(item)">
-          <div class="ml-img">
+        <div v-for="item in filteredList" :key="item.id" class="ml-card" :class="{ selected: isSelected(item.id) }" @click="cardClick(item)">
+          <div class="ml-check-overlay" v-if="batchMode" @click.stop="toggleSel(item.id)"><div class="ml-check-circle" :class="{ on: isSelected(item.id) }"><el-icon :size="14" v-if="isSelected(item.id)"><Check /></el-icon></div></div>
+<div class="ml-img">
             <img :src="item.previewUrl" loading="lazy" />
           </div>
           <div class="ml-body">
@@ -290,6 +302,30 @@ const upDrag = ref(false)
 const upName = ref('')
 const upCategory = ref('')
 const upLoading = ref(false)
+
+// 批量选择
+const batchMode = ref(false)
+const selected = ref([])
+const allChecked = computed(() => filteredList.value.length > 0 && selected.value.length === filteredList.value.length)
+function isSelected(id) { return selected.value.includes(id) }
+function toggleSel(id) {
+  const idx = selected.value.indexOf(id)
+  if (idx >= 0) selected.value.splice(idx, 1)
+  else selected.value.push(id)
+}
+function toggleAll(v) { selected.value = v ? filteredList.value.map(i => i.id) : [] }
+function cardClick(item) { if (batchMode.value) { toggleSel(item.id); return }; openDetail(item) }
+function downloadSelected() {
+  if (!selected.value.length) { ElMessage.warning('请先选择素材'); return }
+  const items = filteredList.value.filter(i => selected.value.includes(i.id))
+  let count = 0
+  const timer = setInterval(() => {
+    if (count >= items.length) { clearInterval(timer); return }
+    downloadSaved(items[count])
+    count++
+  }, 500)
+  ElMessage.success('正在下载 ' + items.length + ' 个素材...')
+}
 const upFileInput = ref(null)
 
 const upPreviews = computed(() =>
@@ -467,4 +503,25 @@ watch([search, filterCat, sortBy], () => {})
 .upz-chip-del:hover { background: #fecaca; color: #dc2626; }
 
 .up-form { display: flex; flex-direction: column; gap: 16px; }
+
+/* Batch */
+.ml-batch-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 18px; background: #fff;
+  border: 1.5px solid #6366f1; border-radius: 12px;
+  margin-bottom: 14px; animation: mlSlideDown .2s ease;
+  grid-column: 1 / -1;
+}
+@keyframes mlSlideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+.ml-batch-n { font-size: 14px; font-weight: 700; color: #6366f1; }
+.ml-check-overlay { position: absolute; top: 8px; right: 8px; z-index: 2; }
+.ml-check-circle {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid #d1d5db; background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s; cursor: pointer;
+}
+.ml-check-circle.on { background: #6366f1; border-color: #6366f1; color: #fff; }
+.ml-card.selected { box-shadow: 0 0 0 2px #6366f1, 0 4px 16px rgba(99,102,241,.15); }
+
 </style>

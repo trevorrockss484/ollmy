@@ -18,6 +18,9 @@
           <el-option label="最新优先" value="newest" /><el-option label="最旧优先" value="oldest" />
           <el-option label="名称 A-Z" value="name" /><el-option label="体积最大" value="size" />
         </el-select>
+        <el-button round size="large" @click="batchMode = !batchMode; selected.length = 0">
+          <el-icon :size="16"><List /></el-icon> {{ batchMode ? '取消选择' : '批量选择' }}
+        </el-button>
         <el-button type="primary" round size="large" @click="openUpload"><el-icon><Plus /></el-icon> 上传视频</el-button>
       </div>
     </div>
@@ -38,7 +41,20 @@
 
     <!-- 卡片网格 -->
     <div v-else class="vl-grid">
-      <div v-for="item in filteredList" :key="item.id" class="vl-card" @click="openDetail(item)">
+      <!-- 多选操作栏（在网格内顶部） -->
+      <div v-if="batchMode" class="vl-batch-bar">
+        <el-checkbox :model-value="allChecked" :indeterminate="selected.length > 0 && selected.length < filteredList.length" @change="toggleAll">全选</el-checkbox>
+        <span class="vl-batch-n">{{ selected.length }} / {{ filteredList.length }} 个</span>
+        <span style="flex:1;"></span>
+        <el-button size="default" @click="downloadSelected"><el-icon :size="14"><Download /></el-icon> 批量下载</el-button>
+        <el-button size="default" @click="batchMode = false; selected.length = 0">取消</el-button>
+      </div>
+      <div v-for="item in filteredList" :key="item.id" class="vl-card" :class="{ selected: isSelected(item.id) }" @click="cardClick(item)">
+        <div class="vl-check-overlay" v-if="batchMode" @click.stop="toggleSel(item.id)">
+          <div class="vl-check-circle" :class="{ on: isSelected(item.id) }">
+            <el-icon :size="14" v-if="isSelected(item.id)"><Check /></el-icon>
+          </div>
+        </div>
         <div class="vl-card-img" :class="item.coverUrl ? 'portrait' : 'landscape'">
           <img v-if="item.coverUrl" :src="item.coverUrl" loading="lazy" />
           <template v-else>
@@ -282,6 +298,35 @@ const upCategory = ref('')
 const upLoading = ref(false)
 const upFileInput = ref(null)
 
+// 批量选择
+const batchMode = ref(false)
+const selected = ref([])
+const allChecked = computed(() => filteredList.value.length > 0 && selected.value.length === filteredList.value.length)
+function isSelected(id) { return selected.value.includes(id) }
+function toggleSel(id) {
+  const idx = selected.value.indexOf(id)
+  if (idx >= 0) selected.value.splice(idx, 1)
+  else selected.value.push(id)
+}
+function toggleAll(v) {
+  selected.value = v ? filteredList.value.map(i => i.id) : []
+}
+function cardClick(item) {
+  if (batchMode.value) { toggleSel(item.id); return }
+  openDetail(item)
+}
+function downloadSelected() {
+  if (!selected.value.length) { ElMessage.warning('请先选择素材'); return }
+  const items = filteredList.value.filter(i => selected.value.includes(i.id))
+  let count = 0
+  const timer = setInterval(() => {
+    if (count >= items.length) { clearInterval(timer); return }
+    downloadSaved(items[count])
+    count++
+  }, 500)
+  ElMessage.success('正在下载 ' + items.length + ' 个视频...')
+}
+
 const totalUpSize = computed(() => upFiles.value.reduce((s, f) => s + f.size, 0))
 
 function openUpload() {
@@ -367,7 +412,7 @@ watch([search, sortBy], () => {})
 }
 .vl-card {
   background: #fff; border: 1px solid #e5e7eb; border-radius: 16px;
-  overflow: hidden; cursor: pointer; border: none; transition: transform 0.2s ease, box-shadow 0.2s ease; box-shadow: 0 0 0 1px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.06); will-change: transform; content-visibility: auto;
+  overflow: hidden; cursor: pointer; position: relative; border: none; transition: transform 0.2s ease, box-shadow 0.2s ease; box-shadow: 0 0 0 1px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.06); will-change: transform; content-visibility: auto;
 }
 .vl-card:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(99,102,241,.12), 0 6px 20px rgba(99,102,241,.12); }
 
@@ -458,4 +503,29 @@ watch([search, sortBy], () => {})
 .up-chip-close:hover { background: #fecaca; color: #dc2626; }
 
 .up-form { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 18px; }
+
+/* ====== Batch Mode ====== */
+.vl-batch-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 18px; background: #fff;
+  border: 1.5px solid var(--c-accent, #6366f1); border-radius: 12px;
+  margin-bottom: 14px; animation: vlSlideDown .2s ease;
+  grid-column: 1 / -1;
+}
+@keyframes vlSlideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+.vl-batch-n { font-size: 14px; font-weight: 700; color: var(--c-accent, #6366f1); }
+.vl-check-overlay {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+}
+.vl-check-circle {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid #d1d5db; background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s; cursor: pointer;
+}
+.vl-check-circle.on { background: #6366f1; border-color: #6366f1; color: #fff; }
+.vl-card.selected { box-shadow: 0 0 0 2px #6366f1, 0 4px 16px rgba(99,102,241,.15); }
+.vl-slide-enter-active, .vl-slide-leave-active { transition: all .15s; }
+.vl-slide-enter-from, .vl-slide-leave-to { opacity: 0; transform: translateY(-6px); }
+
 </style>
