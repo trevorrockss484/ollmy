@@ -252,7 +252,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useWeekStore } from '../stores/week'
 import { api, formatDateCN, todayStr } from '../api'
@@ -547,7 +547,7 @@ function resetFormData() {
 }
 
 function onAccountChange() {
-  saveMsg.value = ''
+  saveMsg.value = ''; autoSaveSkip = true
   resetFormData()
   if (reportDate.value) loadExistingData(reportDate.value)
 }
@@ -587,7 +587,7 @@ function fmtNum(v) { if (v == null) return '0.00'; const r = Math.round(v * 100)
 // ====== 数据加载 ======
 async function loadExistingData(d) {
   if (!d || !weekReady.value) return
-  const seq = ++loadSeq
+  const seq = ++loadSeq; autoSaveSkip = true
   resetFormData()
   try {
     const res = await api.daily.get(d, { accountId: selectedAccountId.value }); if (seq !== loadSeq) return
@@ -616,6 +616,7 @@ async function loadExistingData(d) {
       }
     }
   } catch(e) { existingData.value = false }
+  autoSaveSkip = false
 }
 
 const skipAutoLoad = ref(false); let loadSeq = 0
@@ -690,9 +691,10 @@ async function copyReport() {
   }
 }
 
-async function saveData() {
-  const date = reportDate.value; if (!date) { ElMessage.warning('请选择日期'); return }
+async function saveData(silent) {
+  const date = reportDate.value; if (!date) { if (!silent) ElMessage.warning('请选择日期'); return }
 
+  if (!silent) {
   // ====== 保存前校验 ======
   // 1. 检查是否完全为空
   let hasAnyData = false
@@ -718,9 +720,7 @@ async function saveData() {
       errors.push(`「${c}」拉群数为 0，但有 ${validEntries.length} 条详情 → 请清除详情或填写拉群数`)
     }
   }
-  if (errors.length) {
-    ElMessageBox.alert(errors.join('\n'), '拉群详情校验不通过', { confirmButtonText: '知道了', type: 'warning' })
-    return
+  if (errors.length) { ElMessageBox.alert(errors.join('\n'), '拉群详情校验不通过', { confirmButtonText: '知道了', type: 'warning' }); return }
   }
 
   const countries = {}
@@ -728,10 +728,10 @@ async function saveData() {
     const d = countryData[c]; if (!d) continue
     countries[c] = { budget: n(d.budget), usdBudget: n(d.usdBudget), newCustomer: n(d.newCustomer), grouped: n(d.grouped), groupEntries: (d.groupEntries || []).map(e => ({ text: e.text || '', status: e.status || '' })), catNoReply: n(d.catNoReply), msgIgnore: n(d.msgIgnore), lowBudget: n(d.lowBudget), competitor: n(d.competitor), harass: n(d.harass), visitPending: n(d.visitPending) }
   }
-  saveMsg.value = '保存中...'; saveOk.value = true
+  if (!silent) { saveMsg.value = '保存中...'; saveOk.value = true }
   try {
     const res = await api.daily.save(date, { countries }, { accountId: selectedAccountId.value })
-    if (res.success) { saveMsg.value = ' 已保存'; saveOk.value = true; existingData.value = true }
+    if (res.success) { saveMsg.value = silent ? '已自动保存' : ' 已保存'; saveOk.value = true; existingData.value = true; if (silent) setTimeout(() => { if (saveMsg.value === '已自动保存') saveMsg.value = '' }, 2000) }
     else { saveMsg.value = '❌ ' + (res.error||'未知错误'); saveOk.value = false }
   } catch(e) { saveMsg.value = '❌ ' + e.message; saveOk.value = false }
 }
@@ -739,7 +739,9 @@ async function saveData() {
 async function clearForm() {
   try { await ElMessageBox.confirm('确定清空表单？未保存的数据将丢失。', '确认清空', { confirmButtonText: '确认清空', cancelButtonText: '取消', type: 'warning' }) } catch { return }
   for (const c of activeCountries.value) { if (c in countryData) { Object.keys(countryData[c]).forEach(k => { if (k === 'groupEntries') countryData[c][k] = []; else countryData[c][k] = (typeof countryData[c][k] === 'number' || countryData[c][k] === null) ? null : '' }) } }
+  autoSaveSkip = true
   saveMsg.value = ''
+  setTimeout(() => { autoSaveSkip = false }, 500)
   ElMessage.success('表单已清空')
 }
 
@@ -806,6 +808,40 @@ async function syncFromStats() {
   } catch(e) { ElMessage.error('同步失败') }
 }
 
+
+// ====== 自动保存 ======
+let autoSavePending = false
+let autoSaveSkip = false
+let autoSaveReady = false
+let autoSaveTimer = null
+
+function triggerAutoSave() {
+  if (autoSaveSkip) return
+  if (!autoSaveReady) return
+  if (autoSavePending) return
+  autoSavePending = true
+  autoSaveTimer = setTimeout(() => {
+    autoSavePending = false
+    autoSaveTimer = null
+    if (autoSaveSkip) return
+    saveData(true)
+  }, 1200)
+}
+
+watch(
+  () => JSON.stringify({
+    ac: activeCountries.value.join(','),
+    cd: Object.fromEntries(
+      Object.entries(countryData).map(([k, v]) => [k, {
+        b: v.budget, u: v.usdBudget, c: v.newCustomer, g: v.grouped,
+        ge: (v.groupEntries || []).map(e => e.text + '|' + e.status).join(';')
+      }])
+    )
+  }),
+  () => { triggerAutoSave() },
+  { deep: true }
+)
+
 onMounted(async () => {
   if (!weekStore.currentWeek) await weekStore.load()
   const t = sessionStorage.getItem('targetDate'); if (t) { reportDate.value = t; sessionStorage.removeItem('targetDate') }
@@ -817,7 +853,10 @@ onMounted(async () => {
     } catch {}
     sessionStorage.removeItem('editDaily')
   }
+  setTimeout(() => { autoSaveReady = true }, 1500)
 })
+
+onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 </script>
 
 <style scoped>
