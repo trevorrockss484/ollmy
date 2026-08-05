@@ -9,9 +9,9 @@ router.get('/', (req, res) => {
 
 router.post('/', (req, res) => {
   try {
-    const { name } = req.body || {};
+    const { name, group } = req.body || {};
     if (!name) return res.json({ success: false, error: '名称不能为空' });
-    const person = db.addSalesPerson({ name: name.trim() });
+    const person = db.addSalesPerson({ name: name.trim(), group: (group || '').trim() });
     res.json({ success: true, data: person });
   } catch(e) { res.status(500).json({ success: false, error: '服务器内部错误' }); }
 });

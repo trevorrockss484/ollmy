@@ -116,7 +116,7 @@ export const api = {
   },
   salesPersons: {
     list: () => request('/sales-persons'),
-    add: (name) => request('/sales-persons', { method: 'POST', body: JSON.stringify({ name }) }),
+    add: (name, group) => request('/sales-persons', { method: 'POST', body: JSON.stringify({ name, group }) }),
     delete: (id) => request('/sales-persons/' + id, { method: 'DELETE' }),
   },
 }

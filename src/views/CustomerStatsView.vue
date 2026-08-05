@@ -39,28 +39,34 @@
             <div class="fg-item"><label>6. 本日成交客户</label><el-input-number v-model="form.closedDeals" :min="0" :controls="false" placeholder="0" class="fg-input" /><span class="fg-unit">个</span></div>
           </div>
 
-          <!-- 分配销售：芯片式选择 -->
+          <!-- 分配销售：树状选择 -->
           <div class="fg-sales-section">
             <label class="fg-sales-label">7. 拉群客户分配销售</label>
-            <div class="fg-sales-chips">
-              <span
-                v-for="sp in salesPersons"
-                :key="sp.id"
-                class="fsc-chip"
-                :class="{ active: salesMap[sp.name] }"
-                @click="toggleSalesChip(sp.name)"
-              >
-                {{ sp.name }}
-              </span>
-            </div>
-            <div class="fg-sales-list" v-if="selectedSales.length">
-              <div v-for="(sa, i) in selectedSales" :key="sa.name" class="fg-sales-row">
-                <el-tag size="default" effect="dark" type="primary" closable @close="removeSalesRow(sa.name)">{{ sa.name }}</el-tag>
-                <el-input-number v-model="sa.count" :min="1" :controls="false" size="small" class="fg-sales-count" />
-                <span class="fg-unit">个</span>
+            <div class="fg-sales-layout">
+              <div class="fg-sales-tree">
+                <el-tree
+                  ref="salesTreeRef"
+                  :data="salesTreeData"
+                  show-checkbox
+                  node-key="key"
+                  :props="{ label: 'label', children: 'children' }"
+                  :default-expanded-keys="salesGroupKeys"
+                  default-expand-all
+                  @check="onSalesTreeCheck"
+                  style="max-height:260px;overflow-y:auto;"
+                />
+              </div>
+              <div class="fg-sales-result">
+                <div class="fg-sales-list" v-if="selectedSales.length">
+                  <div v-for="sa in selectedSales" :key="sa.name" class="fg-sales-row">
+                    <el-tag size="default" effect="dark" type="primary" closable @close="removeSalesRow(sa.name)">{{ sa.name }}</el-tag>
+                    <el-input-number v-model="sa.count" :min="1" :controls="false" size="small" class="fg-sales-count" />
+                    <span class="fg-unit">个</span>
+                  </div>
+                </div>
+                <div v-else class="fg-sales-none">勾选左侧销售</div>
               </div>
             </div>
-            <div v-if="!selectedSales.length" class="fg-sales-none">点击上方销售名字选择</div>
           </div>
         </div>
 
@@ -128,10 +134,11 @@
     </div>
 
     <!-- 销售名单管理弹窗 -->
-    <el-dialog v-model="salesManageVisible" title="管理销售名单" width="480px" destroy-on-close>
+    <el-dialog v-model="salesManageVisible" title="管理销售名单" width="520px" destroy-on-close>
       <div class="sm-list">
         <div v-for="sp in salesPersons" :key="sp.id" class="sm-row">
           <span class="sm-name">{{ sp.name }}</span>
+          <el-tag v-if="sp.group" size="small" type="info" effect="plain" style="margin:0 4px;">{{ sp.group }}</el-tag>
           <el-button size="small" text type="danger" @click="deleteSalesPerson(sp)"><el-icon :size="14"><Close /></el-icon></el-button>
         </div>
         <div v-if="!salesPersons.length" class="sm-empty">暂未添加销售</div>
@@ -141,7 +148,8 @@
           <el-button size="small" type="primary" @click="addBulkSales" :disabled="!bulkSalesInput.trim()" style="margin-top:6px;">批量添加</el-button>
         </div>
         <div class="sm-add-row">
-          <el-input v-model="newSalesName" placeholder="单个添加" size="default" style="flex:1;" @keyup.enter="addSalesPerson" />
+          <el-input v-model="newSalesName" placeholder="销售名字" size="default" style="flex:2;" @keyup.enter="addSalesPerson" />
+          <el-input v-model="newSalesGroup" placeholder="分组名（可选）" size="default" style="flex:1;" @keyup.enter="addSalesPerson" />
           <el-button type="primary" size="default" @click="addSalesPerson">添加</el-button>
         </div>
       </div>
@@ -165,7 +173,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api, todayStr } from '../api'
 
@@ -182,18 +190,20 @@ const saveOk = ref(true)
 const salesPersons = ref([])
 const salesManageVisible = ref(false)
 const newSalesName = ref('')
+const newSalesGroup = ref('')
 const bulkSalesInput = ref('')
 
 const pasteVisible = ref(false)
 const pasteInput = ref('')
 const parseResults = ref([])
+const salesTreeRef = ref(null)
 
 const defaultForm = () => ({
   newCustomers: null, repliedCustomers: null, registeredCustomers: null,
   groupedWithPlan: null, visitingCustomers: null, closedDeals: null,
 })
 const form = reactive(defaultForm())
-// 销售选择用独立的 reactive，key 为销售名
+// 销售选择：{ name: count }
 const salesMap = reactive({})
 
 const monthly = reactive({
@@ -203,6 +213,36 @@ const monthly = reactive({
 })
 
 const history = ref([])
+
+// 树数据：按 group 分组
+const salesTreeData = computed(() => {
+  const groups = {}
+  for (const sp of salesPersons.value) {
+    const g = sp.group || '默认组'
+    if (!groups[g]) groups[g] = []
+    groups[g].push({ key: sp.name, label: sp.name })
+  }
+  return Object.entries(groups).map(([gname, children]) => ({
+    key: 'grp-' + gname,
+    label: gname,
+    children,
+  }))
+})
+
+const salesGroupKeys = computed(() => salesTreeData.value.map(g => g.key))
+const allSalesKeys = computed(() => salesPersons.value.map(sp => sp.name))
+
+function onSalesTreeCheck(_n, checked) {
+  const leafs = checked.checkedKeys.filter(k => allSalesKeys.value.includes(k))
+  // 新增的叶子
+  for (const k of leafs) {
+    if (!(k in salesMap)) salesMap[k] = 1
+  }
+  // 取消的叶子
+  for (const k of Object.keys(salesMap)) {
+    if (!leafs.includes(k)) delete salesMap[k]
+  }
+}
 
 const selectedSales = computed(() => {
   return Object.entries(salesMap)
@@ -221,19 +261,16 @@ function formatSalesText(arr) {
   return arr.filter(s => s.name).map(s => s.name + s.count + '个').join(' ')
 }
 
-function toggleSalesChip(name) {
-  if (salesMap[name]) {
-    delete salesMap[name]
-  } else {
-    salesMap[name] = 1
+function removeSalesRow(name) {
+  delete salesMap[name]
+  // 同步回树的选中状态
+  if (salesTreeRef.value) {
+    const keys = Object.keys(salesMap)
+    salesTreeRef.value.setCheckedKeys(keys)
   }
 }
 
-function removeSalesRow(name) {
-  delete salesMap[name]
-}
-
-// 从保存数据恢复 salesMap
+// 从保存数据恢复 salesMap + 树选中
 function restoreSalesMap(arr) {
   for (const k of Object.keys(salesMap)) delete salesMap[k]
   if (Array.isArray(arr)) {
@@ -241,6 +278,9 @@ function restoreSalesMap(arr) {
       if (s.name) salesMap[s.name] = s.count || 1
     }
   }
+  nextTick(() => {
+    if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys(Object.keys(salesMap))
+  })
 }
 
 async function loadSalesPersons() {
@@ -251,8 +291,9 @@ async function loadSalesPersons() {
 async function addSalesPerson() {
   const name = newSalesName.value.trim()
   if (!name) { ElMessage.warning('请输入名字'); return }
-  const res = await api.salesPersons.add(name)
-  if (res.success) { newSalesName.value = ''; loadSalesPersons() }
+  const group = newSalesGroup.value.trim()
+  const res = await api.salesPersons.add(name, group)
+  if (res.success) { newSalesName.value = ''; newSalesGroup.value = ''; loadSalesPersons() }
   else ElMessage.error(res.error || '添加失败')
 }
 
@@ -327,10 +368,21 @@ async function saveData() {
   } catch (e) { saveMsg.value = '❌ ' + e.message; saveOk.value = false }
 }
 
+async function refreshMonthly() {
+  const d = formDate.value
+  if (!d) return
+  const month = d.substring(0, 7)
+  const mRes = await api.customerStats.monthly(month, accountId.value)
+  if (mRes.success) Object.assign(monthly, mRes.data)
+}
+
 function clearForm() {
   Object.assign(form, defaultForm())
   for (const k of Object.keys(salesMap)) delete salesMap[k]
   existingId.value = null; saveMsg.value = ''
+  nextTick(() => {
+    if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([])
+  })
   ElMessage.success('表单已清空')
 }
 
@@ -407,7 +459,11 @@ function doParsePaste() {
 
   pasteVisible.value = false
   parseResults.value.length ? ElMessage.success('识别 ' + parseResults.value.length + ' 个字段') : ElMessage.warning('未识别到数据')
-  loadData() // 刷新月度
+  // 同步树选中
+  nextTick(() => {
+    if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys(Object.keys(salesMap))
+  })
+  refreshMonthly() // 只刷新月度汇总，不覆盖已解析的表单数据
 }
 
 onMounted(async () => {
@@ -456,16 +512,10 @@ onMounted(async () => {
 /* 分配销售芯片 */
 .fg-sales-section { border-top: 1px solid #f3f4f6; padding-top: 14px; }
 .fg-sales-label { font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 10px; }
-.fg-sales-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.fsc-chip {
-  display: inline-flex; align-items: center; padding: 5px 14px;
-  border-radius: 8px; border: 1.5px solid #e5e7eb;
-  font-size: 13px; font-weight: 600; color: #6b7280;
-  cursor: pointer; user-select: none; transition: all .12s;
-  background: #fff;
-}
-.fsc-chip:hover { border-color: #c7d2fe; color: #6366f1; background: #f5f3ff; }
-.fsc-chip.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+/* 树布局 */
+.fg-sales-layout { display: flex; gap: 16px; }
+.fg-sales-tree { flex: 1; min-width: 0; border: 1px solid #e5e7eb; border-radius: 8px; padding: 4px; background: #fafafa; }
+.fg-sales-result { flex: 1; min-width: 0; }
 
 .fg-sales-list { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .fg-sales-row { display: flex; align-items: center; gap: 5px; }

@@ -652,7 +652,7 @@ const customerStatsDb = makeCrud('customerStats', {
   salesAssignments: []
 })
 
-const salesPersonsDb = makeCrud('salesPersons', { name: '' });
+const salesPersonsDb = makeCrud('salesPersons', { name: '', group: '' });
 
 // 按日期范围和账号查询客户统计数据
 function queryCustomerStats({ startDate, endDate, accountId } = {}) {
