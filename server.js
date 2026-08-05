@@ -31,7 +31,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api', (req, res, next) => {
   if (req.path === '/auth/login' || req.path === '/auth/verify') return next();
   const token = req.headers['x-auth-token'] || req.query.token || '';
-  if (token && authRoutes.verifyToken(token)) {
+  const result = token ? authRoutes.verifyToken(token) : null;
+  if (result) {
+    req.user = result; // { username, role }
     return next();
   }
   res.status(401).json({ success: false, error: '未登录' });
@@ -49,6 +51,7 @@ app.use('/api/assets', require('./routes/assets'));
 app.use('/api/library', require('./routes/library'));
 app.use('/api/tools', require('./routes/tools'));
 app.use('/api/customer-stats', require('./routes/customer-stats'));
+app.use('/api/users', require('./routes/users'));
 
 // ===== 分享预览页（微信/社交 OG 卡片） =====
 const ogPage = ({ title, image, desc, type, width, height }) => `<!DOCTYPE html>

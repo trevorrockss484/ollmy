@@ -55,7 +55,7 @@ async function doLogin() {
  })
  const data = await res.json()
  if (data.success) {
- authStore.login(data.data.token, data.data.username, rememberMe.value)
+ authStore.login(data.data.token, data.data.username, data.data.role, rememberMe.value)
  ElMessage.success('登录成功')
  window.location.href = '/'
  } else {

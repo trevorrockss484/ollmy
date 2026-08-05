@@ -1,15 +1,16 @@
 const crypto = require('crypto');
 const express = require('express');
 const router = express.Router();
+const db = require('../database/db');
 
-const VALID_USER = process.env.PAN_USER || '15377581454';
-// PAN_PASSWORD_HASH = SHA-256 hex of password. Generate with: node -e "console.log(require('crypto').createHash('sha256').update('yourpass').digest('hex'))"
-const VALID_PASSWORD_HASH = process.env.PAN_PASSWORD_HASH || crypto.createHash('sha256').update('Pan18218040143').digest('hex');
 const TOKEN_SECRET = process.env.PAN_TOKEN_SECRET || 'pan-secret-change-me';
 const TOKEN_EXPIRY = 7 * 86400_000; // 7天
 
-function signToken(username, timestamp) {
-  const payload = username + ':' + timestamp;
+// 首次启动种子管理员
+db.seedDefaultAdmin()
+
+function signToken(username, role, timestamp) {
+  const payload = username + ':' + role + ':' + timestamp;
   const sig = crypto.createHmac('sha256', TOKEN_SECRET).update(payload).digest('hex');
   return Buffer.from(payload + ':' + sig).toString('base64');
 }
@@ -18,17 +19,19 @@ function verifyToken(token) {
   try {
     const decoded = Buffer.from(token, 'base64').toString();
     const parts = decoded.split(':');
-    // format: username:timestamp:signature
-    if (parts.length < 3) return null;
+    if (parts.length < 4) return null;
     const sig = parts.pop();
     const timestamp = parts.pop();
+    const role = parts.pop();
     const username = parts.join(':');
-    const payload = username + ':' + timestamp;
+    const payload = username + ':' + role + ':' + timestamp;
     const expectedSig = crypto.createHmac('sha256', TOKEN_SECRET).update(payload).digest('hex');
     if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) return null;
     if (Date.now() - Number(timestamp) > TOKEN_EXPIRY) return null;
-    if (username !== VALID_USER) return null;
-    return username;
+    // 验证用户存在于 DB 且角色匹配
+    const user = db.getUserByUsername(username);
+    if (!user || user.role !== role) return null;
+    return { username, role };
   } catch { return null; }
 }
 
@@ -36,10 +39,11 @@ function verifyToken(token) {
 router.post('/login', (req, res) => {
   const { username, password } = req.body || {};
   const passwordHash = crypto.createHash('sha256').update(password || '').digest('hex');
-  if (username === VALID_USER && passwordHash === VALID_PASSWORD_HASH) {
+  const user = db.getUserByUsername(username);
+  if (user && passwordHash === user.passwordHash) {
     const now = Date.now();
-    const token = signToken(username, now);
-    return res.json({ success: true, data: { token, username } });
+    const token = signToken(username, user.role, now);
+    return res.json({ success: true, data: { token, username, role: user.role, displayName: user.displayName } });
   }
   res.status(401).json({ success: false, error: '用户名或密码错误' });
 });
@@ -47,8 +51,9 @@ router.post('/login', (req, res) => {
 // 验证token
 router.post('/verify', (req, res) => {
   const { token } = req.body || {};
-  if (token && verifyToken(token)) {
-    return res.json({ success: true });
+  const result = token ? verifyToken(token) : null;
+  if (result) {
+    return res.json({ success: true, data: { username: result.username, role: result.role } });
   }
   res.status(401).json({ success: false, error: '未授权' });
 });

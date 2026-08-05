@@ -63,7 +63,8 @@ function defaultData() {
     library: [],
     compressed: [],
     scripts: [],
-    customerStats: []
+    customerStats: [],
+    users: []
   };
 }
 
@@ -698,6 +699,30 @@ function getCustomerStatsMonthly(month, accountId) {
   }
 }
 
+// ==================== 用户管理 ====================
+const usersDb = makeCrud('users', { username: '', passwordHash: '', role: 'staff', displayName: '', enabled: true })
+
+// 初始化默认管理员
+function seedDefaultAdmin() {
+  const crypto = require('crypto')
+  const existing = usersDb.list()
+  if (existing.some(u => u.role === 'admin')) return
+  const adminUser = process.env.PAN_USER || 'admin'
+  const adminPass = process.env.PAN_PASSWORD || 'admin123'
+  usersDb.add({
+    username: adminUser,
+    passwordHash: crypto.createHash('sha256').update(adminPass).digest('hex'),
+    role: 'admin',
+    displayName: '管理员',
+    enabled: true
+  })
+}
+
+function getUserByUsername(username) {
+  return usersDb.list().find(u => u.username === username && u.enabled !== false) || null
+}
+
+
 module.exports = {
   getWeeks, getCurrentWeek, addWeek, updateWeek, deleteWeek, restoreWeek, permanentlyDeleteWeek, setCurrentWeek,
   getWeekAccountBudgets,
@@ -725,4 +750,9 @@ module.exports = {
   upsertCustomerStat,
   deleteCustomerStat(id) { return customerStatsDb.delete(id); },
   getCustomerStatsMonthly,
+  seedDefaultAdmin, getUserByUsername,
+  getUsers() { return usersDb.list(); },
+  addUser(item) { return usersDb.add(item); },
+  updateUser(id, u) { return usersDb.update(id, u); },
+  deleteUser(id) { return usersDb.delete(id); },
 };

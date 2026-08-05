@@ -102,6 +102,12 @@ export const api = {
     delete: (id) => request('/customer-stats/' + id, { method: 'DELETE' }),
     monthly: (month, accountId) => request('/customer-stats/monthly/' + month + (accountId ? '?accountId=' + accountId : '')),
   },
+  users: {
+    list: () => request('/users'),
+    add: (data) => request('/users', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request('/users/' + id, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id) => request('/users/' + id, { method: 'DELETE' }),
+  },
 }
 
 // 工具函数
