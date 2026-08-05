@@ -448,7 +448,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-step-btn--plus:hover{background:#ecfdf3;color:#0e6245;}
 .cs-step-val{min-width:32px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--c-text);border:none;outline:none;background:#fff;padding:0 4px;font-family:inherit;}
 
-.cs-chip-row{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.cs-chip-row{display:flex;align-items:center;gap:4px;flex-shrink:0;justify-content:space-between;width:100%;}
 .cs-stepper{display:inline-flex;align-items:center;gap:0;border-radius:6px;overflow:hidden;border:1px solid var(--c-border);}
 
 .cs-step-btn{
