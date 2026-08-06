@@ -8,36 +8,35 @@
  <!-- 侧边栏 -->
  <el-aside :width="isCollapse ? '64px' : '220px'" class="app-sidebar">
  <div class="sidebar-logo" @click="isCollapse = !isCollapse">
- <span class="logo-icon">🐼</span>
+ <el-icon :size="24"><PictureFilled /></el-icon>
  <span v-show="!isCollapse" class="logo-text">Pan助手</span>
  </div>
 
- <el-menu
- :default-active="activeMenu"
- :collapse="isCollapse"
- :collapse-transition="false"
- background-color="#1e1f2a"
- text-color="#a0a3b1"
- active-text-color="#ffffff"
- router
- class="sidebar-menu"
- >
+ <nav class="sidebar-nav">
      <template v-for="item in groupedMenus" :key="item.isGroup ? 'grp-'+item.label : item.path">
        <div v-if="item.isGroup && !isCollapse" class="sidebar-group-label">{{ item.label }}</div>
-       <el-menu-item v-else-if="!item.isGroup" :index="item.path">
-         <el-icon><component :is="item.icon" /></el-icon>
-         <template #title>{{ item.label }}</template>
-       </el-menu-item>
+       <router-link v-else-if="!item.isGroup"
+         :to="item.path"
+         class="sidebar-item"
+         :class="{ active: activeMenu === item.path }">
+         <el-icon :size="20"><component :is="item.icon" /></el-icon>
+         <span v-show="!isCollapse" class="sidebar-item-label">{{ item.label }}</span>
+       </router-link>
      </template>
-     </el-menu>
+     </nav>
 
- <!-- 侧边栏底部 -->
- <div class="sidebar-footer-status" v-show="!isCollapse">
- <span style="font-size:11px;color:#6b7280;"><el-icon :size="14"><User /></el-icon> {{ authStore.username }}</span>
+ <div class="sidebar-footer">
+ <div class="sidebar-footer-avatar">{{ authStore.username.charAt(0) }}</div>
+ <div v-show="!isCollapse" class="sidebar-footer-info">
+ <div class="sidebar-footer-name">{{ authStore.username }}</div>
+ <div class="sidebar-footer-role">{{ authStore.role === 'admin' ? '管理员' : '成员' }}</div>
+ </div>
+ <el-button v-show="!isCollapse" size="small" text @click="authStore.logout()" class="sidebar-footer-logout">
+ <el-icon :size="14"><SwitchButton /></el-icon>
+ </el-button>
  </div>
  </el-aside>
-
- <!-- 主内容 -->
+<!-- 主内容 -->
  <el-container>
  <el-header class="app-topbar">
  <el-button text @click="isCollapse = !isCollapse">
@@ -242,42 +241,56 @@ async function checkVps() {
  padding: 20px 20px 16px;
  cursor: pointer; user-select: none;
 }
-.logo-icon { font-size: 24px; }
 .logo-text {
  font-size: 16px; font-weight: 800;
  background: linear-gradient(135deg, #818cf8, #a78bfa);
  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
 }
+.sidebar-logo { color: #818cf8; }
 
-.sidebar-menu {
- flex: 1; border-right: none !important;
+/* ====== 导航 ====== */
+.sidebar-nav {
+ flex: 1; overflow-y: auto; padding: 4px 0;
+ scrollbar-width: none; -ms-overflow-style: none;
 }
-.sidebar-menu .el-menu-item {
- font-size: 14px; height: 48px; line-height: 48px;
- margin: 2px 8px; border-radius: 8px;
- transition: all 0.2s;
-}
-.sidebar-menu .el-menu-item:hover { background: #2a2b38 !important; }
+.sidebar-nav::-webkit-scrollbar { display: none; }
 
 .sidebar-group-label {
-  font-size: 10px; font-weight: 700; color: #6b7280;
-  text-transform: uppercase; letter-spacing: 1.5px;
-  padding: 16px 20px 6px; margin-top: 4px;
-  user-select: none; opacity: .7;
-}
-.sidebar-menu .el-menu-item.is-active {
- background: linear-gradient(135deg, #6366f1, #818cf8) !important;
- color: #fff !important;
+ font-size: 11px; font-weight: 700; color: #6b7280;
+ text-transform: uppercase; letter-spacing: 1px;
+ padding: 20px 20px 6px; user-select: none;
 }
 
+.sidebar-item {
+ display: flex; align-items: center; gap: 10px;
+ height: 42px; padding: 0 16px; margin: 2px 8px; border-radius: 8px;
+ font-size: 14px; font-weight: 500; color: #a0a3b1;
+ text-decoration: none; cursor: pointer;
+ transition: all 0.15s;
+}
+.sidebar-item:hover { background: #2a2b38; color: #c7d2fe; }
+.sidebar-item.active { background: linear-gradient(135deg, #6366f1, #818cf8); color: #fff; font-weight: 700; }
+.sidebar-item-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ====== 底部 ====== */
 .sidebar-footer {
- display:none;
+ display: flex; align-items: center; gap: 10px;
+ padding: 12px 16px; border-top: 1px solid rgba(255,255,255,.06);
+ margin-top: auto;
 }
+.sidebar-footer-avatar {
+ width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+ background: linear-gradient(135deg, #6366f1, #818cf8);
+ color: #fff; font-size: 14px; font-weight: 800;
+ display: flex; align-items: center; justify-content: center;
+}
+.sidebar-footer-info { flex: 1; min-width: 0; }
+.sidebar-footer-name { font-size: 13px; font-weight: 700; color: #d1d5db; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-footer-role { font-size: 11px; color: #6b7280; }
+.sidebar-footer-logout { color: #6b7280 !important; }
+.sidebar-footer-logout:hover { color: #ef4444 !important; }
 
-.sidebar-footer-status {
- padding:10px 12px 14px; text-align:center;
- border-top:1px solid rgba(255,255,255,.06);
-}
+/* ====== 顶栏 ====== */
 
 .app-topbar {
  height: 48px; display: flex; align-items: center; gap: 12px;
