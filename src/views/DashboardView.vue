@@ -121,48 +121,48 @@
     <div class="quick-section">
       <div class="quick-head">快捷入口</div>
       <div class="quick-row">
-        <div class="quick-card" @click="$router.push('/plan')">
-          <div class="qc-icon-wrap" style="background:#eef2ff;color:#6366f1;"><el-icon :size="22"><Calendar /></el-icon></div>
+        <div class="quick-card" @click="$router.push('/plan')" style="--qc-color:#6366f1;">
+          <div class="qc-icon-wrap"><el-icon :size="22"><Calendar /></el-icon></div>
           <div class="qc-text">
             <div class="qc-title">周计划</div>
             <div class="qc-desc">{{ week?.countries?.length || 0 }} 个国家</div>
           </div>
           <el-icon class="qc-arrow" :size="14"><ArrowRight /></el-icon>
         </div>
-        <div class="quick-card" @click="$router.push('/report')">
-          <div class="qc-icon-wrap" style="background:#ecfdf5;color:#059669;"><el-icon :size="22"><Edit /></el-icon></div>
+        <div class="quick-card" @click="$router.push('/report')" style="--qc-color:#059669;">
+          <div class="qc-icon-wrap"><el-icon :size="22"><Edit /></el-icon></div>
           <div class="qc-text">
             <div class="qc-title">日报生成</div>
             <div class="qc-desc">投流数据填写</div>
           </div>
           <el-icon class="qc-arrow" :size="14"><ArrowRight /></el-icon>
         </div>
-        <div class="quick-card" @click="$router.push('/history')">
-          <div class="qc-icon-wrap" style="background:#fef3c7;color:#d97706;"><el-icon :size="22"><TrendCharts /></el-icon></div>
+        <div class="quick-card" @click="$router.push('/history')" style="--qc-color:#d97706;">
+          <div class="qc-icon-wrap"><el-icon :size="22"><TrendCharts /></el-icon></div>
           <div class="qc-text">
             <div class="qc-title">数据查询</div>
             <div class="qc-desc">历史·趋势·月报</div>
           </div>
           <el-icon class="qc-arrow" :size="14"><ArrowRight /></el-icon>
         </div>
-        <div class="quick-card" @click="$router.push('/monitor')">
-          <div class="qc-icon-wrap" style="background:#fff7ed;color:#ea580c;"><el-icon :size="22"><Monitor /></el-icon></div>
+        <div class="quick-card" @click="$router.push('/monitor')" style="--qc-color:#ea580c;">
+          <div class="qc-icon-wrap"><el-icon :size="22"><Monitor /></el-icon></div>
           <div class="qc-text">
             <div class="qc-title">VPS 管理中心</div>
             <div class="qc-desc">到期·续费·成本</div>
           </div>
           <el-icon class="qc-arrow" :size="14"><ArrowRight /></el-icon>
         </div>
-        <div class="quick-card" @click="$router.push('/prompts')">
-          <div class="qc-icon-wrap" style="background:#e0e7ff;color:#4f46e5;"><el-icon :size="22"><Document /></el-icon></div>
+        <div class="quick-card" @click="$router.push('/prompts')" style="--qc-color:#4f46e5;">
+          <div class="qc-icon-wrap"><el-icon :size="22"><Document /></el-icon></div>
           <div class="qc-text">
             <div class="qc-title">提示词模板</div>
             <div class="qc-desc">AI 流程管理</div>
           </div>
           <el-icon class="qc-arrow" :size="14"><ArrowRight /></el-icon>
         </div>
-        <div class="quick-card" @click="$router.push('/assets')">
-          <div class="qc-icon-wrap" style="background:#fce7f3;color:#db2777;"><el-icon :size="22"><PictureFilled /></el-icon></div>
+        <div class="quick-card" @click="$router.push('/assets')" style="--qc-color:#db2777;">
+          <div class="qc-icon-wrap"><el-icon :size="22"><PictureFilled /></el-icon></div>
           <div class="qc-text">
             <div class="qc-title">资产管理</div>
             <div class="qc-desc">人物·场景·道具</div>
@@ -583,6 +583,7 @@ onUnmounted(() => {
 .quick-card {
   display:flex; align-items:center; gap:14px;
   background:#fff; border:1px solid #e5e7eb; border-radius:14px;
+  border-left:3px solid transparent;
   padding:16px 18px; cursor:pointer;
   transition:all .2s;
   box-shadow:0 1px 3px rgba(0,0,0,.03);
@@ -591,17 +592,20 @@ onUnmounted(() => {
   transform:translateY(-2px);
   box-shadow:0 8px 24px rgba(0,0,0,.06);
   border-color:#c7d2fe;
+  border-left-color: var(--qc-color, #6366f1);
 }
 .qc-icon-wrap {
   width:44px; height:44px; border-radius:12px;
   display:flex; align-items:center; justify-content:center;
   flex-shrink:0;
+  background: #f3f4f6;
+  color: var(--qc-color, #6366f1);
 }
 .qc-text { flex:1; min-width:0; }
 .qc-title { font-size:14px; font-weight:700; color:#1f2937; }
 .qc-desc { font-size:11px; color:#9ca3af; margin-top:2px; }
-.qc-arrow { color:#d1d5db; flex-shrink:0; }
-.quick-card:hover .qc-arrow { color:#6366f1; }
+.qc-arrow { color:#d1d5db; flex-shrink:0; transition:color .2s; }
+.quick-card:hover .qc-arrow { color: var(--qc-color, #6366f1); }
 
 @media (max-width:900px) {
   .hero-strip { grid-template-columns:repeat(2,1fr); }

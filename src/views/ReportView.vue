@@ -67,7 +67,7 @@
       <span v-if="saveMsg" class="save-msg" :class="{ ok: saveOk, err: !saveOk }">{{ saveMsg }}</span>
     </div>
 
-    <div class="main-layout" v-if="activeCountries.length">
+    <div class="main-layout" v-if="activeCountries.length" v-loading="dataLoading">
       <!-- ====== 左侧：国家表单 ====== -->
       <div class="left-panel">
         <!-- 一、海外整体汇总 -->
@@ -134,7 +134,7 @@
             <span class="rt-cell rt-cell--budget">费用(元)</span>
             <span class="rt-cell rt-cell--usd" :class="{ collapsed: usdCollapsed }">
               <span>美金</span>
-              <button class="rt-usd-toggle" @click="usdCollapsed = !usdCollapsed" :title="usdCollapsed ? '展开美金列' : '收起美金列'">
+              <button class="rt-usd-toggle" @click="usdCollapsed = !usdCollapsed" :title="usdCollapsed ? '展开美金列' : '收起美金列'" :aria-expanded="!usdCollapsed" aria-label="切换美金列显示">
                 <el-icon :size="12"><ArrowRight v-if="usdCollapsed" /><ArrowDown v-else /></el-icon>
               </button>
             </span>
@@ -174,13 +174,13 @@
               <span class="rt-cost-line rt-cost-line--eff">{{ countryEffCost(c) > 0 ? '¥' + countryEffCost(c).toFixed(1) : '—' }}</span>
             </span>
             <span class="rt-cell rt-cell--actions">
-              <button class="rt-act-btn" :disabled="i===0" @click="moveCountry(i,-1)" title="上移"><el-icon :size="12"><Top /></el-icon></button>
-              <button class="rt-act-btn" :disabled="i===activeCountries.length-1" @click="moveCountry(i,1)" title="下移"><el-icon :size="12"><Bottom /></el-icon></button>
-              <button class="rt-act-btn rt-act-btn--expand" @click="toggleExpand(c)" :title="expandedCountries.has(c)?'收起详情':'展开详情'">
+              <button class="rt-act-btn" :disabled="i===0" @click="moveCountry(i,-1)" title="上移" aria-label="向上移动"><el-icon :size="12"><Top /></el-icon></button>
+              <button class="rt-act-btn" :disabled="i===activeCountries.length-1" @click="moveCountry(i,1)" title="下移" aria-label="向下移动"><el-icon :size="12"><Bottom /></el-icon></button>
+              <button class="rt-act-btn rt-act-btn--expand" @click="toggleExpand(c)" :title="expandedCountries.has(c)?'收起详情':'展开详情'" :aria-label="expandedCountries.has(c)?'收起详情':'展开详情'">
                 <el-icon :size="12"><ArrowDown v-if="expandedCountries.has(c)" /><ArrowRight v-else /></el-icon>
                 <span class="rt-expand-badge" v-if="n(countryData[c].grouped) > 0">{{ n(countryData[c].grouped) }}</span>
               </button>
-              <button class="rt-act-btn rt-act-btn--del" @click="removeCountry(c)" :disabled="activeCountries.length<=1" title="移除"><el-icon :size="12"><Close /></el-icon></button>
+              <button class="rt-act-btn rt-act-btn--del" @click="removeCountry(c)" :disabled="activeCountries.length<=1" title="移除" aria-label="移除国家"><el-icon :size="12"><Close /></el-icon></button>
             </span>
           </div>
         </div>
@@ -587,7 +587,7 @@ function fmtNum(v) { if (v == null) return '0.00'; const r = Math.round(v * 100)
 // ====== 数据加载 ======
 async function loadExistingData(d) {
   if (!d || !weekReady.value) return
-  const seq = ++loadSeq; autoSaveSkip = true
+  const seq = ++loadSeq; autoSaveSkip = true; dataLoading.value = true
   resetFormData()
   try {
     const res = await api.daily.get(d, { accountId: selectedAccountId.value }); if (seq !== loadSeq) return
@@ -616,10 +616,11 @@ async function loadExistingData(d) {
       }
     }
   } catch(e) { existingData.value = false }
-  autoSaveSkip = false
+  autoSaveSkip = false; dataLoading.value = false
 }
 
 const skipAutoLoad = ref(false); let loadSeq = 0
+const dataLoading = ref(false)
 watch(reportDate, (d) => { if (!d) return; saveMsg.value = ''; if (skipAutoLoad.value) { skipAutoLoad.value = false; return }; loadExistingData(d) })
 
 // ====== 生成日报（实时预览） ======
@@ -886,7 +887,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 /* 添加国家按钮 */
 .add-country-btn {
   display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 14px; border: 1.5px dashed #c7d2fe;
+  padding: 6px 14px; border: 1.5px solid #c7d2fe;
   border-radius: 6px; cursor: pointer;
   font-size: 13px; font-weight: 700; color: #6366f1;
   background: #f5f3ff; transition: all .15s; user-select: none;
@@ -960,7 +961,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 
 /* ====== 可编辑表格 ====== */
 .report-table-wrap {
-  background:#fff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;
+  background:#fff; border:1px solid #e5e7eb; border-radius:12px; overflow-x:auto;
 }
 .rt-head {
   display:grid;
@@ -971,7 +972,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 }
 .rt--no-usd .rt-head { grid-template-columns:38px 130px 1fr 1fr 1fr 130px 90px; }
 
-.rt-cell { font-size:12px; font-weight:600; color:#9ca3af; display:flex; align-items:center; }
+.rt-cell { font-size:12px; font-weight:600; color:#6b7280; display:flex; align-items:center; }
 .rt-cell--seq { justify-content:center; }
 .rt-cell--usd { gap:4px; }
 .rt--no-usd .rt-cell--usd { display:none; }
@@ -1031,7 +1032,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
   color:#9ca3af; padding:0; transition:all .12s;
 }
 .rt-act-btn:hover { background:#f3f4f6; color:#374151; }
-.rt-act-btn:disabled { opacity:.25; cursor:default; }
+.rt-act-btn:disabled { opacity:.35; cursor:default; }
 .rt-act-btn--del { color:#d1d5db; }
 .rt-act-btn--del:hover { background:#fef2f2; color:#ef4444; }
 .rt-act-btn--expand { position:relative; color:#6b7280; width:auto; padding:0 4px; gap:3px; }
@@ -1088,7 +1089,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .gd-global-val { font-size: 13px; color: #6b7280; line-height: 1.8; }
 
 /* ====== 预览（右侧固定） ====== */
-.preview-sticky { position: sticky; top: 16px; background: #fff; border: 2px solid #6366f1; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 16px rgba(99,102,241,.1); }
+.preview-sticky { position: sticky; top: 16px; background: #fff; border: 1px solid #c7d2fe; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 16px rgba(99,102,241,.08); }
 .preview-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #f5f3ff; border-bottom: 1px solid #e0e7ff; font-weight: 700; font-size: 14px; }
 .preview-content { white-space: pre-wrap; line-height: 1.9; font-size: 13px; padding: 16px 18px; color: #1f2937; max-height: calc(100vh - 180px); overflow-y: auto; }
 .preview-empty { text-align: center; padding: 60px 20px; color: #9ca3af; background: #fff; border: 1px dashed #e5e7eb; border-radius: 14px; position: sticky; top: 16px; }

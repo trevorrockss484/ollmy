@@ -24,8 +24,24 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
 }
+@media (prefers-reduced-motion:reduce) {
+  .vps-bar-fill.red, .animate-pulse { animation: none }
+}
 
 .animate-pulse { animation: pulse 2s ease-in-out infinite; }
+
+/* 全局按钮微交互 */
+.el-button { transition: all .15s ease; }
+.el-button:hover:not(:disabled) { transform: translateY(-1px); }
+.el-button:active:not(:disabled) { transform: translateY(0); }
+
+/* 全局卡片阴影统一 */
+.page-card {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+  padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  transition: box-shadow .2s;
+}
+.page-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.06); }
 
 /* 统计卡片 */
 .stat-card {

@@ -22,14 +22,13 @@
  router
  class="sidebar-menu"
  >
-     <el-menu-item
-       v-for="item in visibleMenus"
-       :key="item.path"
-       :index="item.path"
-     >
-     <el-icon><component :is="item.icon" /></el-icon>
-     <template #title>{{ item.label }}</template>
-     </el-menu-item>
+     <template v-for="item in groupedMenus" :key="item.isGroup ? 'grp-'+item.label : item.path">
+       <div v-if="item.isGroup && !isCollapse" class="sidebar-group-label">{{ item.label }}</div>
+       <el-menu-item v-else-if="!item.isGroup" :index="item.path">
+         <el-icon><component :is="item.icon" /></el-icon>
+         <template #title>{{ item.label }}</template>
+       </el-menu-item>
+     </template>
      </el-menu>
 
  <!-- 侧边栏底部 -->
@@ -102,23 +101,35 @@ const authStore = useAuthStore()
 
 // Menu items with access control
 const allMenuItems = [
-  { path: '/', label: '仪表盘', icon: 'Odometer' },
-  { path: '/plan', label: '周计划', icon: 'Calendar' },
-  { path: '/report', label: '日报生成', icon: 'Edit' },
-  { path: '/history', label: '数据查询', icon: 'Clock' },
-  { path: '/monitor', label: '监控中心', icon: 'Monitor' },
-  { path: '/clock', label: '世界时钟', icon: 'Clock' },
-  { path: '/assets', label: 'AI资产管理', icon: 'PictureFilled' },
-  { path: '/media', label: '图片素材库', icon: 'PictureFilled' },
-  { path: '/video-library', label: '视频素材库', icon: 'VideoCameraFilled' },
-  { path: '/scripts', label: '话术库', icon: 'ChatDotRound' },
-  { path: '/customer-stats', label: '客户统计', icon: 'DataAnalysis' },
-  { path: '/role-manage', label: '角色管理', icon: 'Key' },
-  { path: '/user-manage', label: '用户管理', icon: 'User' },
-  { path: '/compress', label: '图片压缩', icon: 'Scissor' },
-  { path: '/video-compress', label: '视频压缩', icon: 'VideoCameraFilled' },
+  { path: '/', label: '仪表盘', icon: 'Odometer', group: '核心' },
+  { path: '/plan', label: '周计划', icon: 'Calendar', group: '核心' },
+  { path: '/report', label: '日报生成', icon: 'Edit', group: '核心' },
+  { path: '/history', label: '数据查询', icon: 'TrendCharts', group: '核心' },
+  { path: '/customer-stats', label: '客户统计', icon: 'DataAnalysis', group: '工具' },
+  { path: '/monitor', label: '监控中心', icon: 'Monitor', group: '工具' },
+  { path: '/clock', label: '世界时钟', icon: 'Clock', group: '工具' },
+  { path: '/assets', label: 'AI资产管理', icon: 'PictureFilled', group: '资源' },
+  { path: '/media', label: '图片素材库', icon: 'PictureFilled', group: '资源' },
+  { path: '/video-library', label: '视频素材库', icon: 'VideoCameraFilled', group: '资源' },
+  { path: '/scripts', label: '话术库', icon: 'ChatDotRound', group: '资源' },
+  { path: '/compress', label: '图片压缩', icon: 'Scissor', group: '工具' },
+  { path: '/video-compress', label: '视频压缩', icon: 'VideoCameraFilled', group: '工具' },
+  { path: '/role-manage', label: '角色管理', icon: 'Key', group: '管理' },
+  { path: '/user-manage', label: '用户管理', icon: 'User', group: '管理' },
 ]
 const visibleMenus = computed(() => allMenuItems.filter(m => authStore.canAccess(m.path)))
+const groupedMenus = computed(() => {
+  const groups = []
+  const seen = new Set()
+  for (const m of visibleMenus.value) {
+    if (!seen.has(m.group)) {
+      seen.add(m.group)
+      groups.push({ isGroup: true, label: m.group })
+    }
+    groups.push(m)
+  }
+  return groups
+})
 
 const isCollapse = ref(false)
 // 返回按钮
@@ -247,6 +258,13 @@ async function checkVps() {
  transition: all 0.2s;
 }
 .sidebar-menu .el-menu-item:hover { background: #2a2b38 !important; }
+
+.sidebar-group-label {
+  font-size: 10px; font-weight: 700; color: #6b7280;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  padding: 16px 20px 6px; margin-top: 4px;
+  user-select: none; opacity: .7;
+}
 .sidebar-menu .el-menu-item.is-active {
  background: linear-gradient(135deg, #6366f1, #818cf8) !important;
  color: #fff !important;

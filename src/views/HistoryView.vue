@@ -85,6 +85,17 @@
         </div>
       </div>
 
+      <!-- 报告预览 -->
+      <div class="copy-preview-card">
+        <div class="copy-preview-header">
+          <div>
+            <div class="copy-preview-title">报告预览</div>
+            <div class="copy-preview-sub">下方内容会被一键复制，可直接粘贴发送</div>
+          </div>
+        </div>
+        <div class="copy-preview-content">{{ displayReport }}</div>
+      </div>
+
       <!-- 二、每个国家明细 -->
       <div class="country-section">
         <div class="country-section-title"><span class="sec-badge alt">二</span> 每个国家明细 <span class="cs-sub">{{ rangeAgg.countries.length }} 个国家 · 按消耗排序</span></div>
@@ -110,21 +121,6 @@
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- 报告预览 -->
-      <div class="copy-preview-card">
-        <div class="copy-preview-header">
-          <div>
-            <div class="copy-preview-title">报告预览</div>
-            <div class="copy-preview-sub">下方内容会被一键复制，可直接粘贴发送</div>
-          </div>
-          <div class="copy-actions">
-            <el-button type="primary" plain size="small" @click="copyCompactReport"><el-icon :size="14"><DocumentCopy /></el-icon> 复制精简版</el-button>
-            <el-button type="primary" plain size="small" @click="copyReportText"><el-icon :size="14"><DocumentCopy /></el-icon> 一键复制</el-button>
-          </div>
-        </div>
-        <div class="copy-preview-content">{{ displayReport }}</div>
       </div>
     </div>
 
@@ -614,7 +610,7 @@ function handleResize() { chartInstance?.resize() }
   border:1px solid rgba(224,231,255,.9);
 }
 .summary-card, .country-section, .copy-preview-card {
-  background:#fff; border:1px solid #e5e7eb; border-radius:18px;
+  background:#fff; border:1px solid #e5e7eb; border-radius:14px;
   box-shadow:0 2px 12px rgba(15,23,42,.05); overflow:hidden;
 }
 .summary-card { padding:20px; }
@@ -629,7 +625,7 @@ function handleResize() { chartInstance?.resize() }
   font-size:13px; box-shadow:0 8px 18px rgba(99,102,241,.24);
 }
 .sec-badge.alt { background:linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow:0 8px 18px rgba(16,185,129,.2); }
-.cs-sub { font-size:12px; font-weight:600; color:#9ca3af; }
+.cs-sub { font-size:12px; font-weight:600; color:#6b7280; }
 .summary-grid { display:grid; grid-template-columns:repeat(5, minmax(120px, 1fr)); gap:12px; }
 .sg-item {
   min-height:92px; padding:14px; border-radius:14px;
@@ -637,7 +633,7 @@ function handleResize() { chartInstance?.resize() }
   border:1px solid #eef2f7;
 }
 .sg-item.accent { background:linear-gradient(135deg, #eef2ff 0%, #ffffff 100%); border-color:#c7d2fe; }
-.sg-val { font-size:22px; font-weight:850; color:#111827; line-height:1.2; word-break:break-word; }
+.sg-val { font-size:22px; font-weight:800; color:#111827; line-height:1.2; word-break:break-word; }
 .sg-item.accent .sg-val { color:#4f46e5; }
 .sg-label { margin-top:8px; font-size:12px; color:#6b7280; font-weight:700; }
 .summary-breakdown {
@@ -661,7 +657,7 @@ function handleResize() { chartInstance?.resize() }
   width:26px; height:26px; border-radius:50%; background:#eef2ff; color:#4f46e5;
   font-size:13px; font-weight:800; flex:0 0 auto;
 }
-.ci-name { font-size:17px; font-weight:850; color:#1f2937; }
+.ci-name { font-size:17px; font-weight:800; color:#1f2937; }
 .ci-mini { font-size:12px; color:#6b7280; font-weight:700; background:#f3f4f6; padding:6px 10px; border-radius:999px; }
 .ci-metrics { display:grid; grid-template-columns:repeat(5, minmax(110px, 1fr)); gap:10px; }
 .cm {
@@ -690,7 +686,7 @@ function handleResize() { chartInstance?.resize() }
   padding:16px 18px; border-bottom:1px solid #eef2f7;
   background:linear-gradient(135deg, #fafafa 0%, #f8fafc 100%);
 }
-.copy-preview-title { font-size:15px; font-weight:850; color:#111827; }
+.copy-preview-title { font-size:15px; font-weight:800; color:#111827; }
 .copy-preview-sub { margin-top:4px; font-size:12px; color:#6b7280; }
 .copy-preview-content {
   white-space:pre-wrap; line-height:1.9; font-size:13px; color:#1f2937;

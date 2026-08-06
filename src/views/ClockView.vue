@@ -424,7 +424,7 @@ onUnmounted(() => {
  50% { opacity: .3; }
 }
 .top-title { font-size: 14px; font-weight: 700; color: #1f2937; letter-spacing: 2px; }
-.top-sub { font-size: 10px; color: #9ca3af; letter-spacing: 3px; }
+.top-sub { font-size: 11px; color: #6b7280; letter-spacing: 3px; }
 
 .top-center { flex: 1; display: flex; justify-content: center; gap: 20px; }
 .badge-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }

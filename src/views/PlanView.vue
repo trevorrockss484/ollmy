@@ -66,7 +66,7 @@
           </div>
         </div>
         <div class="ov-card">
-          <div class="ov-icon-wrap" style="background:#eef2ff;color:#6366f1;"><el-icon :size="20"><TrendCharts /></el-icon></div>
+          <div class="ov-icon-wrap" style="background:#eef2ff;color:#6366f1;"><el-icon :size="20"><Coin /></el-icon></div>
           <div class="ov-info">
             <div class="ov-val">¥{{ s.fbCustomer > 0 ? (s.fbBudget / s.fbCustomer).toFixed(0) : '—' }}</div>
             <div class="ov-label">客均成本</div>
@@ -93,7 +93,7 @@
               <span class="df-label">达成率</span>
             </div>
             <div class="df-item">
-              <span class="df-dot" style="background:#f3f4f6;"></span>
+              <span class="df-dot" style="background:#d1d5db;"></span>
               <span class="df-val">{{ Math.max(0, (budgets.groupGoal||0) - s.fbGrouped) }}</span>
               <span class="df-label">剩余</span>
             </div>
@@ -585,7 +585,7 @@ function initDonut() {
       itemStyle: { borderColor: 'transparent', borderWidth: 0 },
       data: [
         { value: s.fbGrouped, itemStyle: { color: '#10b981' } },
-        { value: Math.max(0, (budgets.value.groupGoal || 0) - s.fbGrouped), itemStyle: { color: '#f3f4f6' } }
+        { value: Math.max(0, (budgets.value.groupGoal || 0) - s.fbGrouped), itemStyle: { color: '#e5e7eb' } }
       ]
     }]
   })
@@ -816,7 +816,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 .week-chip.active { background:#6366f1; border-color:#6366f1; }
 .wc-dates { font-weight:700; }
 .week-chip.active .wc-dates { color:#fff; }
-.wc-meta { font-size:10px; color:#9ca3af; }
+.wc-meta { font-size:11px; color:#6b7280; }
 .week-chip.active .wc-meta { color:rgba(255,255,255,.65); }
 
 /* ====== 管理弹窗 ====== */
@@ -854,7 +854,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 .ov-val.danger { color:#ef4444; }
 .ov-unit { font-size:13px; font-weight:600; color:#9ca3af; margin-left:2px; }
 .ov-label { font-size:11px; color:#9ca3af; font-weight:600; margin-top:2px; }
-.ov-sub-done { font-size:10px; color:#059669; font-weight:700; margin-top:4px; }
+.ov-sub-done { font-size:11px; color:#059669; font-weight:700; margin-top:4px; }
 
 /* ====== 中部三栏 ====== */
 .mid-layout { display:grid; grid-template-columns:260px 1fr 260px; gap:14px; margin-bottom:20px; }
@@ -897,15 +897,16 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 .spend-bar-fill.orange { background:linear-gradient(90deg,#f59e0b,#fbbf24); }
 .spend-bar-fill.red { background:linear-gradient(90deg,#ef4444,#f87171); animation:pulse 1.5s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.7} }
+@media (prefers-reduced-motion:reduce) { .spend-bar-fill.red { animation:none } }
 .spend-row { display:flex; gap:8px; margin-top:auto; }
 .spend-item { flex:1; text-align:center; padding:8px 4px; background:#f9fafb; border-radius:8px; }
-.spend-item span { display:block; font-size:10px; color:#9ca3af; font-weight:600; }
+.spend-item span { display:block; font-size:11px; color:#6b7280; font-weight:600; }
 .spend-item b { font-size:15px; color:#1f2937; }
 
 /* 国家 */
 .mid-countries { display:flex; flex-direction:column; }
 .mid-hd-sub { font-size:11px; color:#9ca3af; font-weight:500; margin-left:4px; }
-.country-list { display:flex; flex-direction:column; gap:4px; flex:1; }
+.country-list { display:flex; flex-direction:column; gap:4px; flex:1; max-height:280px; overflow-y:auto; }
 .country-row {
   display:flex; align-items:center; gap:10px;
   padding:8px 12px; border-radius:8px;
@@ -929,7 +930,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 /* ====== 每日完成表格 V2 ====== */
 .daily-table-v2 {
   background: #fff; border: 1px solid #e5e7eb;
-  border-radius: 14px; overflow: hidden;
+  border-radius: 14px; overflow-x: auto;
 }
 .dv-head {
   display: grid;
@@ -976,8 +977,8 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 
 /* 状态 */
 .dv-status {
-  font-size: 12px; font-weight: 600; color: #9ca3af;
-  padding: 4px 12px; border-radius: 6px; background: #f3f4f6;
+  font-size: 12px; font-weight: 600; color: #6b7280;
+  padding: 4px 12px; border-radius: 6px; background: #e5e7eb;
 }
 .dv-status--done {
   color: #059669; background: #ecfdf5;

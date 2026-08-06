@@ -7,7 +7,7 @@
         <h2><el-icon :size="24"><VideoCameraFilled /></el-icon> 视频素材库</h2>
         <div class="vl-tabs">
           <button class="vl-tab active">
-            🏭 工厂展厅视频
+            <el-icon :size="16"><OfficeBuilding /></el-icon> 工厂展厅视频
             <span class="vl-tab-n">{{ list.length }}</span>
           </button>
         </div>

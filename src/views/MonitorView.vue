@@ -19,7 +19,7 @@
     <!-- 总览统计条 — 始终显示所有卡片 -->
     <div class="vps-overview-bar">
       <div class="vps-ov-item" :class="{ danger: counts.overdue, 'ov-dim': !counts.overdue }">
-        <div class="vps-ov-icon">❗</div><div class="vps-ov-info"><div class="vps-ov-num">{{ counts.overdue }}</div><div class="vps-ov-label">已过期</div></div>
+        <div class="vps-ov-icon"><el-icon :size="22"><WarningFilled /></el-icon></div><div class="vps-ov-info"><div class="vps-ov-num">{{ counts.overdue }}</div><div class="vps-ov-label">已过期</div></div>
       </div>
       <div class="vps-ov-item" :class="{ urgent: counts.urgent, 'ov-dim': !counts.urgent }">
         <div class="vps-ov-icon"><el-icon :size="22"><Warning /></el-icon></div><div class="vps-ov-info"><div class="vps-ov-num">{{ counts.urgent }}</div><div class="vps-ov-label">7天内到期</div></div>
@@ -751,7 +751,7 @@ onMounted(load)
 
 .vps-card {
   position:relative;
-  background:#fff; border-radius:18px; border:1.5px solid #e5e7eb;
+  background:#fff; border-radius:14px; border:1.5px solid #e5e7eb;
   padding:24px;
   box-shadow:0 1px 3px rgba(0,0,0,.04);
   transition:all 0.3s;
@@ -774,7 +774,8 @@ onMounted(load)
 @keyframes glowPulse {
   0%,100% { opacity:.6; }
   50% { opacity:1; }
-}
+}@media (prefers-reduced-motion:reduce) { .vps-card.urgent, .vps-card.overdue { animation:none } }
+
 
 /* 卡片顶部 */
 .vps-card-top {

@@ -10,15 +10,15 @@
       </div>
       <div class="tab-bar">
         <button class="tab-btn" :class="{ active: tab === 'assets' }" @click="tab = 'assets'">
-          <span class="tab-icon">🎨</span> AI资产
+          <el-icon :size="16"><PictureFilled /></el-icon> AI资产
           <span class="tab-n">{{ assets.length }}</span>
         </button>
         <button class="tab-btn" :class="{ active: tab === 'library' }" @click="tab = 'library'">
-          <span class="tab-icon">📁</span> 资料库
+          <el-icon :size="16"><FolderOpened /></el-icon> 资料库
           <span class="tab-n">{{ libItems.length }}</span>
         </button>
         <button class="tab-btn" :class="{ active: tab === 'prompts' }" @click="tab = 'prompts'">
-          <span class="tab-icon">📝</span> AI提示词
+          <el-icon :size="16"><Document /></el-icon> AI提示词
           <span class="tab-n">{{ prompts.length }}</span>
         </button>
       </div>
@@ -175,7 +175,7 @@
               <video :src="item.url" class="file-thumb" preload="metadata" />
             </template>
             <template v-else-if="item.file.type.startsWith('audio/')">
-              <span class="file-icon">🎙️</span>
+              <span class="file-icon"><el-icon :size="20"><Microphone /></el-icon></span>
             </template>
             <img v-else :src="item.url" class="file-thumb" />
             <div class="file-info">
@@ -584,7 +584,7 @@ function typeColor(type) { return assetTypes.find(t => t.value === type)?.color 
 function isVideo(a) { return a.mediaType === 'video' }
 function isAudio(a) { return a.mediaType === 'audio' }
 function isImage(a) { return !a.mediaType || a.mediaType === 'image' }
-function mediaIcon(a) { return isVideo(a) ? '🎬' : isAudio(a) ? '🎙️' : null }
+function mediaIcon(a) { return isVideo(a) ? 'VideoCamera' : isAudio(a) ? 'Microphone' : null }
 
 const assets = ref([])
 const activeType = ref('')

@@ -50,7 +50,7 @@
         <!-- 画质 -->
         <div class="sc-section">
           <div class="sc-header">
-            <span class="sc-title">🎚️ 画质</span>
+            <span class="sc-title"><el-icon :size="16"><Switch /></el-icon> 画质</span>
             <span class="sc-val" :style="{ color: qualityColor }">CRF {{ crf }} · {{ qualityLabel }}</span>
           </div>
           <div class="q-presets">
