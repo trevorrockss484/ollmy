@@ -26,6 +26,9 @@ const router = createRouter({ history: createWebHistory(), routes })
 
 let tokenVerified = false
 
+// 菜单优先级顺序（与 App.vue allMenuItems 保持一致）
+const menuOrder = ['/', '/plan', '/report', '/history', '/monitor', '/clock', '/assets', '/media', '/video-library', '/scripts', '/customer-stats', '/role-manage', '/user-manage', '/compress', '/video-compress']
+
 router.beforeEach(async (to, from, next) => {
   if (to.meta.public) return next()
   const auth = useAuthStore()
@@ -33,10 +36,24 @@ router.beforeEach(async (to, from, next) => {
   if (!tokenVerified && auth.isLoggedIn()) {
     tokenVerified = true
     const ok = await auth.autoLogin()
-    if (ok) return next()
+    if (ok) {
+      // 检查目标路由权限
+      if (!auth.canAccess(to.path)) {
+        const firstMenu = menuOrder.find(m => auth.canAccess(m)) || '/login'
+        return next(firstMenu)
+      }
+      return next()
+    }
     return next('/login')
   }
-  if (auth.isLoggedIn()) return next()
+  if (auth.isLoggedIn()) {
+    // 检查目标路由权限
+    if (!auth.canAccess(to.path)) {
+      const firstMenu = menuOrder.find(m => auth.canAccess(m)) || '/login'
+      return next(firstMenu)
+    }
+    return next()
+  }
   next('/login')
 })
 

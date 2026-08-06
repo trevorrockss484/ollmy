@@ -183,16 +183,28 @@ const parseResults = ref([])
 const salesTreeRef = ref(null)
 const countryTreeRef = ref(null)
 
-// 73国国家树
+// 国家电话区号
+const countryPhone = {
+  '印度尼西亚':'+62','越南':'+84','菲律宾':'+63','泰国':'+66','马来西亚':'+60','新加坡':'+65','缅甸':'+95','柬埔寨':'+855','老挝':'+856','文莱':'+673',
+  '印度':'+91','巴基斯坦':'+92','孟加拉国':'+880','斯里兰卡':'+94','尼泊尔':'+977',
+  '尼日利亚':'+234','埃塞俄比亚':'+251','南非':'+27','肯尼亚':'+254','加纳':'+233','埃及':'+20','坦桑尼亚':'+255','乌干达':'+256','摩洛哥':'+212','阿尔及利亚':'+213','安哥拉':'+244','科特迪瓦':'+225',
+  '阿联酋':'+971','沙特阿拉伯':'+966','土耳其':'+90','卡塔尔':'+974','阿曼':'+968','科威特':'+965','巴林':'+973','伊拉克':'+964','约旦':'+962','黎巴嫩':'+961','以色列':'+972','伊朗':'+98','也门':'+967',
+  '中国':'+86','日本':'+81','韩国':'+82','蒙古':'+976',
+  '巴西':'+55','墨西哥':'+52','哥伦比亚':'+57','阿根廷':'+54','智利':'+56','秘鲁':'+51','厄瓜多尔':'+593','委内瑞拉':'+58',
+  '美国':'+1','英国':'+44','德国':'+49','法国':'+33','澳大利亚':'+61','俄罗斯':'+7','加拿大':'+1','意大利':'+39','西班牙':'+34','荷兰':'+31','波兰':'+48','乌克兰':'+380',
+  '哈萨克斯坦':'+7','乌兹别克斯坦':'+998','吉尔吉斯斯坦':'+996'
+}
+function countryLabel(name) { const code = countryPhone[name]; return code ? name + ' ' + code : name }
+// 73国国家树（含电话区号）
 const countryTreeData = [
-  { key:"se-asia", label:"东南亚", children:[{key:"印度尼西亚",label:"印度尼西亚"},{key:"越南",label:"越南"},{key:"菲律宾",label:"菲律宾"},{key:"泰国",label:"泰国"},{key:"马来西亚",label:"马来西亚"},{key:"新加坡",label:"新加坡"},{key:"缅甸",label:"缅甸"},{key:"柬埔寨",label:"柬埔寨"},{key:"老挝",label:"老挝"},{key:"文莱",label:"文莱"}]},
-  { key:"s-asia", label:"南亚", children:[{key:"印度",label:"印度"},{key:"巴基斯坦",label:"巴基斯坦"},{key:"孟加拉国",label:"孟加拉国"},{key:"斯里兰卡",label:"斯里兰卡"},{key:"尼泊尔",label:"尼泊尔"}]},
-  { key:"africa", label:"非洲", children:[{key:"尼日利亚",label:"尼日利亚"},{key:"埃塞俄比亚",label:"埃塞俄比亚"},{key:"南非",label:"南非"},{key:"肯尼亚",label:"肯尼亚"},{key:"加纳",label:"加纳"},{key:"埃及",label:"埃及"},{key:"坦桑尼亚",label:"坦桑尼亚"},{key:"乌干达",label:"乌干达"},{key:"摩洛哥",label:"摩洛哥"},{key:"阿尔及利亚",label:"阿尔及利亚"},{key:"安哥拉",label:"安哥拉"},{key:"科特迪瓦",label:"科特迪瓦"}]},
-  { key:"mid-east", label:"中东", children:[{key:"阿联酋",label:"阿联酋"},{key:"沙特阿拉伯",label:"沙特阿拉伯"},{key:"土耳其",label:"土耳其"},{key:"卡塔尔",label:"卡塔尔"},{key:"阿曼",label:"阿曼"},{key:"科威特",label:"科威特"},{key:"巴林",label:"巴林"},{key:"伊拉克",label:"伊拉克"},{key:"约旦",label:"约旦"},{key:"黎巴嫩",label:"黎巴嫩"},{key:"以色列",label:"以色列"},{key:"伊朗",label:"伊朗"},{key:"也门",label:"也门"}]},
-  { key:"e-asia", label:"东亚", children:[{key:"中国",label:"中国"},{key:"日本",label:"日本"},{key:"韩国",label:"韩国"},{key:"蒙古",label:"蒙古"}]},
-  { key:"latam", label:"拉美", children:[{key:"巴西",label:"巴西"},{key:"墨西哥",label:"墨西哥"},{key:"哥伦比亚",label:"哥伦比亚"},{key:"阿根廷",label:"阿根廷"},{key:"智利",label:"智利"},{key:"秘鲁",label:"秘鲁"},{key:"厄瓜多尔",label:"厄瓜多尔"},{key:"委内瑞拉",label:"委内瑞拉"}]},
-  { key:"emea", label:"欧美", children:[{key:"美国",label:"美国"},{key:"英国",label:"英国"},{key:"德国",label:"德国"},{key:"法国",label:"法国"},{key:"澳大利亚",label:"澳大利亚"},{key:"俄罗斯",label:"俄罗斯"},{key:"加拿大",label:"加拿大"},{key:"意大利",label:"意大利"},{key:"西班牙",label:"西班牙"},{key:"荷兰",label:"荷兰"},{key:"波兰",label:"波兰"},{key:"乌克兰",label:"乌克兰"}]},
-  { key:"central-asia", label:"中亚", children:[{key:"哈萨克斯坦",label:"哈萨克斯坦"},{key:"乌兹别克斯坦",label:"乌兹别克斯坦"},{key:"吉尔吉斯斯坦",label:"吉尔吉斯斯坦"}]}
+  { key:"se-asia", label:"东南亚", children:[{key:"印度尼西亚",label:countryLabel("印度尼西亚")},{key:"越南",label:countryLabel("越南")},{key:"菲律宾",label:countryLabel("菲律宾")},{key:"泰国",label:countryLabel("泰国")},{key:"马来西亚",label:countryLabel("马来西亚")},{key:"新加坡",label:countryLabel("新加坡")},{key:"缅甸",label:countryLabel("缅甸")},{key:"柬埔寨",label:countryLabel("柬埔寨")},{key:"老挝",label:countryLabel("老挝")},{key:"文莱",label:countryLabel("文莱")}]},
+  { key:"s-asia", label:"南亚", children:[{key:"印度",label:countryLabel("印度")},{key:"巴基斯坦",label:countryLabel("巴基斯坦")},{key:"孟加拉国",label:countryLabel("孟加拉国")},{key:"斯里兰卡",label:countryLabel("斯里兰卡")},{key:"尼泊尔",label:countryLabel("尼泊尔")}]},
+  { key:"africa", label:"非洲", children:[{key:"尼日利亚",label:countryLabel("尼日利亚")},{key:"埃塞俄比亚",label:countryLabel("埃塞俄比亚")},{key:"南非",label:countryLabel("南非")},{key:"肯尼亚",label:countryLabel("肯尼亚")},{key:"加纳",label:countryLabel("加纳")},{key:"埃及",label:countryLabel("埃及")},{key:"坦桑尼亚",label:countryLabel("坦桑尼亚")},{key:"乌干达",label:countryLabel("乌干达")},{key:"摩洛哥",label:countryLabel("摩洛哥")},{key:"阿尔及利亚",label:countryLabel("阿尔及利亚")},{key:"安哥拉",label:countryLabel("安哥拉")},{key:"科特迪瓦",label:countryLabel("科特迪瓦")}]},
+  { key:"mid-east", label:"中东", children:[{key:"阿联酋",label:countryLabel("阿联酋")},{key:"沙特阿拉伯",label:countryLabel("沙特阿拉伯")},{key:"土耳其",label:countryLabel("土耳其")},{key:"卡塔尔",label:countryLabel("卡塔尔")},{key:"阿曼",label:countryLabel("阿曼")},{key:"科威特",label:countryLabel("科威特")},{key:"巴林",label:countryLabel("巴林")},{key:"伊拉克",label:countryLabel("伊拉克")},{key:"约旦",label:countryLabel("约旦")},{key:"黎巴嫩",label:countryLabel("黎巴嫩")},{key:"以色列",label:countryLabel("以色列")},{key:"伊朗",label:countryLabel("伊朗")},{key:"也门",label:countryLabel("也门")}]},
+  { key:"e-asia", label:"东亚", children:[{key:"中国",label:countryLabel("中国")},{key:"日本",label:countryLabel("日本")},{key:"韩国",label:countryLabel("韩国")},{key:"蒙古",label:countryLabel("蒙古")}]},
+  { key:"latam", label:"拉美", children:[{key:"巴西",label:countryLabel("巴西")},{key:"墨西哥",label:countryLabel("墨西哥")},{key:"哥伦比亚",label:countryLabel("哥伦比亚")},{key:"阿根廷",label:countryLabel("阿根廷")},{key:"智利",label:countryLabel("智利")},{key:"秘鲁",label:countryLabel("秘鲁")},{key:"厄瓜多尔",label:countryLabel("厄瓜多尔")},{key:"委内瑞拉",label:countryLabel("委内瑞拉")}]},
+  { key:"emea", label:"欧美", children:[{key:"美国",label:countryLabel("美国")},{key:"英国",label:countryLabel("英国")},{key:"德国",label:countryLabel("德国")},{key:"法国",label:countryLabel("法国")},{key:"澳大利亚",label:countryLabel("澳大利亚")},{key:"俄罗斯",label:countryLabel("俄罗斯")},{key:"加拿大",label:countryLabel("加拿大")},{key:"意大利",label:countryLabel("意大利")},{key:"西班牙",label:countryLabel("西班牙")},{key:"荷兰",label:countryLabel("荷兰")},{key:"波兰",label:countryLabel("波兰")},{key:"乌克兰",label:countryLabel("乌克兰")}]},
+  { key:"central-asia", label:"中亚", children:[{key:"哈萨克斯坦",label:countryLabel("哈萨克斯坦")},{key:"乌兹别克斯坦",label:countryLabel("乌兹别克斯坦")},{key:"吉尔吉斯斯坦",label:countryLabel("吉尔吉斯斯坦")}]}
 ]
 const allCountryKeys = countryTreeData.flatMap(g => g.children.map(c => c.key))
 
@@ -234,7 +246,7 @@ function onCountryTreeCheck(_n, checked) {
   for (const k of Object.keys(countryMap)) { if (!leafs.includes(k)) delete countryMap[k] }
   syncCountryTotal()
 }
-const selectedSales = computed(() => Object.entries(salesMap).filter(([_, v]) => v > 0).map(([name, count]) => ({ name, count })))
+const selectedSales = computed(() => Object.entries(salesMap).filter(([_, v]) => v > 0).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count))
 const selectedCountries = computed(() => Object.entries(countryMap).filter(([_, v]) => v > 0).map(([country, count]) => ({ country, count })))
 const totalCountryCount = computed(() => selectedCountries.value.reduce((s, c) => s + (c.count || 0), 0))
 function syncCountryTotal() { nextTick(() => { form.newCustomers = totalCountryCount.value }) }
@@ -288,7 +300,7 @@ async function loadData() {
     form.newCustomers = r.newCustomers; form.repliedCustomers = r.repliedCustomers; form.registeredCustomers = r.registeredCustomers
     form.groupedWithPlan = r.groupedWithPlan; form.visitingCustomers = r.visitingCustomers; form.closedDeals = r.closedDeals
     restoreSalesMap(r.salesAssignments); restoreCountryMap(r.countryBreakdown, true /* skipTotal: don't overwrite persisted newCustomers */)
-  } else { existingId.value = null; Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k] }
+  } else { existingId.value = null; Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys([]) }) }
   const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value); if (mRes.success) Object.assign(monthly, mRes.data)
   // 历史仅加载当月数据
   const hRes = await api.customerStats.list({ accountId: accountId.value, startDate: d.substring(0, 7) + '-01', endDate: d.substring(0, 7) + '-31' }); if (hRes.success) history.value = hRes.data.sort((a, b) => b.date.localeCompare(a.date))
@@ -311,14 +323,14 @@ async function saveData(silent) {
   } catch (e) { saveMsg.value = '❌ ' + e.message; saveOk.value = false }
 }
 
-function clearForm() { autoSaveSkip = true; Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; existingId.value = null; saveMsg.value = ''; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys([]); autoSaveSkip = false }); ElMessage.success('已清空') }
+function clearForm() { autoSaveSkip = true; const hadExisting = !!existingId.value; Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; existingId.value = null; saveMsg.value = ''; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys([]); autoSaveSkip = false; if (hadExisting) saveData(true) }); ElMessage.success('已清空') }
 
 function editRecord(r) { skipAutoLoad = true; if (r.accountId && r.accountId !== accountId.value) { accountId.value = r.accountId; localStorage.setItem('cs_accountId', accountId.value) }; formDate.value = r.date; skipAutoLoad = false; loadData() }
 
 const previewText = computed(() => {
   const d = formDate.value; if (!d) return ''
   const salesText = selectedSales.value.map(s => s.name + s.count + '个').join(' ')
-  return `${dailyLabel.value}总结：\n⭐本日数据：\n1.本日新客户：${form.newCustomers || 0}个\n2.本日有回复的客户：${form.repliedCustomers || 0}个\n3.本日已登记客户：${form.registeredCustomers || 0}个\n4.本日已拉群且有平面图客户：${form.groupedWithPlan || 0}个\n5.本日来访客户：${form.visitingCustomers || 0}\n6.本日成交客户：${form.closedDeals || 0}\n7.拉群客户分配销售：${salesText || '无'}\n\n⭐月度数据：\n1.本月总询盘客户：${monthly.newCustomers}个\n2.本月有回复的客户：${monthly.repliedCustomers}个\n3.本月已登记客户：${monthly.registeredCustomers}个\n4.本月已拉群且有平面图客户：${monthly.groupedWithPlan}个\n5.本月来访客户：${monthly.visitingCustomers}\n6.本月成交客户：${monthly.closedDeals}\n7.拉群客户分配销售：${monthly.salesAssignments.length ? monthly.salesAssignments.map(s => s.name + s.count + '个').join(' ') : '无'}`
+  return `${dailyLabel.value}总结：\n⭐本日数据：\n1.本日新客户：${form.newCustomers || 0}个\n2.本日有回复的客户：${form.repliedCustomers || 0}个\n3.本日已登记客户：${form.registeredCustomers || 0}个\n4.本日已拉群且有平面图客户：${form.groupedWithPlan || 0}个\n5.本日来访客户：${form.visitingCustomers || 0}\n6.本日成交客户：${form.closedDeals || 0}\n7.拉群客户分配销售：${salesText || '无'}\n\n⭐月度数据：\n1.本月总询盘客户：${monthly.newCustomers}个\n2.本月有回复的客户：${monthly.repliedCustomers}个\n3.本月已登记客户：${monthly.registeredCustomers}个\n4.本月已拉群且有平面图客户：${monthly.groupedWithPlan}个\n5.本月来访客户：${monthly.visitingCustomers}\n6.本月成交客户：${monthly.closedDeals}\n7.拉群客户分配销售：${monthly.salesAssignments.length ? [...monthly.salesAssignments].sort((a,b) => b.count - a.count).map(s => s.name + s.count + '个').join(' ') : '无'}`
 })
 async function copyPreview() { if (!previewText.value) { ElMessage.warning('请先填写数据'); return }; try { await navigator.clipboard.writeText(previewText.value); ElMessage.success('已复制') } catch { const ta = document.createElement('textarea'); ta.value = previewText.value; ta.style.position = 'fixed'; ta.style.left = '-9999px'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy') } catch {}; document.body.removeChild(ta) } }
 
@@ -431,7 +443,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-sales--half{flex:1;min-width:0;border-top:none;padding-top:0;}
 
 .cs-sales-body{display:flex;gap:10px;}
-.cs-sales-tree{width:180px;flex-shrink:0;border:1px solid var(--c-border);border-radius:var(--rs);padding:4px;background:var(--c-bg);max-height:200px;overflow-y:auto;}
+.cs-sales-tree{width:230px;flex-shrink:0;border:1px solid var(--c-border);border-radius:var(--rs);padding:4px;background:var(--c-bg);max-height:200px;overflow-y:auto;}
 .cs-sales-chips{flex:1;display:flex;flex-direction:column;gap:4px;}
 /* Chip rows + stepper */
 .cs-dinput{width:110px;}

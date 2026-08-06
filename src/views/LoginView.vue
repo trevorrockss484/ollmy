@@ -83,7 +83,10 @@ async function doLogin() {
     if (data.success) {
       authStore.login(data.data.token, data.data.username, data.data.role, data.data.menus, rememberMe.value)
       ElMessage.success('登录成功')
-      window.location.href = '/'
+      const menus = data.data.menus || []
+      const menuOrder = ['/', '/plan', '/report', '/history', '/monitor', '/clock', '/assets', '/media', '/video-library', '/scripts', '/customer-stats', '/role-manage', '/user-manage', '/compress', '/video-compress']
+      const firstMenu = menuOrder.find(m => menus.includes(m)) || '/'
+      window.location.href = firstMenu
     } else {
       error.value = data.error || '登录失败'
     }
