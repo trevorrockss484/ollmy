@@ -119,6 +119,12 @@ export const api = {
     add: (name, group) => request('/sales-persons', { method: 'POST', body: JSON.stringify({ name, group }) }),
     delete: (id) => request('/sales-persons/' + id, { method: 'DELETE' }),
   },
+  scripts: {
+    list: () => request('/scripts'),
+    add: (data) => request('/scripts', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request('/scripts/' + id, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id) => request('/scripts/' + id, { method: 'DELETE' }),
+  },
 }
 
 // 工具函数

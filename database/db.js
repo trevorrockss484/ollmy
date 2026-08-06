@@ -568,6 +568,7 @@ const promptsDb = makeCrud('prompts', { title: '', step: '未分类', sortOrder:
 
 const assetsDb = makeCrud('assets', { name: '', type: 'character', fileName: '', originalName: '', fileSize: 0, tags: [], mediaType: 'image' });
 const libraryDb = makeCrud('library', { name: '', fileName: '', originalName: '', fileSize: 0, tags: [], readingProgress: 0, status: null });
+const showScriptsDb = makeCrud('showScripts', { showName: '', type: 'script', title: '', content: '', tags: [], uploadedFile: null });
 const compressedDb = makeCrud('compressed', { originalName: '', compressedName: '', originalSize: 0, compressedSize: 0, width: 0, height: 0, format: 'webp', quality: 80, name: '', category: '' });
 
 function getPrompts() { return promptsDb.list(); }
@@ -636,6 +637,12 @@ function getLibraryItem(id) { return libraryDb.get(id); }
 function addLibraryItem(item) { return libraryDb.add(item); }
 function updateLibraryItem(id, updates) { return libraryDb.update(id, updates); }
 function deleteLibraryItem(id) { return libraryDb.delete(id); }
+
+function getShowScripts() { return showScriptsDb.list(); }
+function getShowScript(id) { return showScriptsDb.get(id); }
+function addShowScript(item) { return showScriptsDb.add(item); }
+function updateShowScript(id, updates) { return showScriptsDb.update(id, updates); }
+function deleteShowScript(id) { return showScriptsDb.delete(id); }
 
 function getCompressed() { return compressedDb.list(); }
 function getCompressedItem(id) { return compressedDb.get(id); }
@@ -770,6 +777,7 @@ module.exports = {
   getAssets, getAsset, addAsset, updateAsset, deleteAsset, batchDeleteAssets,
   getPromptSteps, savePromptSteps,
   getLibrary, getLibraryItem, addLibraryItem, updateLibraryItem, deleteLibraryItem,
+  getShowScripts, getShowScript, addShowScript, updateShowScript, deleteShowScript,
   hasOverlap,
   getCompressed, getCompressedItem, addCompressed, updateCompressed, deleteCompressed,
   getScripts() { return scriptsDb.list(); },

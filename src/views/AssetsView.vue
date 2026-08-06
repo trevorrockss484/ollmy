@@ -5,7 +5,7 @@
       <div class="page-header-top">
         <div>
           <h2><el-icon :size="24"><PictureFilled /></el-icon> AI资产管理</h2>
-          <p class="sub">{{ tab === 'assets' ? '上传 · 预览 · 下载 · 批量管理AI资产' : tab === 'library' ? '文档管理 · 上传下载 · 分类查阅' : '按流程步骤查看 · 一键复制 · 在线编辑 · 步骤可自定义' }}</p>
+          <p class="sub">{{ tab === 'assets' ? '上传 · 预览 · 下载 · 批量管理AI资产' : tab === 'library' ? '按剧集管理剧本与分镜 · 在线编辑 · 自动保存' : '按流程步骤查看 · 一键复制 · 在线编辑 · 步骤可自定义' }}</p>
         </div>
       </div>
       <div class="tab-bar">
@@ -14,8 +14,8 @@
           <span class="tab-n">{{ assets.length }}</span>
         </button>
         <button class="tab-btn" :class="{ active: tab === 'library' }" @click="tab = 'library'">
-          <el-icon :size="16"><FolderOpened /></el-icon> 资料库
-          <span class="tab-n">{{ libItems.length }}</span>
+          <el-icon :size="16"><Film /></el-icon> 剧本与分镜
+          <span class="tab-n">{{ showScripts.length }}</span>
         </button>
         <button class="tab-btn" :class="{ active: tab === 'prompts' }" @click="tab = 'prompts'">
           <el-icon :size="16"><Document /></el-icon> AI提示词
@@ -224,159 +224,129 @@
       </el-dialog>
     </template>
 
-    <!-- ==================== 资料库 Tab ==================== -->
+    <!-- ==================== 剧本与分镜 Tab ==================== -->
     <template v-if="tab === 'library'">
-      <div class="library-toolbar">
-        <div class="toolbar-left">
-          <el-button type="primary" class="tb-btn-primary" @click="libUploadOpen = true">
-            <el-icon :size="16"><Plus /></el-icon> 上传文件
-          </el-button>
-          <span class="tb-count">{{ libItems.length }} 项</span>
+      <!-- 剧集选择栏 -->
+      <div class="scripts-toolbar">
+        <div class="scripts-shows-bar">
+          <div v-for="show in showList" :key="show" class="show-pill"
+            :class="{ active: activeShow === show }"
+            @click="selectShow(show)">
+            <el-icon :size="14"><VideoCamera /></el-icon>
+            <span>{{ show }}</span>
+            <span class="show-pill-del" @click.stop="confirmDeleteShow(show)"><el-icon :size="12"><Close /></el-icon></span>
+          </div>
+          <span class="show-pill show-pill--add" @click="showAddDialog = true">
+            <el-icon :size="16"><Plus /></el-icon> 新增剧集
+          </span>
         </div>
-        <div class="toolbar-right">
-          <div class="assets-search-box">
-            <el-icon :size="15" class="search-icon"><Search /></el-icon>
-            <input v-model="libSearch" class="search-input" placeholder="搜索文件名或标签..." />
-            <span v-if="libSearch" class="search-clear" @click="libSearch = ''"><el-icon :size="13"><Close /></el-icon></span>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="!filteredLib.length" class="empty-state">
-        <div class="empty-icon"><el-icon :size="56"><Folder /></el-icon></div>
-        <p class="empty-text">{{ libItems.length ? '无匹配结果' : '暂无资料，点击"上传文件"开始' }}</p>
-      </div>
-
-      <!-- 资料库卡片网格 -->
-      <div v-else class="lib-grid">
-        <div v-for="d in filteredLib" :key="d.id"
-          :class="['lib-card', { 'lib-card-done': d.status === 'done' }]"
-          @dblclick="libOpenReader(d)">
-          <!-- 已完成标记 -->
-          <div v-if="d.status === 'done'" class="lib-done-badge" title="已完成">✅</div>
-          <!-- 文件图标区 -->
-          <div class="lib-card-icon" :style="{ background: libIconBg(d.fileName), color: libIconColor(d.fileName) }">
-            <span class="lib-card-ext">{{ libExt(d.fileName) }}</span>
-          </div>
-          <!-- 信息 -->
-          <div class="lib-card-info">
-            <div class="lib-card-name" :title="d.name">{{ d.name }}</div>
-            <!-- 阅读进度条 -->
-            <div v-if="d.status !== 'done' && libGetProgress(d.id) > 0" class="lib-progress-bar">
-              <div class="lib-progress-fill" :style="{ width: libGetProgress(d.id) + '%' }"></div>
-            </div>
-            <div class="lib-card-meta">
-              <span>{{ formatSize(d.fileSize) }}</span>
-              <span v-if="libGetProgress(d.id) > 0 && d.status !== 'done'" class="lib-progress-text">{{ libGetProgress(d.id) }}%</span>
-              <span v-if="d.tags && d.tags.length" class="lib-card-tags">
-                <span v-for="t in d.tags.slice(0, 2)" :key="t" class="lib-card-tag">{{ t }}</span>
-              </span>
-            </div>
-          </div>
-          <!-- 操作 -->
-          <div class="lib-card-actions">
-            <el-button size="small" type="primary" round @click="libOpenReader(d)">
-              <el-icon :size="14"><View /></el-icon>
-              {{ libGetProgress(d.id) > 0 && d.status !== 'done' ? '继续' : '查看' }}
-            </el-button>
-            <a :href="authUrl(api.library.downloadUrl(d.id))" class="lib-dl-link">
-              <el-button size="small" round><el-icon :size="14"><Download /></el-icon> 下载</el-button>
-            </a>
-            <el-button size="small" round @click="libOpenEdit(d)"><el-icon :size="14"><Edit /></el-icon></el-button>
-            <el-button size="small" round type="danger" plain @click.stop="libDoDelete(d)"><el-icon :size="14"><Delete /></el-icon></el-button>
-          </div>
+        <div class="scripts-toolbar-right">
+          <span class="scripts-save-status" v-if="saveStatus">
+            <span class="save-dot" :class="{ saved: saveStatus === 'saved', saving: saveStatus === 'saving' }"></span>
+            {{ saveStatus === 'saving' ? '保存中...' : '已保存' }}
+          </span>
         </div>
       </div>
 
-      <!-- 资料库上传弹窗 -->
-      <el-dialog v-model="libUploadOpen" title="上传文件" width="560px" destroy-on-close>
-        <div class="drop-zone" :class="{ dragover: libDragOver }"
-          @dragover.prevent="libDragOver = true" @dragleave="libDragOver = false" @drop.prevent="libOnDrop">
-          <div class="drop-icon"><el-icon :size="40"><Upload /></el-icon></div>
-          <p class="drop-text">拖拽文件到此处</p>
-          <el-button size="small" @click.stop="libFileInput?.click()">或点击选择文件</el-button>
-          <p class="drop-hint">支持 doc / docx / pdf / txt / xlsx / pptx / zip，最大100MB</p>
-        </div>
-        <input ref="libFileInput" type="file" multiple
-          accept=".doc,.docx,.pdf,.txt,.xlsx,.xls,.pptx,.ppt,.zip,.rar,.7z"
-          style="display:none" @change="libOnFileSelect" />
-        <div v-if="libUploadFiles.length" class="file-list">
-          <div v-for="(f, i) in libUploadFiles" :key="i" class="file-item">
-            <span class="file-icon">{{ libIcon(f.name) }}</span>
-            <span class="file-name">{{ f.name }}</span>
-            <span class="file-size">{{ formatSize(f.size) }}</span>
-            <el-button size="small" circle text @click="libUploadFiles.splice(i,1)" title="移除"><el-icon :size="14"><Close /></el-icon></el-button>
-          </div>
-        </div>
-        <el-form label-width="80px" size="default" style="margin-top:16px;">
-          <el-form-item label="文件名称"><el-input v-model="libUploadForm.name" placeholder="留空使用原文件名" size="large" /></el-form-item>
-          <el-form-item label="标签"><el-input v-model="libUploadForm.tagsStr" placeholder="逗号分隔" size="large" /></el-form-item>
+      <!-- 新增剧集弹窗 -->
+      <el-dialog v-model="showAddDialog" title="新增剧集" width="460px" destroy-on-close @opened="onShowDialogOpened">
+        <el-form label-width="80px" size="default">
+          <el-form-item label="剧集名称">
+            <el-input v-model="newShowName" placeholder="输入剧集名称，如：庆余年、甄嬛传" size="large" @keyup.enter="addShow" ref="showNameInput" />
+          </el-form-item>
         </el-form>
         <template #footer>
-          <el-button @click="libUploadOpen = false">取消</el-button>
-          <el-button type="primary" @click="libDoUpload" :disabled="!libUploadFiles.length" :loading="libUploading">
-            <el-icon :size="14"><Upload /></el-icon> 上传 ({{ libUploadFiles.length }})
+          <el-button @click="showAddDialog = false">取消</el-button>
+          <el-button type="primary" @click="addShow" :disabled="!newShowName.trim()">
+            <el-icon :size="14"><Plus /></el-icon> 创建剧集
           </el-button>
         </template>
       </el-dialog>
 
-      <!-- 文档阅读器 -->
-      <teleport to="body">
-        <transition name="reader-fade">
-          <div v-if="libReaderItem" :class="['reader-overlay', 'reader-theme-' + libTheme]" @click="libCloseReader">
-            <!-- 顶部进度条 -->
-            <div class="reader-top-progress">
-              <div class="reader-top-progress-fill" :style="{ width: libReaderPercent + '%' }"></div>
+      <!-- 删除确认弹窗 -->
+      <el-dialog v-model="showDeleteDialog" title="删除剧集" width="420px" destroy-on-close>
+        <p style="color:#6b7280;font-size:14px;">确定要删除 <b style="color:#1f2937;">{{ deletingShow }}</b> 吗？</p>
+        <p style="color:#9ca3af;font-size:12px;">该剧的剧本和分镜将被永久删除，无法恢复</p>
+        <template #footer>
+          <el-button @click="showDeleteDialog = false">取消</el-button>
+          <el-button type="danger" @click="deleteShow(deletingShow); showDeleteDialog = false">
+            <el-icon :size="14"><Delete /></el-icon> 确认删除
+          </el-button>
+        </template>
+      </el-dialog>
+
+      <!-- 空状态 -->
+      <div v-if="!activeShow" class="empty-state" style="padding:80px 20px;">
+        <div class="empty-icon"><el-icon :size="56"><Film /></el-icon></div>
+        <p class="empty-text">选择或新增一部剧集开始</p>
+        <el-button type="primary" round @click="showAddDialog = true" style="margin-top:12px;">
+          <el-icon :size="16"><Plus /></el-icon> 新增剧集
+        </el-button>
+      </div>
+
+      <!-- 双栏编辑区 -->
+      <div v-else class="scripts-edit-panels">
+        <!-- 左：剧本 -->
+        <div class="script-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <el-icon :size="18"><Document /></el-icon> 剧本
             </div>
-            <!-- 工具栏 -->
-            <div class="reader-toolbar" @click.stop>
-              <div class="reader-tb-left">
-                <span class="reader-tb-title">{{ libReaderItem.name }}</span>
-                <span class="reader-tb-percent">{{ libReaderPercent }}%</span>
-              </div>
-              <div class="reader-tb-right">
-                <el-button size="small" round @click="libTheme = libTheme === 'light' ? 'dark' : 'light'">
-                  <el-icon :size="14"><Moon v-if="libTheme === 'light'" /><Sunny v-else /></el-icon>
-                  {{ libTheme === 'light' ? '护眼' : '亮色' }}
-                </el-button>
-                <el-button
-                  size="small"
-                  :type="libReaderItem.status === 'done' ? 'success' : 'default'"
-                  round
-                  @click="libToggleDone(libReaderItem)">
-                  <el-icon :size="14"><Check /></el-icon>
-                  {{ libReaderItem.status === 'done' ? '已完成' : '标记完成' }}
-                </el-button>
-                <a :href="authUrl(api.library.downloadUrl(libReaderItem.id))">
-                  <el-button size="small" type="primary" round><el-icon :size="14"><Download /></el-icon> 下载</el-button>
-                </a>
-                <el-button size="small" round @click="libCloseReader"><el-icon :size="15"><Close /></el-icon> 关闭</el-button>
-              </div>
-            </div>
-            <!-- 阅读内容区 -->
-            <div class="reader-body" @click.stop ref="libReaderEl" @scroll="libOnScroll">
-              <div class="reader-content" v-if="libReaderLoading">
-                <div style="text-align:center;padding:60px;color:#9ca3af;"><el-icon :size="32"><Loading /></el-icon><p>加载中...</p></div>
-              </div>
-              <div class="reader-content" v-else-if="libReaderType === 'iframe'">
-                <iframe :src="authUrl(libReaderUrl)" class="reader-iframe" frameborder="0" sandbox="allow-same-origin" />
-              </div>
-              <div class="reader-content" v-else v-html="libReaderHtml"></div>
+            <div class="panel-actions">
+              <el-button size="small" round @click="uploadScriptFile('script')">
+                <el-icon :size="13"><Upload /></el-icon> 上传
+              </el-button>
+              <el-button size="small" round @click="downloadScript('script')">
+                <el-icon :size="13"><Download /></el-icon> 下载
+              </el-button>
+              <input :ref="el => scriptFileInput = el" type="file" accept=".doc,.docx,.txt" style="display:none"
+                @change="e => onScriptFileChange(e, 'script')" />
             </div>
           </div>
-        </transition>
-      </teleport>
+          <textarea
+            v-model="scriptDraft"
+            class="script-native-textarea"
+            placeholder="在此编写或粘贴剧本内容..."
+            @scroll.passive="onScriptScroll('script', $event)"
+            @input="onScriptEdit('script', $event.target.value)"
+            ref="scriptTextareaRef"
+          ></textarea>
+        </div>
 
-      <!-- 资料库编辑弹窗 -->
-      <el-dialog v-model="libEditOpen" title="编辑文件" width="480px" destroy-on-close>
-        <el-form label-width="80px" size="default">
-          <el-form-item label="名称"><el-input v-model="libEditForm.name" size="large" /></el-form-item>
-          <el-form-item label="标签"><el-input v-model="libEditForm.tagsStr" placeholder="逗号分隔" size="large" /></el-form-item>
-        </el-form>
-        <template #footer>
-          <el-button @click="libEditOpen = false">取消</el-button>
-          <el-button type="primary" @click="libDoUpdate"><el-icon :size="14"><Check /></el-icon> 保存</el-button>
-        </template>
+        <!-- 右：分镜 -->
+        <div class="script-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <el-icon :size="18"><PictureFilled /></el-icon> 分镜
+            </div>
+            <div class="panel-actions">
+              <el-button size="small" round @click="uploadScriptFile('storyboard')">
+                <el-icon :size="13"><Upload /></el-icon> 上传
+              </el-button>
+              <el-button size="small" round @click="downloadScript('storyboard')">
+                <el-icon :size="13"><Download /></el-icon> 下载
+              </el-button>
+              <input :ref="el => storyboardFileInput = el" type="file" accept=".doc,.docx,.txt" style="display:none"
+                @change="e => onScriptFileChange(e, 'storyboard')" />
+            </div>
+          </div>
+          <textarea
+            v-model="storyboardDraft"
+            class="script-native-textarea"
+            placeholder="在此编写或粘贴分镜内容..."
+            @scroll.passive="onScriptScroll('storyboard', $event)"
+            @input="onScriptEdit('storyboard', $event.target.value)"
+            ref="storyboardTextareaRef"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- 上传进度弹窗 -->
+      <el-dialog v-model="scriptUploading" title="提取文档内容" width="400px" :close-on-click-modal="false" :show-close="false">
+        <div style="text-align:center;padding:20px;color:#6b7280;">
+          <el-icon :size="32" style="margin-bottom:12px;"><Loading /></el-icon>
+          <p>正在提取文本内容...</p>
+        </div>
       </el-dialog>
     </template>
 
@@ -403,7 +373,7 @@
           </div>
         </aside>
 
-        <!-- 右侧内容 -->
+        <!-- 右侧内容：列表+阅读双栏 -->
         <div class="prompts-main">
           <!-- 顶部操作栏 -->
           <div class="prompts-topbar">
@@ -419,72 +389,67 @@
                 <input v-model="pmtSearch" class="search-input" placeholder="搜索标题或标签..." />
                 <span v-if="pmtSearch" class="search-clear" @click="pmtSearch = ''"><el-icon :size="13"><Close /></el-icon></span>
               </div>
-              <el-select v-model="pmtSortBy" size="default" style="width:120px;" @change="pmtSortChange">
-                <el-option label="默认排序" value="default" />
-                <el-option label="标题 A-Z" value="title-asc" />
-                <el-option label="最新创建" value="date-desc" />
-                <el-option label="最早创建" value="date-asc" />
-              </el-select>
             </div>
           </div>
 
-          <!-- 卡片列表 -->
+          <!-- 空状态 -->
           <div v-if="!pmtFiltered.length" class="empty-state" style="padding:40px;">
             <div class="empty-icon"><el-icon :size="48"><Document /></el-icon></div>
             <p class="empty-text">暂无提示词模板</p>
             <el-button type="primary" round @click="pmtOpenAdd">创建第一个模板</el-button>
           </div>
 
-          <div v-else class="pmt-card-list" ref="pmtListRef">
-            <div v-for="(p, idx) in pmtFiltered" :key="p.id"
-              :class="['pmt-card', { expanded: pmtExpandedId === p.id }]"
-              :style="{ '--st-color': pmtStepColor(p.step) }"
-              draggable="true"
-              @dragstart="pmtDragStart($event, idx)"
-              @dragover.prevent="pmtDragOver($event, idx)"
-              @dragleave="pmtDragLeave($event)"
-              @drop="pmtDrop($event, idx)"
-              @dragend="pmtDragEnd">
-              <div class="pmt-card-drag" title="拖拽排序">
-                <el-icon :size="16"><Rank /></el-icon>
-              </div>
-              <div class="pmt-collapsed" @click="pmtToggleExpand(p.id)">
-                <div class="pmt-accent" :style="{ background: pmtStepColor(p.step) }"></div>
-                <div class="pmt-body">
-                  <div class="pmt-header">
-                    <h3 class="pmt-title">{{ p.title }}</h3>
-                    <span v-if="p.tags && p.tags.length" class="pmt-tags">
-                      <span v-for="t in p.tags" :key="t" class="pmt-tag">{{ t }}</span>
-                    </span>
-                  </div>
-                  <p class="pmt-preview">{{ pmtPreview(p.content) }}</p>
+          <!-- 双栏：左侧列表 + 右侧阅读 -->
+          <div v-else class="pmt-split-layout" ref="pmtListRef">
+            <!-- 左侧：卡片列表 -->
+            <div class="pmt-list-panel">
+              <div v-for="(p, idx) in pmtFiltered" :key="p.id"
+                :class="['pmt-item', { active: pmtActiveId === p.id }]"
+                :style="{ '--st-color': pmtStepColor(p.step) }"
+                draggable="true"
+                @dragstart="pmtDragStart($event, idx)"
+                @dragover.prevent="pmtDragOver($event, idx)"
+                @dragleave="pmtDragLeave($event)"
+                @drop="pmtDrop($event, idx)"
+                @dragend="pmtDragEnd"
+                @click="pmtActiveId = p.id">
+                <span class="pmt-item-drag" @click.stop title="拖拽排序"><el-icon :size="14"><Rank /></el-icon></span>
+                <div class="pmt-item-body">
+                  <div class="pmt-item-title">{{ p.title }}</div>
+                  <div class="pmt-item-preview">{{ pmtPreview(p.content) }}</div>
                 </div>
-                <div class="pmt-chevron">
-                  <el-icon :size="18"><ArrowDown v-if="pmtExpandedId !== p.id" /><ArrowUp v-else /></el-icon>
+                <div class="pmt-item-meta" v-if="p.tags && p.tags.length">
+                  <span v-for="t in p.tags.slice(0,2)" :key="t" class="pmt-item-tag">{{ t }}</span>
                 </div>
               </div>
-              <div class="pmt-actions-row" @click.stop>
-                <el-button size="small" round @click="pmtDoCopy(p)">
-                  <el-icon><DocumentCopy /></el-icon> 复制
-                </el-button>
-                <el-button size="small" round @click="pmtOpenEdit(p)">
-                  <el-icon><Edit /></el-icon> 编辑
-                </el-button>
-                <el-button size="small" round type="danger" plain @click="pmtDeleteCard(p)">
-                  <el-icon><Delete /></el-icon>
-                </el-button>
-              </div>
-              <transition name="slide">
-                <div v-if="pmtExpandedId === p.id" class="pmt-expanded">
-                  <div class="pmt-exp-toolbar">
-                    <span class="pmt-exp-title">{{ p.title }}</span>
-                    <el-button type="primary" round size="small" @click="pmtDoCopy(p)">
-                      <el-icon><DocumentCopy /></el-icon> 一键复制全文
-                    </el-button>
-                  </div>
-                  <pre class="pmt-exp-content">{{ p.content }}</pre>
+            </div>
+
+            <!-- 右侧：阅读面板 -->
+            <div class="pmt-reader-panel" v-if="pmtActiveItem">
+              <div class="pmt-reader-toolbar">
+                <div class="pmt-reader-title">{{ pmtActiveItem.title }}</div>
+                <div class="pmt-reader-actions">
+                  <el-button type="primary" size="small" round @click="pmtDoCopy(pmtActiveItem)">
+                    <el-icon><DocumentCopy /></el-icon> 复制全文
+                  </el-button>
+                  <el-button size="small" round @click="pmtOpenEdit(pmtActiveItem)">
+                    <el-icon><Edit /></el-icon> 编辑
+                  </el-button>
+                  <el-button size="small" round type="danger" plain @click="pmtDeleteCard(pmtActiveItem)">
+                    <el-icon><Delete /></el-icon>
+                  </el-button>
                 </div>
-              </transition>
+              </div>
+              <div class="pmt-reader-tags" v-if="pmtActiveItem.tags && pmtActiveItem.tags.length">
+                <el-tag v-for="t in pmtActiveItem.tags" :key="t" size="small" effect="plain" round>{{ t }}</el-tag>
+              </div>
+              <div class="pmt-reader-content-wrap">
+                <pre class="pmt-reader-content">{{ pmtActiveItem.content || '(空内容)' }}</pre>
+              </div>
+            </div>
+            <div v-else class="pmt-reader-empty">
+              <el-icon :size="48"><View /></el-icon>
+              <p>点击左侧模板查看内容</p>
             </div>
           </div>
         </div>
@@ -560,7 +525,14 @@ import { api, formatSize, authUrl } from '../api'
 
 // ===== Tab =====
 const tab = ref('assets')
-watch(tab, () => { closePreview(); libCloseReader() })
+watch(tab, (newTab, oldTab) => {
+  if (oldTab === 'library') { saveScrollPositions(); localStorage.setItem('script_activeShow', activeShow.value || '') }
+  closePreview(); libCloseReader()
+  if (newTab === 'library' && activeShow.value) {
+    // 回到剧本与分镜tab：内存中 scriptDraft/storyboardDraft 还在，只需恢复滚动位
+    nextTick(() => { nextTick(() => { setTimeout(() => { restoreScrollPositions() }, 300) }) })
+  }
+})
 
 // ===== AI资产 =====
 const assetTypes = [
@@ -726,7 +698,188 @@ function onKeyDown(e) {
 }
 async function loadAssets() { const res = await api.assets.list(); if (res.success) assets.value = res.data }
 
-// ===== 资料库 =====
+// ===== 剧本与分镜 =====
+const showScripts = ref([])
+const activeShow = ref('')
+const showList = computed(() => [...new Set(showScripts.value.map(s => s.showName).filter(Boolean))])
+const saveStatus = ref('')
+let saveTimer = null
+let autoSaveSeq = 0
+const showAddDialog = ref(false)
+const showDeleteDialog = ref(false)
+const deletingShow = ref('')
+const newShowName = ref('')
+const showNameInput = ref(null)
+const scriptFileInput = ref(null)
+const storyboardFileInput = ref(null)
+const scriptUploading = ref(false)
+const scriptTextareaRef = ref(null)
+const storyboardTextareaRef = ref(null)
+
+// 本地草稿（用于textarea v-model，避免computed set问题）
+const scriptDraft = ref('')
+const storyboardDraft = ref('')
+let scriptScrollRestored = false
+let storyboardScrollRestored = false
+
+const scriptRecord = computed(() => showScripts.value.find(s => s.showName === activeShow.value && s.type === 'script'))
+const storyboardRecord = computed(() => showScripts.value.find(s => s.showName === activeShow.value && s.type === 'storyboard'))
+
+function selectShow(name) {
+  saveScrollPositions()
+  activeShow.value = name
+  localStorage.setItem('script_activeShow', name)
+  saveStatus.value = ''
+  scriptScrollRestored = false; storyboardScrollRestored = false
+  nextTick(() => {
+    scriptDraft.value = scriptRecord.value?.content || ''
+    storyboardDraft.value = storyboardRecord.value?.content || ''
+    nextTick(() => { setTimeout(() => { restoreScrollPositions() }, 200) })
+  })
+}
+
+function onShowDialogOpened() { nextTick(() => { showNameInput.value?.focus() }) }
+
+async function addShow() {
+  const name = newShowName.value.trim()
+  if (!name) return
+  if (showList.value.includes(name)) {
+    showAddDialog.value = false; newShowName.value = ''; selectShow(name); return
+  }
+  await api.scripts.add({ showName: name, type: 'script', title: '剧本', content: '' })
+  await api.scripts.add({ showName: name, type: 'storyboard', title: '分镜', content: '' })
+  newShowName.value = ''
+  showAddDialog.value = false
+  activeShow.value = name
+  localStorage.setItem('script_activeShow', name)
+  await loadShowScripts()
+  nextTick(() => { scriptDraft.value = ''; storyboardDraft.value = '' })
+}
+
+function confirmDeleteShow(name) { deletingShow.value = name; showDeleteDialog.value = true }
+
+async function deleteShow(name) {
+  const items = showScripts.value.filter(s => s.showName === name)
+  for (const item of items) await api.scripts.delete(item.id)
+  if (activeShow.value === name) { activeShow.value = ''; scriptDraft.value = ''; storyboardDraft.value = ''; localStorage.removeItem('script_activeShow') }
+  clearScrollPos(name)
+  await loadShowScripts()
+}
+
+// 滚动位置记忆
+function scrollKey(show, type) { return 'script_scroll_' + show + '_' + type }
+function clearScrollPos(show) {
+  localStorage.removeItem(scrollKey(show, 'script'))
+  localStorage.removeItem(scrollKey(show, 'storyboard'))
+}
+function onScriptScroll(type, e) {
+  const el = e.target; const show = activeShow.value
+  if (!show || !el) return
+  try { localStorage.setItem(scrollKey(show, type), JSON.stringify({ top: el.scrollTop, ts: Date.now() })) } catch {}
+}
+function saveScrollPositions() {
+  try {
+    const scriptEl = scriptTextareaRef.value; const storyEl = storyboardTextareaRef.value
+    const show = activeShow.value; if (!show) return
+    if (scriptEl && scriptEl.scrollTop > 0) localStorage.setItem(scrollKey(show, 'script'), JSON.stringify({ top: scriptEl.scrollTop, ts: Date.now() }))
+    if (storyEl && storyEl.scrollTop > 0) localStorage.setItem(scrollKey(show, 'storyboard'), JSON.stringify({ top: storyEl.scrollTop, ts: Date.now() }))
+  } catch {}
+}
+function restoreScrollPositions(maxRetry = 5) {
+  const show = activeShow.value; if (!show) return
+  try {
+    const sData = JSON.parse(localStorage.getItem(scrollKey(show, 'script')) || '{}')
+    const bData = JSON.parse(localStorage.getItem(scrollKey(show, 'storyboard')) || '{}')
+    const scriptEl = scriptTextareaRef.value; const storyEl = storyboardTextareaRef.value
+
+    if ((sData.top > 0 && !scriptEl) || (bData.top > 0 && !storyEl)) {
+      // DOM 还没渲染完毕，重试
+      if (maxRetry > 0) { setTimeout(() => { restoreScrollPositions(maxRetry - 1) }, 100) }
+      return
+    }
+    if (scriptEl && sData.top > 0) { scriptEl.scrollTop = sData.top }
+    if (storyEl && bData.top > 0) { storyEl.scrollTop = bData.top }
+  } catch {}
+}
+
+// 下载
+function downloadScript(type) {
+  const record = type === 'script' ? scriptRecord.value : storyboardRecord.value
+  const content = type === 'script' ? scriptDraft.value : storyboardDraft.value
+  if (!record) return
+  const blob = new Blob([content || ''], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = (activeShow.value || 'script') + '_' + (type === 'script' ? '剧本' : '分镜') + '.txt'
+  document.body.appendChild(a); a.click(); document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  ElMessage.success('已下载')
+}
+
+function onScriptEdit(type, val) {
+  const record = type === 'script' ? scriptRecord.value : storyboardRecord.value
+  if (!record) return
+  saveStatus.value = 'saving'
+  if (saveTimer) clearTimeout(saveTimer)
+  const seq = ++autoSaveSeq
+  // 乐观更新本地内存
+  const idx = showScripts.value.findIndex(s => s.id === record.id)
+  if (idx >= 0) showScripts.value[idx] = { ...record, content: val }
+  saveTimer = setTimeout(async () => {
+    await api.scripts.update(record.id, { ...record, content: val })
+    if (seq === autoSaveSeq) saveStatus.value = 'saved'
+  }, 1500)
+}
+
+function uploadScriptFile(type) {
+  if (type === 'script') scriptFileInput.value?.click()
+  else storyboardFileInput.value?.click()
+}
+
+async function onScriptFileChange(e, type) {
+  const file = e.target.files?.[0]; e.target.value = ''
+  if (!file) return
+  const record = type === 'script' ? scriptRecord.value : storyboardRecord.value; if (!record) return
+  scriptUploading.value = true
+  try {
+    const formData = new FormData(); formData.append('file', file)
+    const token = localStorage.getItem('pan_token') || ''
+    const res = await fetch('/api/scripts/' + record.id + '/upload', {
+      method: 'POST', headers: { 'X-Auth-Token': token }, body: formData
+    })
+    const data = await res.json()
+    if (data.success) {
+      await loadShowScripts()
+      if (type === 'script') scriptDraft.value = scriptRecord.value?.content || ''
+      else storyboardDraft.value = storyboardRecord.value?.content || ''
+      ElMessage.success('内容已提取')
+    } else { ElMessage.error(data.error || '提取失败') }
+  } catch (e) { ElMessage.error('上传失败: ' + e.message) }
+  scriptUploading.value = false
+}
+
+async function loadShowScripts() {
+  const res = await api.scripts.list()
+  if (res.success) {
+    showScripts.value = res.data
+    const savedShow = localStorage.getItem('script_activeShow')
+    if (savedShow && showList.value.includes(savedShow)) {
+      activeShow.value = savedShow
+    } else if (!activeShow.value || !showList.value.includes(activeShow.value)) {
+      activeShow.value = showList.value[0] || ''
+    }
+    // 恢复内容和滚动位置
+    if (activeShow.value) {
+      await nextTick()
+      scriptDraft.value = scriptRecord.value?.content || ''
+      storyboardDraft.value = storyboardRecord.value?.content || ''
+      await nextTick()
+      setTimeout(() => { restoreScrollPositions() }, 250)
+    }
+  }
+}
+
+// 保留旧 lib 兼容
 const libItems = ref([])
 const libSearch = ref('')
 const libUploadOpen = ref(false)
@@ -934,7 +1087,9 @@ const DEFAULT_STEPS = [
 const pmtSteps = ref([...DEFAULT_STEPS])
 const prompts = ref([])
 const pmtActiveStep = ref('')
-const pmtExpandedId = ref(null)
+const pmtActiveId = ref(null)
+
+const pmtActiveItem = computed(() => prompts.value.find(p => p.id === pmtActiveId.value) || null)
 const pmtDialogOpen = ref(false)
 const pmtIsEditing = ref(false)
 const pmtEditingId = ref(null)
@@ -974,9 +1129,8 @@ function pmtStepColor(key) {
 }
 function pmtPreview(content) {
   if (!content) return '(空内容)'
-  return content.replace(/\n/g, ' ').substring(0, 120) + (content.length > 120 ? '…' : '')
+  return content.substring(0, 100).replace(/\n/g, ' ') + (content.length > 100 ? '…' : '')
 }
-function pmtToggleExpand(id) { pmtExpandedId.value = pmtExpandedId.value === id ? null : id }
 
 async function pmtDoCopy(p) {
   try { await navigator.clipboard.writeText(p.content || ''); ElMessage.success('已复制到剪贴板') }
@@ -1016,7 +1170,7 @@ async function pmtDoDelete() {
 }
 async function pmtDeleteCard(p) {
   try { await ElMessageBox.confirm(`确定删除「${p.title}」？`, '确认删除', { type: 'warning' }) } catch { return }
-  try { const res = await api.prompts.delete(p.id); if (res.success) { ElMessage.success('已删除'); loadPrompts() } else ElMessage.error('删除失败') } catch { ElMessage.error('删除失败') }
+  try { const res = await api.prompts.delete(p.id); if (res.success) { ElMessage.success('已删除'); if (pmtActiveId.value === p.id) pmtActiveId.value = null; loadPrompts() } else ElMessage.error('删除失败') } catch { ElMessage.error('删除失败') }
 }
 
 // 拖拽排序
@@ -1044,6 +1198,14 @@ async function pmtDrop(e, idx) {
 function pmtDragEnd() { pmtDragIdx.value = -1; pmtDragOverIdx.value = -1 }
 
 function pmtSortChange() { /* computed 自动响应 */ }
+
+// 选中变化时自动选第一个
+watch(() => pmtFiltered.value, (list) => {
+  if (list.length && (!pmtActiveId.value || !list.find(p => p.id === pmtActiveId.value))) {
+    pmtActiveId.value = list[0]?.id || null
+  }
+})
+watch(pmtActiveStep, () => { pmtActiveId.value = null; nextTick(() => { if (pmtFiltered.value.length) pmtActiveId.value = pmtFiltered.value[0].id }) })
 
 // 步骤管理
 function pmtOpenStepManager() {
@@ -1097,16 +1259,17 @@ async function loadPromptSteps() {
   }
 }
 
-onMounted(() => { loadAssets(); loadLib(); loadPromptSteps().then(() => loadPrompts()); document.addEventListener("keydown", onKeyDown) })
-onUnmounted(() => { document.removeEventListener("keydown", onKeyDown) })
+function onBeforeUnload() { saveScrollPositions(); localStorage.setItem('script_activeShow', activeShow.value || '') }
+onMounted(() => { loadAssets(); loadLib(); loadShowScripts(); loadPromptSteps().then(() => loadPrompts()); document.addEventListener("keydown", onKeyDown); window.addEventListener("beforeunload", onBeforeUnload) })
+onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeShow', activeShow.value || ''); document.removeEventListener("keydown", onKeyDown); window.removeEventListener("beforeunload", onBeforeUnload) })
 </script>
 
 <style scoped>
-.assets-page { animation: fadeIn .3s ease; }
+.assets-page { animation: fadeIn .3s ease; display:flex; flex-direction:column; height:100%; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
 
 /* ===== 页头 + Tab ===== */
-.page-header { margin-bottom:24px; }
+.page-header { margin-bottom:24px; flex-shrink:0; }
 .page-header-top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; }
 .page-header h2 { font-size:22px; font-weight:700; display:flex; align-items:center; gap:8px; margin:0; }
 .page-header .sub { font-size:13px; color:#6b7280; margin-top:4px; }
@@ -1124,7 +1287,86 @@ onUnmounted(() => { document.removeEventListener("keydown", onKeyDown) })
 .tab-btn.active .tab-n { background: #c7d2fe; color: #4338ca; }
 
 /* ===== 通用工具栏 ===== */
-.assets-toolbar, .library-toolbar { display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; padding:12px 18px; background:#fff; border-radius:14px; border:1px solid #e5e7eb; box-shadow:0 1px 3px rgba(0,0,0,.03); }
+.assets-toolbar, .library-toolbar { display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; padding:12px 18px; background:#fff; border-radius:14px; border:1px solid #e5e7eb; box-shadow:0 1px 3px rgba(0,0,0,.03); flex-shrink:0; }
+.toolbar-left, .toolbar-center, .toolbar-right { display:flex; align-items:center; gap:10px; }
+.toolbar-center { flex:1; }
+.toolbar-left { flex-shrink:0; }
+.toolbar-right { flex-shrink:0; }
+
+/* ===== 剧本与分镜 ===== */
+.scripts-toolbar {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:16px; gap:12px; flex-wrap:wrap; flex-shrink:0;
+}
+.scripts-shows-bar { display:flex; gap:8px; flex-wrap:wrap; flex:1; }
+.show-pill {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 16px; border-radius:10px;
+  border:1.5px solid #e5e7eb; background:#fff;
+  font-size:13px; font-weight:600; color:#374151;
+  cursor:pointer; transition:all .15s; user-select:none;
+}
+.show-pill:hover { border-color:#6366f1; background:#f5f3ff; color:#6366f1; }
+.show-pill.active { background:#6366f1; border-color:#6366f1; color:#fff; }
+.show-pill.active .show-pill-del { opacity:.6; }
+.show-pill.active .show-pill-del:hover { opacity:1; background:rgba(255,255,255,.2); }
+.show-pill--add {
+  border-style:dashed; color:#9ca3af; font-weight:500;
+}
+.show-pill--add:hover { color:#6366f1; border-color:#6366f1; }
+.show-pill-del {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:18px; height:18px; border-radius:50%; margin-left:2px;
+  opacity:0; transition:all .12s;
+}
+.show-pill:hover .show-pill-del { opacity:.4; }
+.show-pill-del:hover { opacity:1 !important; background:#fee2e2; color:#ef4444 !important; }
+
+.scripts-toolbar-right { display:flex; align-items:center; gap:12px; flex-shrink:0; }
+.scripts-save-status {
+  display:flex; align-items:center; gap:6px;
+  font-size:12px; font-weight:600; color:#6b7280;
+}
+.save-dot { width:7px; height:7px; border-radius:50%; background:#d1d5db; }
+.save-dot.saving { background:#f59e0b; animation:pulse 1s infinite; }
+.save-dot.saved { background:#10b981; }
+
+.scripts-edit-panels { display:grid; grid-template-columns:1fr 1fr; gap:16px; flex:1; min-height:0; }
+.script-panel {
+  background:#fff; border:1px solid #e5e7eb; border-radius:14px;
+  overflow:hidden; display:flex; flex-direction:column; min-height:0;
+  box-shadow:0 1px 3px rgba(0,0,0,.04);
+}
+.panel-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 18px; background:#fafafa; border-bottom:1px solid #f3f4f6;
+}
+.panel-title {
+  font-size:14px; font-weight:700; color:#1f2937;
+  display:flex; align-items:center; gap:8px;
+}
+.panel-actions { display:flex; gap:6px; }
+
+.script-native-textarea {
+  flex:1; width:100%; min-height:0;
+  border:none; outline:none; resize:none;
+  font-size:14px; line-height:1.8; padding:16px 18px;
+  color:#374151; font-family:'PingFang SC','Microsoft YaHei',sans-serif;
+  background:#fff; overflow-y:auto;
+}
+.script-native-textarea::placeholder { color:#c7d2fe; }
+
+.script-textarea { flex:1; }
+.script-textarea :deep(.el-textarea__inner) {
+  border:none !important; border-radius:0 !important;
+  min-height:420px !important; resize:vertical;
+  font-size:14px; line-height:1.8; padding:16px 18px;
+  color:#374151; font-family:'PingFang SC','Microsoft YaHei',sans-serif;
+  box-shadow:none !important;
+}
+.script-textarea :deep(.el-textarea__inner):focus { box-shadow:none !important; }
+
+@media (max-width:768px) { .scripts-edit-panels { grid-template-columns:1fr; } }
 .toolbar-left { display:flex; align-items:center; gap:10px; }
 .toolbar-center { flex:1; display:flex; justify-content:center; }
 .toolbar-right { display:flex; align-items:center; gap:10px; margin-left:auto; }
@@ -1329,16 +1571,17 @@ onUnmounted(() => { document.removeEventListener("keydown", onKeyDown) })
 .reader-fade-enter-from, .reader-fade-leave-to { opacity:0; }
 
 /* ===== AI提示词 ===== */
-.prompts-layout { display:flex; gap:20px; min-height:500px; }
+.prompts-layout { display:flex; gap:20px; flex:1; min-height:0; }
 
 /* 左侧导航 */
 .prompts-sidebar {
   width:220px; flex-shrink:0; background:#fff; border:1px solid #e5e7eb; border-radius:14px;
   padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.03);
+  display:flex; flex-direction:column; overflow:hidden;
 }
-.sidebar-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.sidebar-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-shrink:0; }
 .sidebar-header h3 { margin:0; font-size:14px; font-weight:700; color:#374151; }
-.sidebar-list { display:flex; flex-direction:column; gap:4px; }
+.sidebar-list { display:flex; flex-direction:column; gap:4px; overflow-y:auto; flex:1; }
 .sidebar-step {
   display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px;
   cursor:pointer; transition:all 0.15s; font-size:13px; font-weight:600; color:#6b7280;
@@ -1352,43 +1595,71 @@ onUnmounted(() => { document.removeEventListener("keydown", onKeyDown) })
 .sidebar-step.active .sidebar-step-n { background:color-mix(in srgb, var(--st-color) 20%, #fff); color:var(--st-color); }
 
 /* 右侧主区域 */
-.prompts-main { flex:1; min-width:0; }
-.prompts-topbar { display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; padding:12px 18px; background:#fff; border-radius:14px; border:1px solid #e5e7eb; box-shadow:0 1px 3px rgba(0,0,0,.03); }
+.prompts-main { flex:1; min-width:0; display:flex; flex-direction:column; min-height:0; }
+.prompts-topbar { display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; padding:12px 18px; background:#fff; border-radius:14px; border:1px solid #e5e7eb; box-shadow:0 1px 3px rgba(0,0,0,.03); flex-shrink:0; }
 
-/* 提示词卡片 */
-.pmt-card-list { display:flex; flex-direction:column; gap:10px; }
-.pmt-card {
-  background:#fff; border:1px solid #e5e7eb; border-radius:14px; overflow:hidden;
-  transition:all 0.2s; box-shadow:0 1px 3px rgba(0,0,0,.04);
-  display:flex; align-items:stretch;
+/* 提示词双栏布局 */
+.pmt-split-layout { display:flex; gap:0; flex:1; min-height:0; }
+
+/* 左侧列表面板 */
+.pmt-list-panel {
+  width:320px; flex-shrink:0; overflow-y:auto; border-right:1px solid #e5e7eb;
+  background:#fff; border-radius:14px 0 0 14px;
+  display:flex; flex-direction:column; gap:2px; padding:4px;
 }
-.pmt-card:hover { border-color:#c7d2fe; box-shadow:0 4px 16px rgba(0,0,0,.06); }
-.pmt-card.expanded { border-color:var(--st-color); box-shadow:0 0 0 2px color-mix(in srgb, var(--st-color) 15%, transparent); }
-.pmt-card.drag-over { border-color:var(--st-color); background:#fafaff; transform:scale(1.01); }
-
-.pmt-card-drag {
-  display:flex; align-items:center; padding:0 10px; color:#d1d5db; cursor:grab; flex-shrink:0;
-  transition:color 0.15s; border-right:1px solid #f3f4f6;
+.pmt-item {
+  display:flex; align-items:flex-start; gap:8px;
+  padding:12px 14px; border-radius:10px; cursor:pointer;
+  transition:all .12s; border:1px solid transparent;
 }
-.pmt-card-drag:hover { color:#6366f1; }
-.pmt-card-drag:active { cursor:grabbing; }
+.pmt-item:hover { background:#f9fafb; border-color:#e5e7eb; }
+.pmt-item.active { background:#eef2ff; border-color:#c7d2fe; }
+.pmt-item.drag-over { border-color:var(--st-color); background:#fafaff; }
 
-.pmt-collapsed { display:flex; align-items:stretch; cursor:pointer; flex:1; min-width:0; }
-.pmt-accent { width:4px; flex-shrink:0; }
-.pmt-body { flex:1; padding:16px 18px; min-width:0; }
-.pmt-header { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
-.pmt-title { font-size:15px; font-weight:700; color:#1f2937; margin:0; }
-.pmt-tags { display:flex; gap:6px; flex-wrap:wrap; }
-.pmt-tag { font-size:10px; padding:2px 8px; border-radius:5px; background:#eef2ff; color:#6366f1; font-weight:600; }
-.pmt-preview { font-size:12px; color:#9ca3af; line-height:1.5; margin:0; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-.pmt-chevron { display:flex; align-items:center; padding:0 12px; color:#9ca3af; flex-shrink:0; }
-.pmt-actions-row { display:flex; align-items:center; gap:6px; padding:16px 12px 16px 4px; flex-shrink:0; }
+.pmt-item-drag {
+  color:#d1d5db; cursor:grab; flex-shrink:0; padding-top:2px;
+  opacity:0; transition:opacity .12s;
+}
+.pmt-item:hover .pmt-item-drag { opacity:1; }
+.pmt-item-drag:hover { color:#6366f1; }
 
-.pmt-expanded { border-top:1px solid #e5e7eb; background:#fafafa; width:100%; }
-.pmt-exp-toolbar { display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:color-mix(in srgb, var(--st-color) 8%, #fff); border-bottom:1px solid #e0e7ff; }
-.pmt-exp-title { font-size:14px; font-weight:700; color:#374151; }
-.pmt-exp-content { margin:0; padding:20px 24px; font-size:13px; line-height:1.7; color:#374151; font-family:'Courier New','PingFang SC',monospace; white-space:pre-wrap; word-wrap:break-word; max-height:600px; overflow-y:auto; background:#fff; }
+.pmt-item-body { flex:1; min-width:0; }
+.pmt-item-title { font-size:14px; font-weight:700; color:#1f2937; margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pmt-item.active .pmt-item-title { color:#4338ca; }
+.pmt-item-preview { font-size:11px; color:#9ca3af; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pmt-item-meta { display:flex; gap:3px; flex-shrink:0; padding-top:1px; }
+.pmt-item-tag {
+  font-size:9px; padding:1px 5px; border-radius:3px; font-weight:600;
+  background:#f3f4f6; color:#6b7280; white-space:nowrap;
+}
 
+/* 右侧阅读面板 */
+.pmt-reader-panel {
+  flex:1; min-width:0; display:flex; flex-direction:column;
+  background:#fff; border-radius:0 14px 14px 0;
+}
+.pmt-reader-empty {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background:#fff; border-radius:0 14px 14px 0; color:#d1d5db; gap:12px;
+  font-size:14px; color:#9ca3af;
+}
+.pmt-reader-toolbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 20px; border-bottom:1px solid #f3f4f6;
+  gap:12px; flex-wrap:wrap; flex-shrink:0;
+}
+.pmt-reader-title { font-size:16px; font-weight:700; color:#1f2937; }
+.pmt-reader-actions { display:flex; gap:6px; flex-shrink:0; }
+.pmt-reader-tags { padding:8px 20px 0; display:flex; gap:6px; flex-wrap:wrap; flex-shrink:0; }
+.pmt-reader-content-wrap { flex:1; overflow-y:auto; padding:4px 0; }
+.pmt-reader-content {
+  margin:0; padding:16px 24px 32px;
+  font-size:15px; line-height:2.0; color:#1f2937;
+  font-family:'PingFang SC','Microsoft YaHei',sans-serif;
+  white-space:pre-wrap; word-wrap:break-word;
+}
+
+/* keep slide transitions for step manager */
 .slide-enter-active, .slide-leave-active { transition:all 0.3s ease; }
 .slide-enter-from, .slide-leave-to { opacity:0; max-height:0; }
 .slide-enter-to, .slide-leave-from { max-height:800px; }

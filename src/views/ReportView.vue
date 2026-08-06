@@ -120,10 +120,10 @@
           <span class="section-num">二</span> 每个国家明细
           <div class="sort-bar">
             <span class="sort-label">排序</span>
-            <button class="sort-btn" :class="{ active: sortMode === 'az' }" @click="sortCountries('az')">A → Z</button>
-            <button class="sort-btn" :class="{ active: sortMode === 'customer' }" @click="sortCountries('customer')">客资</button>
-            <button class="sort-btn" :class="{ active: sortMode === 'budget' }" @click="sortCountries('budget')">消耗</button>
-            <button class="sort-btn" :class="{ active: sortMode === 'grouped' }" @click="sortCountries('grouped')">拉群</button>
+            <button class="sort-btn" :class="{ active: sortMode === 'az' }" @click="sortCountries('az')">A→Z</button>
+            <button class="sort-btn" :class="{ active: sortMode === 'customer' }" @click="sortCountries('customer')">客资<span v-if="sortMode==='customer'"> ↓</span></button>
+            <button class="sort-btn" :class="{ active: sortMode === 'budget' }" @click="sortCountries('budget')">消耗<span v-if="sortMode==='budget'"> ↓</span></button>
+            <button class="sort-btn" :class="{ active: sortMode === 'grouped' }" @click="sortCountries('grouped')">拉群<span v-if="sortMode==='grouped'"> ↓</span></button>
           </div>
         </div>
 

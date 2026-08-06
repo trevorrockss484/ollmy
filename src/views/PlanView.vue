@@ -191,7 +191,7 @@
       </div>
 
       <!-- ====== 设置弹窗 ====== -->
-      <el-dialog v-model="settingsOpen" title="本周设置" width="620px" @opened="onSettingsOpened">
+      <el-dialog v-model="settingsOpen" title="本周设置" width="600px" @opened="onSettingsOpened">
         <el-alert :title="'当前编辑账号：' + (selectedAccountId ? (accounts.find(a=>a.id===selectedAccountId)||{}).name||selectedAccountId : '未选择')" type="info" :closable="false" show-icon style="margin-bottom:12px" />
         <el-form label-width="80px" size="default">
           <el-row :gutter="12">
@@ -231,7 +231,7 @@
       </el-dialog>
 
       <!-- ====== 新增周弹窗 ====== -->
-      <el-dialog v-model="newWeekOpen" title="新增周计划" width="560px" destroy-on-close>
+      <el-dialog v-model="newWeekOpen" title="新增周计划" width="600px" destroy-on-close>
         <div style="margin-bottom:14px;">
           <el-radio-group v-model="newWeekMode">
             <el-radio-button value="quick"><el-icon :size="14"><Calendar /></el-icon> 快速（下周）</el-radio-button>
@@ -807,7 +807,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 .week-selector::-webkit-scrollbar-thumb { background:#e5e7eb; border-radius:3px; }
 .week-chip {
   display:inline-flex; align-items:center; gap:8px;
-  padding:7px 14px; border-radius:10px;
+  padding:10px 16px; border-radius:10px; min-height:40px;
   border:1.5px solid #e5e7eb; background:#fff;
   cursor:pointer; transition:all .15s;
   font-size:13px; user-select:none;

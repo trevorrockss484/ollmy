@@ -469,18 +469,18 @@ onUnmounted(() => {
 
 .tc-accent { width: 3px; flex-shrink: 0; }
 
-.tc-body { padding: 10px 14px; min-width: 0; }
+.tc-body { padding: 12px 16px; min-width: 0; }
 
 .tc-top { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .tc-flag { width: 20px; height: 14px; border-radius: 2px; flex-shrink: 0; }
-.tc-name { font-size: 11px; font-weight: 700; color: #374151; flex: 1; white-space: nowrap; }
+.tc-name { font-size: 12px; font-weight: 700; color: #374151; flex: 1; white-space: nowrap; }
 .tc-gmt {
- font-size: 9px; color: #6b7280;
- background: #e5e7eb; padding: 1px 5px; border-radius: 3px;
+ font-size: 10px; color: #6b7280;
+ background: #e5e7eb; padding: 2px 5px; border-radius: 3px;
 }
 
 .tc-time {
- font-size: 26px; font-weight: 800;
+ font-size: 28px; font-weight: 800;
  font-variant-numeric: tabular-nums;
  color: #1f2937;
  letter-spacing: 1px;
@@ -488,7 +488,7 @@ onUnmounted(() => {
 }
 
 .tc-meta {
- font-size: 10px; color: #9ca3af; margin-top: 3px;
+ font-size: 11px; color: #6b7280; margin-top: 4px;
  white-space: nowrap;
 }
 
