@@ -1,5 +1,5 @@
 <template>
-  <div class="rm-page">
+  <div class="rm-page enterprise-page enterprise-page--form">
     <div class="rm-top">
       <h2><el-icon :size="22"><Key /></el-icon> 角色管理</h2>
       <el-button type="primary" @click="openAdd"><el-icon :size="14"><Plus /></el-icon> 新增角色</el-button>
@@ -137,23 +137,24 @@ const allMenus = [
   { path: '/report', label: '日报生成' },
   { path: '/history', label: '数据查询' },
   { path: '/monitor', label: '监控中心' },
-  { path: '/clock', label: '世界时钟' },
   { path: '/assets', label: 'AI资产管理' },
   { path: '/media', label: '图片素材库' },
   { path: '/video-library', label: '视频素材库' },
-  { path: '/scripts', label: '话术库' },
+
   { path: '/compress', label: '图片压缩' },
   { path: '/video-compress', label: '视频压缩' },
   { path: '/customer-stats', label: '客户统计' },
+  { path: '/logs', label: '操作日志' },
+  { path: '/settings', label: '系统设置' },
   { path: '/user-manage', label: '用户管理' },
   { path: '/role-manage', label: '角色管理' },
 ]
 
 const menuGroups = [
   { label: '数据 & 报表', items: allMenus.filter(m => ['/', '/plan', '/report', '/history', '/customer-stats'].includes(m.path)) },
-  { label: '工具 & 监控', items: allMenus.filter(m => ['/monitor', '/clock', '/compress', '/video-compress', '/scripts'].includes(m.path)) },
+  { label: '工具 & 监控', items: allMenus.filter(m => ['/monitor', '/compress', '/video-compress'].includes(m.path)) },
   { label: '资产管理', items: allMenus.filter(m => ['/assets', '/media', '/video-library'].includes(m.path)) },
-  { label: '系统管理', items: allMenus.filter(m => ['/user-manage', '/role-manage'].includes(m.path)) },
+  { label: '系统管理', items: allMenus.filter(m => ['/logs', '/settings', '/user-manage', '/role-manage'].includes(m.path)) },
 ]
 
 const menuLabels = {}
@@ -246,7 +247,8 @@ onMounted(loadRoles)
 </script>
 
 <style scoped>
-.rm-page { max-width: 860px; margin: 0 auto; }
+.rm-page { }
+.rm-top h2 { font-size:var(--text-2xl); font-weight:800; display:flex; align-items:center; gap:var(--space-3); color:var(--text-primary); letter-spacing:-.3px; }
 .rm-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
 .rm-top h2 { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
 

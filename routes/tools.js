@@ -252,7 +252,8 @@ router.post('/save', (req, res) => {
       saved.push(record);
     }
 
-    if (!saved.length) return res.status(400).json({ success: false, error: '没有有效文件可保存（临时文件可能已过期）' });
+    if (!saved.length) return res.status(400).json({ success: false, error: '没有有效文件可保存' });
+    db.logOperation('tools.saveImage', { count: saved.length }, req.user);
     res.json({ success: true, data: saved });
   } catch (e) {
     console.error('保存失败:', e);
@@ -352,6 +353,7 @@ router.delete('/saved/:id', (req, res) => {
     // 删物理文件
     const fp = path.join(SAVED_DIR, item.compressedName);
     if (fs.existsSync(fp)) fs.unlinkSync(fp);
+    db.logOperation('tools.deleteImage', { name: item.name }, req.user);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, error: '删除失败' });
@@ -640,6 +642,7 @@ router.post('/save-video', (req, res) => {
       type: 'video',
       purpose: item.purpose || 'normal',
     });
+    db.logOperation('tools.saveVideo', { name: item.name }, req.user);
     res.json({ success: true, data: [record] });
   } catch (e) { res.status(500).json({ success: false, error: '保存失败' }); }
 });
@@ -689,6 +692,7 @@ router.post('/upload-video-media', (req, res) => {
         });
         saved.push(record);
       }
+      db.logOperation('tools.uploadVideo', { count: saved.length }, req.user);
       res.json({ success: true, data: saved });
     } catch (e) { res.status(500).json({ success: false, error: '上传失败' }); }
   });
@@ -727,6 +731,7 @@ router.delete('/saved-video/:id', (req, res) => {
     if (!item) return res.status(404).json({ success: false, error: '素材不存在' });
     const fp = path.join(VIDEO_SAVED_DIR, item.compressedName);
     if (fs.existsSync(fp)) fs.unlinkSync(fp);
+    db.logOperation('tools.deleteVideo', { name: item.name }, req.user);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, error: '删除失败' }); }
 });

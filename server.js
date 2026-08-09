@@ -4,6 +4,43 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3456;
 
+// ===== 数据自动备份 =====
+const DATA_DIR = path.join(__dirname, 'database');
+const BACKUP_DIR = path.join(__dirname, 'backup');
+const DATA_FILE = path.join(DATA_DIR, 'data.json');
+const BACKUP_INTERVAL = 60 * 60 * 1000; // 每小时备份
+
+function ensureBackupDir() {
+  if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
+}
+
+function backupData() {
+  try {
+    ensureBackupDir();
+    if (!fs.existsSync(DATA_FILE)) return;
+    const now = new Date();
+    const stamp = now.getFullYear() + '-' +
+      String(now.getMonth()+1).padStart(2,'0') + '-' +
+      String(now.getDate()).padStart(2,'0') + '_' +
+      String(now.getHours()).padStart(2,'0') + '-' +
+      String(now.getMinutes()).padStart(2,'0');
+    const dest = path.join(BACKUP_DIR, 'data_' + stamp + '.json');
+    fs.copyFileSync(DATA_FILE, dest);
+    // 保留最近 48 个备份（2天）
+    const files = fs.readdirSync(BACKUP_DIR).filter(f => f.startsWith('data_')).sort();
+    while (files.length > 48) {
+      fs.unlinkSync(path.join(BACKUP_DIR, files.shift()));
+    }
+  } catch (e) {
+    console.error('数据备份失败:', e.message);
+  }
+}
+
+// 启动时立即备份一次，之后每小时
+backupData();
+setInterval(backupData, BACKUP_INTERVAL);
+console.log('✅ 数据自动备份已启用（每小时，最多保留48份）');
+
 // HTML 转义（防 XSS）
 function htmlEscape(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -55,6 +92,8 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/roles', require('./routes/roles'));
 app.use('/api/sales-persons', require('./routes/sales-persons'));
 app.use('/api/scripts', require('./routes/scripts'));
+app.use('/api/logs', require('./routes/logs'));
+app.use('/api/system', require('./routes/system'));
 
 // ===== 分享预览页（微信/社交 OG 卡片） =====
 const ogPage = ({ title, image, desc, type, width, height }) => `<!DOCTYPE html>

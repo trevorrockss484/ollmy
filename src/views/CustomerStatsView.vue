@@ -1,5 +1,5 @@
 <template>
-  <div class="cs-page">
+  <div class="cs-page enterprise-page enterprise-page--wide">
     <div class="cs-topbar">
       <div class="cs-top-left">
         <h2><span class="cs-icon-wrap"><el-icon :size="20"><DataAnalysis /></el-icon></span> 客户统计</h2>
@@ -34,17 +34,17 @@
             <span class="cs-hd-date">{{ dailyLabel }}</span>
           </header>
           <div class="cs-daily-grid">
-            <label class="cs-ditem"><span class="cs-dnum">1</span><span class="cs-dlabel">新客户</span><el-input-number v-model="form.newCustomers" :min="0" placeholder="0" class="cs-dinput" /><span class="cs-dunit">个</span></label>
-            <label class="cs-ditem"><span class="cs-dnum">2</span><span class="cs-dlabel">有回复</span><el-input-number v-model="form.repliedCustomers" :min="0" placeholder="0" class="cs-dinput" /><span class="cs-dunit">个</span></label>
-            <label class="cs-ditem"><span class="cs-dnum">3</span><span class="cs-dlabel">已登记</span><el-input-number v-model="form.registeredCustomers" :min="0" placeholder="0" class="cs-dinput" /><span class="cs-dunit">个</span></label>
-            <label class="cs-ditem"><span class="cs-dnum">4</span><span class="cs-dlabel">拉群+图</span><el-input-number v-model="form.groupedWithPlan" :min="0" placeholder="0" class="cs-dinput" /><span class="cs-dunit">个</span></label>
-            <label class="cs-ditem"><span class="cs-dnum">5</span><span class="cs-dlabel">来访</span><el-input-number v-model="form.visitingCustomers" :min="0" placeholder="0" class="cs-dinput" /><span class="cs-dunit">个</span></label>
-            <label class="cs-ditem"><span class="cs-dnum">6</span><span class="cs-dlabel">成交</span><el-input-number v-model="form.closedDeals" :min="0" placeholder="0" class="cs-dinput" /><span class="cs-dunit">个</span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#6366f1">1</span><span class="cs-dlabel">新客户</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.newCustomers" min="0" placeholder="0" class="cs-dinput-raw" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#8b5cf6">2</span><span class="cs-dlabel">有回复</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.repliedCustomers" min="0" placeholder="0" class="cs-dinput-raw" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#06b6d4">3</span><span class="cs-dlabel">已登记</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.registeredCustomers" min="0" placeholder="0" class="cs-dinput-raw" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#10b981">4</span><span class="cs-dlabel">拉群+图</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.groupedWithPlan" min="0" placeholder="0" class="cs-dinput-raw" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#f59e0b">5</span><span class="cs-dlabel">来访</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.visitingCustomers" min="0" placeholder="0" class="cs-dinput-raw" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#ef4444">6</span><span class="cs-dlabel">成交</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.closedDeals" min="0" placeholder="0" class="cs-dinput-raw" /></span></label>
           </div>
 
           <div class="cs-bottom-row">
             <div class="cs-sales cs-sales--half">
-              <div class="cs-sales-hd"><span class="cs-dnum">7</span><span class="cs-dlabel">国家客资</span><span class="cs-sales-cnt" v-if="selectedCountries.length">{{ totalCountryCount }}个</span></div>
+              <div class="cs-sales-hd"><span class="cs-dnum" style="--c:#a78bfa">7</span><span class="cs-dlabel">国家客资</span><span class="cs-sales-cnt" v-if="selectedCountries.length">{{ totalCountryCount }}个</span></div>
               <div class="cs-sales-body">
                 <div class="cs-sales-tree">
                   <el-tree ref="countryTreeRef" :data="countryTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onCountryTreeCheck" />
@@ -59,12 +59,12 @@
                     </span>
                   </div>
                 </div>
-                <div v-else class="cs-sales-none">勾选国家</div>
+                <div v-else class="cs-sales-none">勾选国家后此处可调数量</div>
               </div>
             </div>
 
             <div class="cs-sales cs-sales--half">
-              <div class="cs-sales-hd"><span class="cs-dnum">8</span><span class="cs-dlabel">分配销售</span><span class="cs-sales-cnt" v-if="selectedSales.length">{{ selectedSales.length }}人</span></div>
+              <div class="cs-sales-hd"><span class="cs-dnum" style="--c:#f472b6">8</span><span class="cs-dlabel">分配销售</span><span class="cs-sales-cnt" v-if="selectedSales.length">{{ selectedSales.length }}人</span></div>
               <div class="cs-sales-body">
                 <div class="cs-sales-tree">
                   <el-tree ref="salesTreeRef" :data="salesTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onSalesTreeCheck" />
@@ -123,7 +123,7 @@
               <span class="cs-ht-s">{{ formatSalesText(r.salesAssignments) || '—' }}</span>
             </div>
           </div>
-          <div v-else class="cs-empty">暂无记录</div>
+          <div v-else class="cs-empty"><el-icon :size="36"><Document /></el-icon><span>暂无记录</span></div>
         </section>
       </div>
 
@@ -141,7 +141,7 @@
     <el-dialog v-model="salesManageVisible" title="销售名单" width="480px" destroy-on-close class="cs-dialog">
       <div class="cs-dlg-list">
         <div v-for="sp in salesPersons" :key="sp.id" class="cs-dlg-row"><span class="cs-dlg-name">{{ sp.name }}</span><el-tag v-if="sp.group" size="small" effect="plain" type="info">{{ sp.group }}</el-tag><span class="cs-dlg-gap"></span><el-button size="small" text type="danger" @click="deleteSalesPerson(sp)"><el-icon :size="14"><Close /></el-icon></el-button></div>
-        <div v-if="!salesPersons.length" class="cs-empty">暂未添加</div>
+        <div v-if="!salesPersons.length" class="cs-empty"><el-icon :size="36"><User /></el-icon><span>暂未添加销售</span></div>
       </div>
       <div class="cs-dlg-paste"><div class="cs-dlg-paste-label">批量添加（逗号/空格/换行分隔）</div><el-input v-model="bulkSalesInput" type="textarea" :rows="2" placeholder="袁绮媚, 陈婉镅, 丁敏" /><el-button size="small" type="primary" @click="addBulkSales" :disabled="!bulkSalesInput.trim()" class="cs-dlg-paste-btn">批量添加</el-button></div>
       <div class="cs-dlg-add"><el-input v-model="newSalesName" placeholder="名字" @keyup.enter="addSalesPerson" class="cs-dlg-add-name" /><el-input v-model="newSalesGroup" placeholder="分组" @keyup.enter="addSalesPerson" class="cs-dlg-add-group" /><el-button type="primary" @click="addSalesPerson">添加</el-button></div>
@@ -161,12 +161,10 @@
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api, todayStr } from '../api'
+import { countryTreeData, allLeafKeys as allCountryKeys } from '../data/countryTree'
+import { ACCOUNTS } from '../data/accounts'
 
-const accounts = ref([
-  { id: 'lisa-office', name: '莉莎办公家具' },
-  { id: 'zhenshan-office', name: '甄珊办公家具' },
-  { id: 'xiege-office', name: '谢哥办公家具' },
-])
+const accounts = ref(ACCOUNTS)
 const accountId = ref(localStorage.getItem('cs_accountId') || accounts.value[0].id)
 const formDate = ref(todayStr())
 const existingId = ref(null)
@@ -183,30 +181,7 @@ const parseResults = ref([])
 const salesTreeRef = ref(null)
 const countryTreeRef = ref(null)
 
-// 国家电话区号
-const countryPhone = {
-  '印度尼西亚':'+62','越南':'+84','菲律宾':'+63','泰国':'+66','马来西亚':'+60','新加坡':'+65','缅甸':'+95','柬埔寨':'+855','老挝':'+856','文莱':'+673',
-  '印度':'+91','巴基斯坦':'+92','孟加拉国':'+880','斯里兰卡':'+94','尼泊尔':'+977',
-  '尼日利亚':'+234','埃塞俄比亚':'+251','南非':'+27','肯尼亚':'+254','加纳':'+233','埃及':'+20','坦桑尼亚':'+255','乌干达':'+256','摩洛哥':'+212','阿尔及利亚':'+213','安哥拉':'+244','科特迪瓦':'+225',
-  '阿联酋':'+971','沙特阿拉伯':'+966','土耳其':'+90','卡塔尔':'+974','阿曼':'+968','科威特':'+965','巴林':'+973','伊拉克':'+964','约旦':'+962','黎巴嫩':'+961','以色列':'+972','伊朗':'+98','也门':'+967',
-  '中国':'+86','日本':'+81','韩国':'+82','蒙古':'+976',
-  '巴西':'+55','墨西哥':'+52','哥伦比亚':'+57','阿根廷':'+54','智利':'+56','秘鲁':'+51','厄瓜多尔':'+593','委内瑞拉':'+58',
-  '美国':'+1','英国':'+44','德国':'+49','法国':'+33','澳大利亚':'+61','俄罗斯':'+7','加拿大':'+1','意大利':'+39','西班牙':'+34','荷兰':'+31','波兰':'+48','乌克兰':'+380',
-  '哈萨克斯坦':'+7','乌兹别克斯坦':'+998','吉尔吉斯斯坦':'+996'
-}
-function countryLabel(name) { const code = countryPhone[name]; return code ? name + ' ' + code : name }
-// 73国国家树（含电话区号）
-const countryTreeData = [
-  { key:"se-asia", label:"东南亚", children:[{key:"印度尼西亚",label:countryLabel("印度尼西亚")},{key:"越南",label:countryLabel("越南")},{key:"菲律宾",label:countryLabel("菲律宾")},{key:"泰国",label:countryLabel("泰国")},{key:"马来西亚",label:countryLabel("马来西亚")},{key:"新加坡",label:countryLabel("新加坡")},{key:"缅甸",label:countryLabel("缅甸")},{key:"柬埔寨",label:countryLabel("柬埔寨")},{key:"老挝",label:countryLabel("老挝")},{key:"文莱",label:countryLabel("文莱")}]},
-  { key:"s-asia", label:"南亚", children:[{key:"印度",label:countryLabel("印度")},{key:"巴基斯坦",label:countryLabel("巴基斯坦")},{key:"孟加拉国",label:countryLabel("孟加拉国")},{key:"斯里兰卡",label:countryLabel("斯里兰卡")},{key:"尼泊尔",label:countryLabel("尼泊尔")}]},
-  { key:"africa", label:"非洲", children:[{key:"尼日利亚",label:countryLabel("尼日利亚")},{key:"埃塞俄比亚",label:countryLabel("埃塞俄比亚")},{key:"南非",label:countryLabel("南非")},{key:"肯尼亚",label:countryLabel("肯尼亚")},{key:"加纳",label:countryLabel("加纳")},{key:"埃及",label:countryLabel("埃及")},{key:"坦桑尼亚",label:countryLabel("坦桑尼亚")},{key:"乌干达",label:countryLabel("乌干达")},{key:"摩洛哥",label:countryLabel("摩洛哥")},{key:"阿尔及利亚",label:countryLabel("阿尔及利亚")},{key:"安哥拉",label:countryLabel("安哥拉")},{key:"科特迪瓦",label:countryLabel("科特迪瓦")}]},
-  { key:"mid-east", label:"中东", children:[{key:"阿联酋",label:countryLabel("阿联酋")},{key:"沙特阿拉伯",label:countryLabel("沙特阿拉伯")},{key:"土耳其",label:countryLabel("土耳其")},{key:"卡塔尔",label:countryLabel("卡塔尔")},{key:"阿曼",label:countryLabel("阿曼")},{key:"科威特",label:countryLabel("科威特")},{key:"巴林",label:countryLabel("巴林")},{key:"伊拉克",label:countryLabel("伊拉克")},{key:"约旦",label:countryLabel("约旦")},{key:"黎巴嫩",label:countryLabel("黎巴嫩")},{key:"以色列",label:countryLabel("以色列")},{key:"伊朗",label:countryLabel("伊朗")},{key:"也门",label:countryLabel("也门")}]},
-  { key:"e-asia", label:"东亚", children:[{key:"中国",label:countryLabel("中国")},{key:"日本",label:countryLabel("日本")},{key:"韩国",label:countryLabel("韩国")},{key:"蒙古",label:countryLabel("蒙古")}]},
-  { key:"latam", label:"拉美", children:[{key:"巴西",label:countryLabel("巴西")},{key:"墨西哥",label:countryLabel("墨西哥")},{key:"哥伦比亚",label:countryLabel("哥伦比亚")},{key:"阿根廷",label:countryLabel("阿根廷")},{key:"智利",label:countryLabel("智利")},{key:"秘鲁",label:countryLabel("秘鲁")},{key:"厄瓜多尔",label:countryLabel("厄瓜多尔")},{key:"委内瑞拉",label:countryLabel("委内瑞拉")}]},
-  { key:"emea", label:"欧美", children:[{key:"美国",label:countryLabel("美国")},{key:"英国",label:countryLabel("英国")},{key:"德国",label:countryLabel("德国")},{key:"法国",label:countryLabel("法国")},{key:"澳大利亚",label:countryLabel("澳大利亚")},{key:"俄罗斯",label:countryLabel("俄罗斯")},{key:"加拿大",label:countryLabel("加拿大")},{key:"意大利",label:countryLabel("意大利")},{key:"西班牙",label:countryLabel("西班牙")},{key:"荷兰",label:countryLabel("荷兰")},{key:"波兰",label:countryLabel("波兰")},{key:"乌克兰",label:countryLabel("乌克兰")}]},
-  { key:"central-asia", label:"中亚", children:[{key:"哈萨克斯坦",label:countryLabel("哈萨克斯坦")},{key:"乌兹别克斯坦",label:countryLabel("乌兹别克斯坦")},{key:"吉尔吉斯斯坦",label:countryLabel("吉尔吉斯斯坦")}]}
-]
-const allCountryKeys = countryTreeData.flatMap(g => g.children.map(c => c.key))
+// 国家数据（共享模块：src/data/countryTree.js）
 
 
 const defaultForm = () => ({
@@ -319,7 +294,8 @@ async function saveData(silent) {
     const payload = { date: d, accountId: accountId.value, accountName: acc.name, newCustomers: form.newCustomers || 0, repliedCustomers: form.repliedCustomers || 0, registeredCustomers: form.registeredCustomers || 0, groupedWithPlan: form.groupedWithPlan || 0, visitingCustomers: form.visitingCustomers || 0, closedDeals: form.closedDeals || 0, salesAssignments: selectedSales.value.filter(s => s.name), countryBreakdown: selectedCountries.value.filter(c => c.country) }
     const res = await api.customerStats.save(payload)
     if (res.success) { existingId.value = res.data.id; saveMsg.value = silent ? '已自动保存' : '已保存'; saveOk.value = true; autoSaveSkip = true; await refreshMonthly(); autoSaveSkip = false } else { saveMsg.value = '❌ ' + (res.error || '未知错误'); saveOk.value = false }
-    if (silent) { setTimeout(() => { if (saveMsg.value === '已自动保存') saveMsg.value = '' }, 2000) }
+    const currentMsg = saveMsg.value
+    setTimeout(() => { if (saveMsg.value === currentMsg) saveMsg.value = '' }, 2500)
   } catch (e) { saveMsg.value = '❌ ' + e.message; saveOk.value = false }
 }
 
@@ -387,7 +363,8 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 </script>
 
 <style scoped>
-.cs-page { --c-bg:#f7f8fa;--c-card:#fff;--c-border:#eaecf0;--c-accent:#5b5fe3;--c-accent-light:#edeefc;--c-text:#1a1d2e;--c-soft:#6b7084;--c-muted:#9ba0b4;--c-good:#12b886;--c-bad:#e5484d;--r:14px;--rs:10px;max-width:1360px;margin:0 auto;padding-bottom:48px; }
+.cs-page { --c-bg:#f7f8fa;--c-card:#fff;--c-border:#eaecf0;--c-accent:#5b5fe3;--c-accent-light:#edeefc;--c-text:#1a1d2e;--c-soft:#6b7084;--c-muted:#9ba0b4;--c-good:#12b886;--c-bad:#e5484d;--r:14px;--rs:10px;}
+.cs-main{flex:1;min-height:0;display:flex;gap:18px;align-items:flex-start;}
 
 /* Topbar */
 .cs-topbar{display:flex;justify-content:space-between;align-items:center;padding:18px 0 14px;gap:12px;flex-wrap:wrap;}
@@ -396,7 +373,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-icon-wrap{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:var(--c-accent-light);color:var(--c-accent);}
 .cs-date-pick{width:148px;}.cs-account-sel{width:176px;}
 .cs-badge{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;letter-spacing:.2px;}
-.cs-badge::before{content:'·';font-size:18px;line-height:0;}
+.cs-badge::before{content:'●';font-size:8px;}
 .cs-badge--ok{background:#ecfdf3;color:#0e6245;}
 .cs-badge--new{background:var(--c-bg);color:var(--c-muted);}
 .cs-ghost-btn{border:1.5px solid var(--c-border);color:var(--c-soft);font-weight:600;border-radius:8px;font-size:13px;}
@@ -413,9 +390,8 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-fade-enter-from,.cs-fade-leave-to{opacity:0;}
 
 /* Layout */
-.cs-main{display:flex;gap:18px;align-items:flex-start;}
 .cs-left{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;}
-.cs-right{width:480px;flex-shrink:0;position:sticky;top:18px;display:flex;flex-direction:column;gap:14px;}
+.cs-right{width:480px;flex-shrink:0;align-self:flex-start;position:sticky;top:18px;display:flex;flex-direction:column;gap:14px;}
 
 /* Card */
 .cs-card{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r);padding:22px 24px;}
@@ -429,41 +405,29 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 
 /* Daily */
 .cs-daily-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px 24px;margin-bottom:18px;}
-.cs-ditem{display:flex;align-items:center;gap:10px;cursor:text;}
-.cs-dnum{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:var(--c-accent-light);color:var(--c-accent);font-size:11px;font-weight:700;flex-shrink:0;}
-.cs-dlabel{font-size:14px;font-weight:600;color:var(--c-soft);white-space:nowrap;width:80px;flex-shrink:0;}
-.cs-dunit{font-size:12px;font-weight:500;color:var(--c-muted);}
+.cs-ditem{display:flex;align-items:center;gap:8px;}
+.cs-dnum{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;background:color-mix(in srgb,var(--c) 15%,#fff);color:var(--c);font-size:11px;font-weight:800;flex-shrink:0;}
+.cs-dlabel{font-size:13px;font-weight:700;color:var(--c-soft);white-space:nowrap;width:68px;flex-shrink:0;}
+.cs-dinput-wrap{flex:1;max-width:140px;}
+.cs-dinput-raw{width:100%;height:42px;border:2px solid #e5e7eb;border-radius:10px;background:#fafbfc;text-align:center;font-size:18px;font-weight:700;color:var(--c-text);outline:none;transition:all .15s;font-family:inherit;padding:0 8px;}
+.cs-dinput-raw:hover{border-color:#c7d2fe;}
+.cs-dinput-raw:focus{border-color:var(--c-accent);background:var(--surface-input);box-shadow:0 0 0 3px color-mix(in srgb,var(--c-accent) 15%,transparent);}
 
 /* Sales */
-
 .cs-sales-hd{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
 .cs-sales-cnt{font-size:12px;font-weight:600;color:var(--c-accent);margin-left:auto;}
-/* 7-8 并排 */
 .cs-bottom-row{display:flex;gap:16px;border-top:1px solid var(--c-accent-light);padding-top:14px;}
 .cs-sales--half{flex:1;min-width:0;border-top:none;padding-top:0;}
-
 .cs-sales-body{display:flex;gap:10px;}
-.cs-sales-tree{width:230px;flex-shrink:0;border:1px solid var(--c-border);border-radius:var(--rs);padding:4px;background:var(--c-bg);max-height:200px;overflow-y:auto;}
-.cs-sales-chips{flex:1;display:flex;flex-direction:column;gap:4px;}
-/* Chip rows + stepper */
-.cs-dinput{width:110px;}
-.cs-dinput :deep(.el-input__wrapper){background:#fff;border-radius:8px;box-shadow:inset 0 0 0 1.5px #d1d5db;padding:2px 10px;transition:all .15s;}
-.cs-dinput :deep(.el-input__wrapper:hover){box-shadow:inset 0 0 0 2px var(--c-accent);}
-.cs-dinput :deep(.el-input__wrapper.is-focus){box-shadow:inset 0 0 0 2.5px var(--c-accent)!important;}
-.cs-dinput :deep(.el-input__inner){font-size:17px;font-weight:700;color:var(--c-text);height:38px;}
-
-.cs-stepper{display:inline-flex;align-items:center;gap:0;border-radius:6px;overflow:hidden;border:1px solid var(--c-border);}
-.cs-step-btn{width:24px;height:26px;border:none;background:#f9fafb;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--c-soft);cursor:pointer;transition:all .12s;padding:0;line-height:1;}
-.cs-step-btn:hover{background:var(--c-accent-light);color:var(--c-accent);}
-.cs-step-btn--plus{color:var(--c-good);}
-.cs-step-btn--plus:hover{background:#ecfdf3;color:#0e6245;}
-.cs-step-val{min-width:32px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--c-text);border:none;outline:none;background:#fff;padding:0 4px;font-family:inherit;}
+.cs-sales-tree{flex:1;min-width:0;border:1px solid var(--c-border);border-radius:var(--rs);padding:4px;background:var(--c-bg);max-height:200px;overflow-y:auto;}
+.cs-sales-tree :deep(.el-tree-node__label){overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cs-sales-chips{flex:1;display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto;}
+.cs-sales-none{display:flex;align-items:center;justify-content:center;padding:16px;color:var(--c-muted);font-size:12px;border:1px dashed var(--c-border);border-radius:var(--rs);text-align:center;}
 
 .cs-chip-row{display:flex;align-items:center;gap:4px;flex-shrink:0;justify-content:space-between;width:100%;}
-.cs-stepper{display:inline-flex;align-items:center;gap:0;border-radius:6px;overflow:hidden;border:1px solid var(--c-border);}
-
+.cs-stepper{display:inline-flex;align-items:center;gap:0;border-radius:6px;overflow:hidden;border:1px solid var(--c-border);flex-shrink:0;}
 .cs-step-btn{
-  width:28px;height:30px;border:none;background:#f9fafb;
+  width:30px;height:32px;border:none;background:#f9fafb;
   display:flex;align-items:center;justify-content:center;
   font-size:15px;font-weight:700;color:var(--c-soft);cursor:pointer;
   transition:all .12s;padding:0;line-height:1;
@@ -471,13 +435,15 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-step-btn:hover{background:var(--c-accent-light);color:var(--c-accent);}
 .cs-step-btn--plus{color:var(--c-good);}
 .cs-step-btn--plus:hover{background:#ecfdf3;color:#0e6245;}
+.cs-step-val{min-width:34px;height:32px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--c-text);border:none;outline:none;background:var(--surface-card);padding:0 4px;font-family:inherit;}
+
 
 
 /* History */
-.cs-ht{border:1px solid var(--c-border);border-radius:var(--rs);overflow:hidden;}
-.cs-ht-row{display:grid;grid-template-columns:88px 1fr 1fr 1fr 1fr 1fr 1fr 150px;align-items:center;gap:6px;padding:13px 16px;border-bottom:1px solid #f3f4f6;font-size:14px;font-weight:600;color:var(--c-soft);}
-.cs-ht-row--head{background:#f9fafb;font-size:12px;color:var(--c-muted);padding:9px 16px;letter-spacing:.2px;}
-.cs-ht-row:not(.cs-ht-row--head){cursor:pointer;}
+.cs-ht{border:1px solid var(--c-border);border-radius:var(--rs);overflow:hidden auto;}
+.cs-ht-row{display:grid;grid-template-columns:88px repeat(6,1fr) 150px;align-items:center;gap:6px;padding:13px 16px;border-bottom:1px solid #f3f4f6;font-size:14px;font-weight:600;color:var(--c-soft);}
+.cs-ht-row--head{background:#f9fafb;font-size:12px;color:var(--c-muted);padding:9px 16px;letter-spacing:.2px;font-weight:700;}
+.cs-ht-row:not(.cs-ht-row--head){cursor:pointer;transition:all .12s;}
 .cs-ht-row:nth-child(even):not(.cs-ht-row--head){background:#fcfcfd;}
 .cs-ht-row:hover:not(.cs-ht-row--head){background:var(--c-accent-light);box-shadow:inset 3px 0 0 var(--c-accent);}
 .cs-ht-row:last-of-type{border-bottom:none;}
@@ -488,8 +454,13 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 
 /* Monthly */
 .cs-mo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;}
-.cs-mo-cell{background:#f9fafb;border-radius:var(--rs);padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;}
-.cs-mo-cell b{font-size:26px;font-weight:800;color:var(--c-text);line-height:1.1;}
+.cs-mo-cell{
+  background:#f9fafb;border-radius:var(--rs);padding:14px 10px;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  border:1px solid transparent;transition:all .15s;
+}
+.cs-mo-cell:hover{border-color:var(--border-strong);background:var(--surface-hover);box-shadow:var(--shadow-sm);}
+.cs-mo-cell b{font-size:28px;font-weight:800;color:var(--c-accent);line-height:1.1;}
 .cs-mo-cell span{font-size:11px;font-weight:600;color:var(--c-muted);letter-spacing:.3px;}
 .cs-mo-sales{display:flex;flex-wrap:wrap;align-items:center;gap:5px;}
 .cs-mo-sales-label{font-size:11px;color:var(--c-muted);font-weight:600;}
@@ -515,19 +486,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-parse-result-title{font-weight:700;color:#0e6245;margin-bottom:4px;font-size:13px;}
 .cs-parse-result-line{font-size:12px;color:var(--c-soft);line-height:1.6;}
 
-.cs-empty{text-align:center;padding:24px;color:var(--c-muted);font-size:13px;}
+.cs-empty{text-align:center;padding:32px 24px;color:var(--c-muted);font-size:13px;display:flex;flex-direction:column;align-items:center;gap:8px;}
 
-.cs-chip-btn {
-  width: 22px; height: 22px; border-radius: 5px;
-  border: 1px solid var(--c-border); background: #fff;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 700; color: var(--c-soft);
-  cursor: pointer; padding: 0; line-height: 1;
-  transition: all .12s; user-select: none;
-}
-.cs-chip-btn:hover { background: var(--c-accent-light); color: var(--c-accent); border-color: var(--c-accent); }
-.cs-chip-btn--plus { color: var(--c-good); border-color: #a7f3d0; }
-.cs-chip-btn--plus:hover { background: #ecfdf3; color: #0e6245; border-color: var(--c-good); }
-
-@media(max-width:960px){.cs-main{flex-direction:column;}.cs-right{width:100%;position:static;}.cs-daily-grid{grid-template-columns:1fr;}.cs-mo-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:960px){.cs-main{flex-direction:column;}.cs-right{width:100%;position:static;align-self:auto;}.cs-daily-grid{grid-template-columns:1fr;}.cs-mo-grid{grid-template-columns:1fr 1fr;}.cs-ht-row{grid-template-columns:60px repeat(6,1fr) 100px;font-size:12px;padding:10px 8px;}}
 </style>

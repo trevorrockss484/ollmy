@@ -1,5 +1,5 @@
 <template>
-  <div class="monitor-page">
+  <div class="monitor-page enterprise-page enterprise-page--wide">
     <div class="page-header">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
@@ -27,73 +27,39 @@
       <div class="vps-ov-item" :class="{ 'ov-dim': !counts.ok }">
         <div class="vps-ov-icon"><el-icon :size="22"><CircleCheck /></el-icon></div><div class="vps-ov-info"><div class="vps-ov-num">{{ counts.ok }}</div><div class="vps-ov-label">运行正常</div></div>
       </div>
-      <div class="vps-ov-item" v-if="costUnlocked">
+      <div class="vps-ov-item" v-show="costUnlocked">
         <div class="vps-ov-icon"><el-icon :size="22"><Money /></el-icon></div><div class="vps-ov-info"><div class="vps-ov-num" style="color:#10b981;">¥{{ profit.total.toFixed(2) }}</div><div class="vps-ov-label">月利润</div></div>
       </div>
-      <div class="vps-ov-item" v-if="costUnlocked">
+      <div class="vps-ov-item" v-show="costUnlocked">
         <div class="vps-ov-icon"><el-icon :size="22"><Box /></el-icon></div><div class="vps-ov-info"><div class="vps-ov-num" style="color:#6366f1;">¥{{ profit.totalCost.toFixed(2) }}</div><div class="vps-ov-label">月成本</div></div>
       </div>
-      <div class="vps-ov-item" v-if="costUnlocked">
+      <div class="vps-ov-item" v-show="costUnlocked">
         <div class="vps-ov-icon"><el-icon :size="22"><Money /></el-icon></div><div class="vps-ov-info"><div class="vps-ov-num" style="color:#f59e0b;">¥{{ profit.totalSell.toFixed(2) }}</div><div class="vps-ov-label">总售价</div></div>
       </div>
     </div>
 
     <!-- 操作 & 筛选栏 -->
     <div class="vps-toolbar">
-      <el-button
-        :type="formOpen ? '' : 'primary'"
-        @click="formOpen = !formOpen"
-        class="vps-btn-add">
-        <el-icon :size="16"><Plus /></el-icon>
-        <span>{{ formOpen ? '收起表单' : '添加VPS' }}</span>
-      </el-button>
-
-      <span class="vps-count-badge">
-        <span class="vps-count-num">{{ list.length }}</span>
-        <span class="vps-count-label">台</span>
-      </span>
-
-      <div class="vps-search-box">
-        <el-icon :size="16" class="vps-search-icon"><Search /></el-icon>
-        <input
-          v-model="searchText"
-          class="vps-search-input"
-          placeholder="搜索名称、服务商、国家、备注..."
-        />
-        <span v-if="searchText" class="vps-search-clear" @click="searchText = ''">
-          <el-icon :size="14"><Close /></el-icon>
-        </span>
+      <div class="vps-toolbar-left">
+        <el-button :type="formOpen ? '' : 'primary'" size="default" @click="formOpen = !formOpen">
+          <el-icon :size="14"><Plus /></el-icon> {{ formOpen ? '收起表单' : '添加VPS' }}
+        </el-button>
+        <span class="vps-count-badge"><span class="vps-count-num">{{ list.length }}</span><span class="vps-count-label"> 台</span></span>
       </div>
-
-      <div class="vps-filter-pills">
-        <button
-          v-for="f in statusFilters"
-          :key="f.key"
-          class="vps-filter-pill"
-          :class="{ active: filterType === f.key }"
-          @click="filterType = (filterType === f.key ? 'all' : f.key)"
-        >
-          {{ f.label }}
-          <span v-if="countByType(f.key)" class="vps-pill-count" :class="{ 'count-active': filterType === f.key }">{{ countByType(f.key) }}</span>
-        </button>
-      </div>
-
-      <div class="vps-filter-dropdowns">
-        <el-select v-model="filterProvider" size="default" placeholder="全部服务商" clearable class="vps-select">
-          <el-option v-for="p in providerOptions" :key="p" :label="p" :value="p" />
-        </el-select>
-        <el-select v-model="filterCountry" size="default" placeholder="全部国家" clearable filterable class="vps-select">
-          <el-option v-for="c in allCountryOpts" :key="c.code" :label="c.code" :value="c.code" />
-        </el-select>
-        <el-select v-model="sortOrder" size="default" class="vps-select vps-select-sort">
+      <div class="vps-toolbar-right">
+        <div class="vps-filter-pills">
+          <button v-for="f in statusFilters" :key="f.key" class="vps-filter-pill" :class="{ active: filterType === f.key }" @click="filterType = (filterType === f.key ? 'all' : f.key)">{{ f.label }}<span v-if="countByType(f.key)" class="vps-pill-count">{{ countByType(f.key) }}</span></button>
+        </div>
+        <div class="vps-search-box">
+          <el-icon :size="15" class="vps-search-icon"><Search /></el-icon>
+          <input v-model="searchText" class="vps-search-input" placeholder="搜索..." />
+        </div>
+        <el-select v-model="sortOrder" size="small" style="width:110px;">
           <el-option label="⏱ 最快到期" value="asc" />
           <el-option label="⏱ 最晚到期" value="desc" />
         </el-select>
+        <span v-if="hasActiveFilters" class="vps-filter-reset" @click="clearFilters"><el-icon :size="13"><RefreshLeft /></el-icon></span>
       </div>
-
-      <span v-if="hasActiveFilters" class="vps-filter-reset" @click="clearFilters">
-        <el-icon :size="13"><RefreshLeft /></el-icon> 清除筛选
-      </span>
     </div>
 
     <transition name="slide">
@@ -309,12 +275,13 @@ async function toggleCostLock() {
   if (costUnlocked.value) { costUnlocked.value = false; return }
   try {
     const { value: pin } = await ElMessageBox.prompt('输入密码', '', { inputType:'password', confirmButtonText:'确认', cancelButtonText:'取消' })
-    if (pin === 'Pan18218040143') costUnlocked.value = true
+    const res = await fetch('/api/auth/verify-pin', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pin}) })
+    const data = await res.json()
+    if (data.success) costUnlocked.value = true
+    else ElMessage.error('密码错误')
   } catch { /* 取消 */ }
 }
 const filterType = ref('all')
-const filterProvider = ref('')
-const filterCountry = ref('')
 const sortOrder = ref('asc')
 const searchText = ref('')
 const form = reactive({ name:'', type:'VPN', country:'', icon:'', provider:'', url:'', expire:'', costPrice:0, sellPrice:0, price:0, status:'running', note:'' })
@@ -410,8 +377,8 @@ function buildVpsCard(v) {
   const today = todayStr()
   const daysLeft = daysBetween(today, v.expire)
   const expireDate = new Date(v.expire)
-  // 月付周期：到期日往前推30天
-  const cycleDays = 30
+  // 周期：优先VPS自定义，fallback 30天
+  const cycleDays = v.cycleDays || 30
   const startDate = new Date(expireDate)
   startDate.setDate(startDate.getDate() - cycleDays)
   const startStr = startDate.toISOString().split('T')[0]
@@ -502,7 +469,7 @@ const filteredList = computed(() => {
   if (filterType.value === 'overdue') arr = arr.filter(v => v.severity === 'overdue')
   else if (filterType.value === 'urgent') arr = arr.filter(v => v.severity === 'urgent')
   else if (filterType.value === 'warning') arr = arr.filter(v => v.severity === 'warning')
-  else arr = arr.filter(v => v.severity !== 'overdue')  // 默认不展示已过期VPS
+  // 全部：显示所有VPS（含已过期）
   // 模糊搜索 — 含名称/服务商/国家/备注/网址
   const kw = searchText.value.trim().toLowerCase()
   if (kw) arr = arr.filter(v =>
@@ -512,10 +479,6 @@ const filteredList = computed(() => {
     (v.note||'').toLowerCase().includes(kw) ||
     (v.url||'').toLowerCase().includes(kw)
   )
-  // 服务商筛选
-  if (filterProvider.value) arr = arr.filter(v => v.provider === filterProvider.value)
-  // 国家筛选
-  if (filterCountry.value) arr = arr.filter(v => v.country === filterCountry.value)
   // 排序
   arr.sort((a, b) => {
     if (sortOrder.value === 'asc') return a.daysLeft - b.daysLeft
@@ -537,15 +500,8 @@ const counts = computed(() => {
 })
 
 // 是否有活跃筛选
-const hasActiveFilters = computed(() =>
-  filterType.value !== 'all' || filterProvider.value || filterCountry.value
-)
-function clearFilters() {
-  filterType.value = 'all'
-  filterProvider.value = ''
-  filterCountry.value = ''
-  searchText.value = ''
-}
+const hasActiveFilters = computed(() => filterType.value !== 'all')
+function clearFilters() { filterType.value = 'all'; searchText.value = '' }
 
 async function load() {
   const res = await api.vps.list()
@@ -582,10 +538,15 @@ async function renew(v, days) {
 }
 
 async function remove(v) {
-  try { await ElMessageBox.confirm('确定删除 ' + v.name + '？', '确认删除', { type: 'warning' }) } catch { return }
+  try { await ElMessageBox.confirm('确定删除 ' + v.name + '？（可恢复）', '确认删除', { type: 'warning' }) } catch { return }
   const res = await api.vps.delete(v.id)
-  if (res.success) { ElMessage.success('已删除'); load() }
+  if (res.success) { ElMessage.success('已删除（可恢复）'); load() }
   else { ElMessage.error(res.error || '删除失败') }
+}
+async function restoreVpsItem(v) {
+  const res = await api.vps.restore(v.id)
+  if (res.success) { ElMessage.success('已恢复'); load() }
+  else { ElMessage.error(res.error || '恢复失败') }
 }
 
 onMounted(load)
@@ -594,7 +555,7 @@ onMounted(load)
 <style scoped>
 .monitor-page { animation: fadeIn .3s ease; }
 .page-header { margin-bottom:24px; }
-.page-header h2 { font-size:22px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.page-header h2 { font-size:var(--text-2xl); font-weight:800; display:flex; align-items:center; gap:var(--space-3); color:var(--text-primary); letter-spacing:-.3px; }
 .page-header .sub { font-size:13px; color:#6b7280; margin-top:4px; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
 
@@ -605,7 +566,7 @@ onMounted(load)
 .vps-ov-item {
   display:flex; align-items:center; gap:10px;
   padding:16px 20px; border-radius:14px;
-  background:#fff; border:1.5px solid #e5e7eb;
+  background:var(--surface-card); border:1.5px solid var(--border-default);
   flex:1; min-width:140px;
   transition:all 0.2s;
 }
@@ -619,83 +580,29 @@ onMounted(load)
 
 /* ===== 工具栏 ===== */
 .vps-toolbar {
-  display:flex; align-items:center; gap:12px;
-  margin-bottom:24px; flex-wrap:wrap;
-  padding:14px 18px;
-  background:#fff; border-radius:14px;
-  border:1px solid #e5e7eb;
-  box-shadow:0 1px 3px rgba(0,0,0,.03);
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin-bottom:20px; flex-wrap:wrap;
 }
+.vps-toolbar-left { display:flex; align-items:center; gap:10px; }
+.vps-toolbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 
-/* 添加按钮 */
-.vps-btn-add {
-  display:inline-flex !important; align-items:center; gap:6px;
-  font-weight:700 !important; border-radius:10px !important;
-  padding:9px 18px !important; font-size:14px !important;
-  transition:all 0.2s !important;
-}
-.vps-btn-add:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(99,102,241,.25); }
-
-/* 台数徽标 */
-.vps-count-badge {
-  display:inline-flex; align-items:baseline; gap:2px;
-  padding:6px 12px; border-radius:8px;
-  background:#f3f4f6; border:1px solid #e5e7eb;
-}
-.vps-count-num { font-size:16px; font-weight:800; color:#6366f1; }
+.vps-count-badge { display:inline-flex; align-items:baseline; gap:2px; padding:4px 10px; border-radius:6px; background:#f3f4f6; }
+.vps-count-num { font-size:15px; font-weight:800; color:#6366f1; }
 .vps-count-label { font-size:11px; color:#9ca3af; font-weight:600; }
 
 /* 搜索框 */
-.vps-search-box {
-  position:relative; display:flex; align-items:center;
-  flex:1; min-width:200px; max-width:320px;
-}
-.vps-search-icon {
-  position:absolute; left:12px; color:#9ca3af; pointer-events:none;
-}
-.vps-search-input {
-  width:100%; height:38px; padding:0 34px 0 36px;
-  border:1.5px solid #e5e7eb; border-radius:10px;
-  background:#f9fafb; font-size:13px; color:#374151;
-  outline:none; transition:all 0.2s;
-}
-.vps-search-input:focus { border-color:#6366f1; background:#fff; box-shadow:0 0 0 3px rgba(99,102,241,.08); }
-.vps-search-input::placeholder { color:#9ca3af; }
-.vps-search-clear {
-  position:absolute; right:10px; cursor:pointer;
-  color:#9ca3af; padding:2px; border-radius:4px;
-}
-.vps-search-clear:hover { color:#6b7280; background:#e5e7eb; }
+.vps-search-box { position:relative; display:flex; align-items:center; width:180px; }
+.vps-search-icon { position:absolute; left:10px; color:#9ca3af; pointer-events:none; }
+.vps-search-input { width:100%; height:34px; padding:0 10px 0 30px; border:1.5px solid #e5e7eb; border-radius:8px; background:#f9fafb; font-size:12px; color:#374151; outline:none; transition:all .15s; }
+.vps-search-input:focus { border-color:#6366f1; background:#fff; }
 
 /* 状态筛选 pills */
-.vps-filter-pills {
-  display:flex; gap:6px;
-}
-.vps-filter-pill {
-  display:inline-flex; align-items:center; gap:5px;
-  padding:7px 14px; border-radius:20px;
-  border:1.5px solid #e5e7eb; background:#fff;
-  font-size:12px; font-weight:600; color:#6b7280;
-  cursor:pointer; transition:all 0.2s;
-  white-space:nowrap;
-}
-.vps-filter-pill:hover { border-color:#c7d2fe; color:#6366f1; background:#eef2ff; }
+.vps-filter-pills { display:flex; gap:4px; }
+.vps-filter-pill { display:inline-flex; align-items:center; gap:4px; padding:6px 12px; border-radius:16px; border:1.5px solid #e5e7eb; background:#fff; font-size:12px; font-weight:600; color:#6b7280; cursor:pointer; transition:all .15s; white-space:nowrap; }
+.vps-filter-pill:hover { border-color:#c7d2fe; color:#6366f1; }
 .vps-filter-pill.active { border-color:#6366f1; background:#6366f1; color:#fff; }
-.vps-pill-count {
-  display:inline-flex; align-items:center; justify-content:center;
-  min-width:18px; height:18px; padding:0 5px;
-  border-radius:9px; background:#e5e7eb; color:#6b7280;
-  font-size:10px; font-weight:700;
-}
-.vps-pill-count.count-active { background:rgba(255,255,255,.25); color:#fff; }
-
-/* 下拉筛选 */
-.vps-filter-dropdowns {
-  display:flex; gap:8px; margin-left:auto;
-}
-.vps-select { width:140px; }
-.vps-select-sort { width:130px; }
-.vps-select :deep(.el-input__wrapper) { border-radius:10px !important; }
+.vps-pill-count { display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:#e5e7eb; color:#6b7280; font-size:10px; font-weight:700; }
+.vps-filter-pill.active .vps-pill-count { background:rgba(255,255,255,.25); color:#fff; }
 
 /* 清除筛选 */
 .vps-filter-reset {
@@ -709,7 +616,7 @@ onMounted(load)
 
 /* 表单卡片 */
 .vps-form-card {
-  background:#fff; border-radius:16px; padding:24px;
+  background:var(--surface-card); border-radius:16px; padding:24px;
   border:1px solid #e5e7eb; box-shadow:0 4px 16px rgba(0,0,0,.04);
   margin-bottom:24px;
 }
@@ -751,7 +658,7 @@ onMounted(load)
 
 .vps-card {
   position:relative;
-  background:#fff; border-radius:14px; border:1.5px solid #e5e7eb;
+  background:var(--surface-card); border-radius:14px; border:1.5px solid var(--border-default);
   padding:24px;
   box-shadow:0 1px 3px rgba(0,0,0,.04);
   transition:all 0.3s;

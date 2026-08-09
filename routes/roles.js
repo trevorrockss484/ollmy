@@ -29,6 +29,7 @@ router.post('/', (req, res) => {
     const existing = db.getRoleByName(name);
     if (existing) return res.json({ success: false, error: '角色名已存在' });
     const role = db.addRole({ name, displayName: displayName || name, menus: menus || [], enabled: true });
+    db.logOperation('roles.add', { name: role.name }, req.user);
     res.json({ success: true, data: role });
   } catch (e) {
     res.status(500).json({ success: false, error: '服务器内部错误' });
@@ -45,6 +46,7 @@ router.put('/:id', (req, res) => {
     if (enabled !== undefined) updates.enabled = enabled;
     const role = db.updateRole(req.params.id, updates);
     if (!role) return res.json({ success: false, error: '角色不存在' });
+    db.logOperation('roles.update', { name: role.name }, req.user);
     res.json({ success: true, data: role });
   } catch (e) {
     res.status(500).json({ success: false, error: '服务器内部错误' });
@@ -61,6 +63,7 @@ router.delete('/:id', (req, res) => {
     const usersWithRole = db.getUsers().filter(u => u.role === role.name && u.enabled !== false);
     if (usersWithRole.length) return res.json({ success: false, error: `还有 ${usersWithRole.length} 个用户使用此角色，请先更换他们的角色` });
     db.deleteRole(req.params.id);
+    db.logOperation('roles.delete', { name: role.name }, req.user);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, error: '服务器内部错误' });

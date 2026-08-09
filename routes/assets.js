@@ -87,7 +87,7 @@ router.post('/upload', upload.array('files', 20), (req, res) => {
       });
       assets.push(asset);
     }
-
+    db.logOperation('assets.upload', { count: assets.length, name: name || assets[0]?.name }, req.user);
     res.json({ success: true, data: assets });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
@@ -114,6 +114,7 @@ router.put('/:id', (req, res) => {
   try {
     const asset = db.updateAsset(req.params.id, req.body);
     if (!asset) return res.status(404).json({ success: false, error: '资产不存在' });
+    db.logOperation('assets.update', { name: asset.name }, req.user);
     res.json({ success: true, data: asset });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
@@ -130,6 +131,7 @@ router.delete('/:id', (req, res) => {
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
+    db.logOperation('assets.delete', { name: asset.name }, req.user);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
@@ -151,6 +153,7 @@ router.post('/batch-delete', (req, res) => {
         fs.unlinkSync(filePath);
       }
     }
+    db.logOperation('assets.batchDelete', { count: deleted.length }, req.user);
     res.json({ success: true, data: { count: deleted.length } });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });

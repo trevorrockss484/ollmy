@@ -32,6 +32,7 @@ router.post('/', (req, res) => {
     if (existing) return res.json({ success: false, error: '用户名已存在' });
     const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
     const user = db.addUser({ username, passwordHash, role: role || 'staff', displayName: displayName || username, enabled: true });
+    db.logOperation('users.add', { username: user.username, role: user.role }, req.user);
     res.json({ success: true, data: { id: user.id, username: user.username, role: user.role, displayName: user.displayName, enabled: user.enabled } });
   } catch (e) {
     res.status(500).json({ success: false, error: '服务器内部错误' });
@@ -49,6 +50,7 @@ router.put('/:id', (req, res) => {
     if (enabled !== undefined) updates.enabled = enabled;
     const user = db.updateUser(req.params.id, updates);
     if (!user) return res.json({ success: false, error: '用户不存在' });
+    db.logOperation('users.update', { username: user.username, role: user.role }, req.user);
     res.json({ success: true, data: { id: user.id, username: user.username, role: user.role, displayName: user.displayName, enabled: user.enabled } });
   } catch (e) {
     res.status(500).json({ success: false, error: '服务器内部错误' });
@@ -65,6 +67,7 @@ router.delete('/:id', (req, res) => {
       if (admins.length <= 1) return res.json({ success: false, error: '不能删除最后一个管理员' });
     }
     db.deleteUser(req.params.id);
+    db.logOperation('users.delete', { id: req.params.id }, req.user);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, error: '服务器内部错误' });

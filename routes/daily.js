@@ -36,6 +36,7 @@ router.get('/:date', (req, res) => {
 router.post('/:date', (req, res) => {
   try {
     const record = db.saveDailyData(req.params.date, req.body, { accountId: req.query.accountId });
+    db.logOperation('daily.save', { date: req.params.date, accountId: req.query.accountId }, req.user);
     res.json({ success: true, data: record });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
@@ -46,6 +47,7 @@ router.post('/:date', (req, res) => {
 router.delete('/:date', (req, res) => {
   try {
     db.deleteDailyData(req.params.date);
+    db.logOperation('daily.delete', { date: req.params.date }, req.user);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });

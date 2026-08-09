@@ -1,5 +1,5 @@
 <template>
-  <div class="plan-page">
+  <div class="plan-page enterprise-page enterprise-page--wide">
     <!-- 页头 + 周切换 -->
     <div class="plan-topbar">
       <div class="plan-top-left">
@@ -36,41 +36,45 @@
     <template v-else>
       <!-- ====== 概览行 ====== -->
       <div class="overview-strip">
-        <div class="ov-card">
-          <div class="ov-icon-wrap" style="background:#eef2ff;color:#6366f1;"><el-icon :size="20"><Calendar /></el-icon></div>
-          <div class="ov-info">
-            <div class="ov-val">{{ days.length }}</div>
-            <div class="ov-label">工作日</div>
+        <div class="ov-card ov-card--inquiry">
+          <div class="ov-card-inner">
+            <div class="ov-icon-wrap" style="background:#fff7ed;color:#ea580c;"><el-icon :size="20"><TrendCharts /></el-icon></div>
+            <div class="ov-info">
+              <div class="ov-val">{{ s.fbCustomer }}<span class="ov-unit">/{{ budgets.inquiryGoal }}</span></div>
+              <div class="ov-label">新客户</div>
+            </div>
           </div>
-          <div class="ov-sub-done">{{ completedDays }}/{{ days.length }} 已填报</div>
+          <div class="ov-mini-bar"><div class="ov-mini-fill orange" :style="{width: iPct+'%'}"></div></div>
         </div>
-        <div class="ov-card">
-          <div class="ov-icon-wrap" style="background:#fff7ed;color:#ea580c;"><el-icon :size="20"><TrendCharts /></el-icon></div>
-          <div class="ov-info">
-            <div class="ov-val">{{ s.fbCustomer }}<span class="ov-unit">/{{ budgets.inquiryGoal }}</span></div>
-            <div class="ov-label">{{ goalLabel('inquiry') }}</div>
+        <div class="ov-card ov-card--group">
+          <div class="ov-card-inner">
+            <div class="ov-icon-wrap" style="background:#ecfdf5;color:#059669;"><el-icon :size="20"><ChatDotRound /></el-icon></div>
+            <div class="ov-info">
+              <div class="ov-val success">{{ s.fbGrouped }}<span class="ov-unit">/{{ budgets.groupGoal }}</span></div>
+              <div class="ov-label">拉群</div>
+            </div>
           </div>
+          <div class="ov-mini-bar"><div class="ov-mini-fill green" :style="{width: groupPct+'%'}"></div></div>
         </div>
-        <div class="ov-card">
-          <div class="ov-icon-wrap" style="background:#ecfdf5;color:#059669;"><el-icon :size="20"><ChatDotRound /></el-icon></div>
-          <div class="ov-info">
-            <div class="ov-val success">{{ s.fbGrouped }}<span class="ov-unit">/{{ budgets.groupGoal }}</span></div>
-            <div class="ov-label">{{ goalLabel('group') }}</div>
+        <div class="ov-card ov-card--budget">
+          <div class="ov-card-inner">
+            <div class="ov-icon-wrap" style="background:#fef2f2;color:#ef4444;"><el-icon :size="20"><Money /></el-icon></div>
+            <div class="ov-info">
+              <div class="ov-val" :class="bPct > 90 ? 'danger' : ''">¥{{ fmtK(s.fbBudget) }}<span class="ov-unit">/¥{{ fmtK(budgets.weekBudget) }}</span></div>
+              <div class="ov-label">本周消耗</div>
+            </div>
           </div>
+          <div class="ov-mini-bar"><div class="ov-mini-fill" :class="bPct > 90 ? 'red' : bPct > 70 ? 'orange' : 'blue'" :style="{width: bPct+'%'}"></div></div>
         </div>
-        <div class="ov-card">
-          <div class="ov-icon-wrap" style="background:#fef2f2;color:#ef4444;"><el-icon :size="20"><Money /></el-icon></div>
-          <div class="ov-info">
-            <div class="ov-val" :class="bPct > 90 ? 'danger' : ''">¥{{ fmtK(s.fbBudget) }}<span class="ov-unit">/¥{{ fmtK(budgets.weekBudget) }}</span></div>
-            <div class="ov-label">{{ goalLabel('budget') }}</div>
+        <div class="ov-card ov-card--days">
+          <div class="ov-card-inner">
+            <div class="ov-icon-wrap" style="background:#f3f4ff;color:#8b5cf6;"><el-icon :size="20"><DataAnalysis /></el-icon></div>
+            <div class="ov-info">
+              <div class="ov-val">{{ completedDays }}<span class="ov-unit">/{{ days.length }}</span></div>
+              <div class="ov-label">已填报</div>
+            </div>
           </div>
-        </div>
-        <div class="ov-card">
-          <div class="ov-icon-wrap" style="background:#eef2ff;color:#6366f1;"><el-icon :size="20"><Coin /></el-icon></div>
-          <div class="ov-info">
-            <div class="ov-val">¥{{ s.fbCustomer > 0 ? (s.fbBudget / s.fbCustomer).toFixed(0) : '—' }}</div>
-            <div class="ov-label">客均成本</div>
-          </div>
+          <div class="ov-mini-bar"><div class="ov-mini-fill purple" :style="{width: (days.length? Math.round(completedDays/days.length*100):0)+'%'}"></div></div>
         </div>
       </div>
 
@@ -103,10 +107,8 @@
         <!-- 中：消耗进度 -->
         <div class="mid-card mid-spend">
           <div class="mid-card-hd">本周消耗</div>
-          <div class="spend-meter">
-            <div class="spend-big">¥{{ fmtK(s.fbBudget) }}</div>
-            <div class="spend-sub">/ ¥{{ fmtK(budgets.weekBudget) }}</div>
-          </div>
+          <div class="spend-big">¥{{ fmtK(s.fbBudget) }}</div>
+          <div class="spend-sub">/ ¥{{ fmtK(budgets.weekBudget) }}</div>
           <div class="spend-bar-wrap">
             <div class="spend-bar-track">
               <div class="spend-bar-fill" :class="bPct > 90 ? 'red' : bPct > 70 ? 'orange' : 'blue'" :style="{ width: bPct + '%' }"></div>
@@ -138,18 +140,16 @@
         <div class="daily-hd">
           <b><el-icon :size="16"><List /></el-icon> 每日完成情况</b>
           <div style="display:flex;align-items:center;gap:10px;">
-            <span style="font-size:12px;color:#9ca3af;"><el-icon :size="13"><InfoFilled /></el-icon> 点击编辑或填写日报</span>
-            <el-button size="small" round @click="copyWeekSummary">复制本周汇总</el-button>
+            <span style="font-size:12px;color:#9ca3af;"><el-icon :size="13"><InfoFilled /></el-icon> 点击行可填写或修改</span>
+            <el-button size="small" round type="primary" plain @click="copyWeekSummary"><el-icon :size="14"><DocumentCopy /></el-icon> 复制本周汇总</el-button>
           </div>
         </div>
         <div class="daily-table-v2">
           <div class="dv-head">
             <span class="dv-hcell dv-hcell--date">日期</span>
-            <span class="dv-hcell">美金</span>
             <span class="dv-hcell">消耗</span>
             <span class="dv-hcell">新客户</span>
             <span class="dv-hcell">拉群</span>
-            <span class="dv-hcell">客均</span>
             <span class="dv-hcell dv-hcell--st">状态</span>
           </div>
           <div
@@ -163,10 +163,6 @@
               <span class="dv-date-text" :class="{ 'dv-date-text--today': d.isToday }">{{ formatDayOnly(d.date) }} {{ d.dayName }}</span>
             </div>
             <div class="dv-cell">
-              <span v-if="d.completed" class="dv-num dv-num--usd">${{ fmtK(d.fbUsdBudget) }}</span>
-              <span v-else class="dv-empty">—</span>
-            </div>
-            <div class="dv-cell">
               <span v-if="d.completed" class="dv-num dv-num--rmb">¥{{ Math.round(d.fbBudget) }}</span>
               <span v-else class="dv-empty">—</span>
             </div>
@@ -176,10 +172,6 @@
             </div>
             <div class="dv-cell">
               <span v-if="d.completed" class="dv-num dv-num--green">{{ d.fbGrouped || 0 }}</span>
-              <span v-else class="dv-empty">—</span>
-            </div>
-            <div class="dv-cell">
-              <span v-if="d.completed && d.fbCustomer" class="dv-num">¥{{ Math.round(d.fbBudget / d.fbCustomer) }}</span>
               <span v-else class="dv-empty">—</span>
             </div>
             <div class="dv-cell dv-cell--st">
@@ -277,6 +269,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as echarts from 'echarts'
 import { api, formatDate, formatDateCN, getDateRange, getDayName, todayStr } from '../api'
+import { countryTreeData, allLeafKeys, flagMap } from '../data/countryTree'
 
 const weekStore = useWeekStore()
 const router = useRouter()
@@ -309,69 +302,7 @@ const visibleWeeks = computed(() => weekStore.weeks.filter(w => !w.hidden))
 const allWeeks = computed(() => [...weekStore.weeks].sort((a, b) => b.id - a.id))
 const manageOpen = ref(false)
 
-// ====== 国家树 ======
-const countryTreeData = [
-  { key:'se-asia', label:'东南亚',
-    children:[
-      {key:'印度尼西亚',label:'印度尼西亚 +62'},{key:'越南',label:'越南 +84'},
-      {key:'菲律宾',label:'菲律宾 +63'},{key:'泰国',label:'泰国 +66'},
-      {key:'马来西亚',label:'马来西亚 +60'},{key:'新加坡',label:'新加坡 +65'},
-      {key:'缅甸',label:'缅甸 +95'},{key:'柬埔寨',label:'柬埔寨 +855'},
-      {key:'老挝',label:'老挝 +856'},{key:'文莱',label:'文莱 +673'}
-    ]},
-  { key:'s-asia', label:'南亚',
-    children:[
-      {key:'印度',label:'印度 +91'},{key:'巴基斯坦',label:'巴基斯坦 +92'},
-      {key:'孟加拉国',label:'孟加拉国 +880'},{key:'斯里兰卡',label:'斯里兰卡 +94'},
-      {key:'尼泊尔',label:'尼泊尔 +977'}
-    ]},
-  { key:'africa', label:'非洲',
-    children:[
-      {key:'尼日利亚',label:'尼日利亚 +234'},{key:'埃塞俄比亚',label:'埃塞俄比亚 +251'},
-      {key:'南非',label:'南非 +27'},{key:'肯尼亚',label:'肯尼亚 +254'},
-      {key:'加纳',label:'加纳 +233'},{key:'埃及',label:'埃及 +20'},
-      {key:'坦桑尼亚',label:'坦桑尼亚 +255'},{key:'乌干达',label:'乌干达 +256'},
-      {key:'摩洛哥',label:'摩洛哥 +212'},{key:'阿尔及利亚',label:'阿尔及利亚 +213'},
-      {key:'安哥拉',label:'安哥拉 +244'},{key:'科特迪瓦',label:'科特迪瓦 +225'}
-    ]},
-  { key:'mid-east', label:'中东',
-    children:[
-      {key:'阿联酋',label:'阿联酋 +971'},{key:'沙特阿拉伯',label:'沙特阿拉伯 +966'},
-      {key:'土耳其',label:'土耳其 +90'},{key:'卡塔尔',label:'卡塔尔 +974'},
-      {key:'阿曼',label:'阿曼 +968'},{key:'科威特',label:'科威特 +965'},
-      {key:'巴林',label:'巴林 +973'},{key:'伊拉克',label:'伊拉克 +964'},
-      {key:'约旦',label:'约旦 +962'},{key:'黎巴嫩',label:'黎巴嫩 +961'},
-      {key:'以色列',label:'以色列 +972'},{key:'伊朗',label:'伊朗 +98'},
-      {key:'也门',label:'也门 +967'}
-    ]},
-  { key:'e-asia', label:'东亚',
-    children:[
-      {key:'中国',label:'中国 +86'},{key:'日本',label:'日本 +81'},{key:'韩国',label:'韩国 +82'},
-      {key:'蒙古',label:'蒙古 +976'}
-    ]},
-  { key:'latam', label:'拉美',
-    children:[
-      {key:'巴西',label:'巴西 +55'},{key:'墨西哥',label:'墨西哥 +52'},
-      {key:'哥伦比亚',label:'哥伦比亚 +57'},{key:'阿根廷',label:'阿根廷 +54'},
-      {key:'智利',label:'智利 +56'},{key:'秘鲁',label:'秘鲁 +51'},
-      {key:'厄瓜多尔',label:'厄瓜多尔 +593'},{key:'委内瑞拉',label:'委内瑞拉 +58'}
-    ]},
-  { key:'emea', label:'欧美',
-    children:[
-      {key:'美国',label:'美国 +1'},{key:'英国',label:'英国 +44'},
-      {key:'德国',label:'德国 +49'},{key:'法国',label:'法国 +33'},
-      {key:'澳大利亚',label:'澳大利亚 +61'},{key:'俄罗斯',label:'俄罗斯 +7'},
-      {key:'加拿大',label:'加拿大 +1'},{key:'意大利',label:'意大利 +39'},
-      {key:'西班牙',label:'西班牙 +34'},{key:'荷兰',label:'荷兰 +31'},
-      {key:'波兰',label:'波兰 +48'},{key:'乌克兰',label:'乌克兰 +380'}
-    ]},
-  { key:'central-asia', label:'中亚',
-    children:[
-      {key:'哈萨克斯坦',label:'哈萨克斯坦 +7'},{key:'乌兹别克斯坦',label:'乌兹别克斯坦 +998'},
-      {key:'吉尔吉斯斯坦',label:'吉尔吉斯斯坦 +996'}
-    ]}
-]
-const allLeafKeys = countryTreeData.flatMap(g => g.children.map(c => c.key))
+// ====== 国家树（共享模块） ======
 const treeRef = ref(null)
 
 function onTreeCheck(_n, checked) { form.value.countries = checked.checkedKeys.filter(k => allLeafKeys.includes(k)) }
@@ -395,16 +326,6 @@ function goalLabel(key) {
   return (key === 'inquiry' ? '新客户' : key === 'group' ? '拉群' : '消耗') + ' · ' + (pct || 0) + '%'
 }
 
-const flagMap = {
-  印度尼西亚:"id", 印尼:"id", 越南:"vn", 泰国:"th", 菲律宾:"ph", 马来西亚:"my", 新加坡:"sg", 缅甸:"mm", 柬埔寨:"kh", 老挝:"la", 文莱:"bn",
-  印度:"in", 巴基斯坦:"pk", 孟加拉国:"bd", 孟加拉:"bd", 斯里兰卡:"lk", 尼泊尔:"np",
-  尼日利亚:"ng", 埃塞俄比亚:"et", 南非:"za", 肯尼亚:"ke", 加纳:"gh", 埃及:"eg", 坦桑尼亚:"tz", 乌干达:"ug", 摩洛哥:"ma", 阿尔及利亚:"dz", 安哥拉:"ao", 科特迪瓦:"ci",
-  阿联酋:"ae", 沙特阿拉伯:"sa", 沙特:"sa", 土耳其:"tr", 卡塔尔:"qa", 阿曼:"om", 科威特:"kw", 巴林:"bh", 伊拉克:"iq", 约旦:"jo", 黎巴嫩:"lb", 以色列:"il", 伊朗:"ir", 也门:"ye",
-  日本:"jp", 韩国:"kr", 蒙古:"mn",
-  巴西:"br", 墨西哥:"mx", 哥伦比亚:"co", 阿根廷:"ar", 智利:"cl", 秘鲁:"pe", 厄瓜多尔:"ec", 委内瑞拉:"ve",
-  美国:"us", 英国:"gb", 德国:"de", 法国:"fr", 澳大利亚:"au", 俄罗斯:"ru", 加拿大:"ca", 意大利:"it", 西班牙:"es", 荷兰:"nl", 波兰:"pl", 乌克兰:"ua",
-  哈萨克斯坦:"kz", 乌兹别克斯坦:"uz", 吉尔吉斯斯坦:"kg"
-}
 function flagCode(name) { return flagMap[name] || "" }
 
 function fmtReportMoney(n) {
@@ -574,18 +495,19 @@ function initDonut() {
   if (donutChart) { donutChart.dispose(); donutChart = null }
   donutChart = echarts.init(el, null, { devicePixelRatio: 2 })
   donutChart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
     animation: true,
     animationDuration: 1400,
     animationEasing: 'cubicInOut',
     animationDelay(idx) { return idx * 200 },
     series: [{
-      type: 'pie', radius: ['72%', '92%'], silent: true,
+      type: 'pie', radius: ['72%', '92%'],
       animationType: 'scale',
       animationDelay: 300,
       itemStyle: { borderColor: 'transparent', borderWidth: 0 },
       data: [
-        { value: s.fbGrouped, itemStyle: { color: '#10b981' } },
-        { value: Math.max(0, (budgets.value.groupGoal || 0) - s.fbGrouped), itemStyle: { color: '#e5e7eb' } }
+        { name: '拉群', value: s.fbGrouped, itemStyle: { color: '#10b981' } },
+        { name: '剩余', value: Math.max(0, (budgets.value.groupGoal || 0) - s.fbGrouped), itemStyle: { color: document.documentElement.classList.contains('dark') ? '#24243a' : '#e5e7eb' } }
       ]
     }]
   })
@@ -764,7 +686,6 @@ async function deleteThisWeek() {
 watch([() => s.fbGrouped, () => budgets.value.groupGoal], () => {
   nextTick(() => initDonut())
 })
-
 function onResize() { donutChart?.resize() }
 
 onMounted(async () => {
@@ -797,7 +718,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
   display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
   margin-bottom:16px; flex-wrap:wrap;
 }
-.plan-topbar h2 { font-size:22px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.plan-topbar h2 { font-size:var(--text-2xl); font-weight:800; display:flex; align-items:center; gap:var(--space-3); color:var(--text-primary); letter-spacing:-.3px; }
 .plan-top-left { display:flex; flex-direction:column; gap:10px; }
 .plan-top-actions { display:flex; gap:6px; flex-shrink:0; padding-top:4px; }
 
@@ -808,7 +729,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 .week-chip {
   display:inline-flex; align-items:center; gap:8px;
   padding:10px 16px; border-radius:10px; min-height:40px;
-  border:1.5px solid #e5e7eb; background:#fff;
+  border:1.5px solid var(--border-default); background:var(--surface-card);
   cursor:pointer; transition:all .15s;
   font-size:13px; user-select:none;
 }
@@ -824,7 +745,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 .manage-row {
   display:flex; align-items:center; justify-content:space-between;
   padding:14px 16px; border-radius:12px;
-  border:1px solid #e5e7eb; background:#fff;
+  border:1px solid var(--border-default); background:var(--surface-card);
   transition:all .15s;
 }
 .manage-row:hover { border-color:#c7d2fe; }
@@ -837,30 +758,38 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 .empty-page { text-align:center; padding:60px; color:#9ca3af; }
 
 /* ====== 概览行 ====== */
-.overview-strip { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:16px; }
+.overview-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
 
 .ov-card {
-  background:#fff; border:1px solid #e5e7eb; border-radius:14px;
-  padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.03);
-  transition:all .15s;
+  background:var(--surface-card); border:1px solid var(--border-default); border-radius:14px;
+  padding:14px 16px 6px; box-shadow:0 1px 3px rgba(0,0,0,.03);
+  transition:all .15s; display:flex; flex-direction:column;
 }
 .ov-card:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.06); }
+.ov-card-inner { display:flex; align-items:flex-start; gap:10px; }
 .ov-icon-wrap {
-  width:36px; height:36px; border-radius:10px;
-  display:flex; align-items:center; justify-content:center; margin-bottom:8px;
+  width:36px; height:36px; border-radius:10px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
 }
-.ov-val { font-size:24px; font-weight:800; color:#1f2937; line-height:1.2; }
+.ov-info { flex:1; min-width:0; }
+.ov-val { font-size:22px; font-weight:800; color:#1f2937; line-height:1.2; }
 .ov-val.success { color:#059669; }
 .ov-val.danger { color:#ef4444; }
 .ov-unit { font-size:13px; font-weight:600; color:#9ca3af; margin-left:2px; }
 .ov-label { font-size:11px; color:#9ca3af; font-weight:600; margin-top:2px; }
-.ov-sub-done { font-size:11px; color:#059669; font-weight:700; margin-top:4px; }
+.ov-mini-bar { height:4px; background:#f3f4f6; border-radius:2px; margin-top:8px; overflow:hidden; }
+.ov-mini-fill { height:100%; border-radius:2px; transition:width .6s cubic-bezier(.4,0,.2,1); }
+.ov-mini-fill.blue { background:linear-gradient(90deg,#6366f1,#818cf8); }
+.ov-mini-fill.green { background:linear-gradient(90deg,#10b981,#34d399); }
+.ov-mini-fill.orange { background:linear-gradient(90deg,#f59e0b,#fbbf24); }
+.ov-mini-fill.red { background:linear-gradient(90deg,#ef4444,#f87171); }
+.ov-mini-fill.purple { background:linear-gradient(90deg,#8b5cf6,#a78bfa); }
 
 /* ====== 中部三栏 ====== */
 .mid-layout { display:grid; grid-template-columns:260px 1fr 260px; gap:14px; margin-bottom:20px; }
 
 .mid-card {
-  background:#fff; border-radius:16px;
+  background:var(--surface-card); border-radius:16px;
   padding:18px 20px; box-shadow: 0 0 0 1px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.06);
 }
 .mid-card-hd { font-size:14px; font-weight:700; color:#374151; margin-bottom:14px; }
@@ -882,22 +811,16 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 .df-val { font-size:16px; font-weight:700; color:#1f2937; }
 .df-label { font-size:11px; color:#9ca3af; }
 
-/* 消耗计量 */
+/* 消耗 */
 .mid-spend { display:flex; flex-direction:column; }
-.spend-meter { margin-bottom:12px; }
 .spend-big { font-size:28px; font-weight:800; color:#6366f1; line-height:1.1; }
 .spend-sub { font-size:12px; color:#9ca3af; font-weight:600; margin-top:2px; }
-.spend-bar-wrap { margin-bottom:14px; }
+.spend-bar-wrap { margin:12px 0 14px; }
 .spend-bar-track { height:10px; background:#f3f4f6; border-radius:5px; overflow:hidden; }
-.spend-bar-fill {
-  height:100%; border-radius:5px;
-  transition:width .6s cubic-bezier(.4,0,.2,1);
-}
+.spend-bar-fill { height:100%; border-radius:5px; transition:width .6s cubic-bezier(.4,0,.2,1); }
 .spend-bar-fill.blue { background:linear-gradient(90deg,#6366f1,#818cf8); }
 .spend-bar-fill.orange { background:linear-gradient(90deg,#f59e0b,#fbbf24); }
-.spend-bar-fill.red { background:linear-gradient(90deg,#ef4444,#f87171); animation:pulse 1.5s infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.7} }
-@media (prefers-reduced-motion:reduce) { .spend-bar-fill.red { animation:none } }
+.spend-bar-fill.red { background:linear-gradient(90deg,#ef4444,#f87171); }
 .spend-row { display:flex; gap:8px; margin-top:auto; }
 .spend-item { flex:1; text-align:center; padding:8px 4px; background:#f9fafb; border-radius:8px; }
 .spend-item span { display:block; font-size:11px; color:#6b7280; font-weight:600; }
@@ -929,12 +852,12 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 
 /* ====== 每日完成表格 V2 ====== */
 .daily-table-v2 {
-  background: #fff; border: 1px solid #e5e7eb;
+  background: var(--surface-card); border: 1px solid var(--border-default);
   border-radius: 14px; overflow-x: auto;
 }
 .dv-head {
   display: grid;
-  grid-template-columns: 120px repeat(6, 1fr);
+  grid-template-columns: 120px repeat(4, 1fr);
   padding: 10px 20px; align-items: center;
   background: #f9fafb; border-bottom: 1px solid #e5e7eb;
 }
@@ -947,14 +870,15 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 
 .dv-row {
   display: grid;
-  grid-template-columns: 120px repeat(6, 1fr);
+  grid-template-columns: 120px repeat(4, 1fr);
   padding: 14px 20px; align-items: center;
   border-bottom: 1px solid #f3f4f6;
-  cursor: pointer; transition: background .12s; background: #fff;
+  cursor: pointer; transition: background .12s; background: var(--surface-card);
 }
 .dv-row:hover { background: #f5f3ff; }
 .dv-row:last-of-type { border-bottom: none; }
-.dv-row.dv--today { background: #eef2ff; }
+.dv-row.dv--today { background: #eef2ff; box-shadow: inset 3px 0 0 #6366f1; }
+.dv-empty { color:#d1d5db; font-weight:400; }
 .dv-row.dv--done { border-left: 3px solid #10b981; }
 
 /* 日期 */

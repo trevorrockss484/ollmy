@@ -1,5 +1,5 @@
 <template>
-  <div class="dash-page">
+  <div class="dash-page enterprise-page enterprise-page--wide">
     <!-- 顶部概览 -->
     <div class="page-top">
       <div class="top-left">
@@ -26,17 +26,20 @@
     </el-alert>
 
     <!-- ====== 昨日数据修正提醒 ====== -->
-    <div v-if="yesterdayData" class="yesterday-banner">
+    <div v-if="showYesterdayBanner && yesterdayData" class="yesterday-banner">
       <div class="yb-left">
         <el-icon :size="20"><WarningFilled /></el-icon>
-        <span class="yb-title">昨日数据可能需要修正</span>
+        <span class="yb-title">昨日数据，需要修正吗？</span>
         <span class="yb-detail">
           昨日填报 · 消耗 <b>¥{{ fmtK(yesterdayData.budget) }}</b> ·
           新客户 <b>{{ yesterdayData.customer }}</b> ·
           拉群 <b>{{ yesterdayData.grouped }}</b>
         </span>
       </div>
-      <el-button type="primary" round size="small" @click="fixYesterday">修正昨日数据</el-button>
+      <div class="yb-right">
+        <el-button type="primary" round size="small" @click="fixYesterday">修正</el-button>
+        <el-button size="small" circle text @click="showYesterdayBanner = false"><el-icon :size="14"><Close /></el-icon></el-button>
+      </div>
     </div>
 
     <!-- ====== 今日快照 ====== -->
@@ -102,6 +105,10 @@
             <div class="pb-top"><span><span class="pb-dot" style="background:#10b981;"></span> 新客户</span><span>{{ weekStats.fbCustomer }} / {{ budgets.inquiryGoal||0 }}</span></div>
             <div class="pb-track"><div class="pb-fill green" :style="{width: inquiryPct+'%'}"></div></div>
           </div>
+          <div class="pb-item">
+            <div class="pb-top"><span><span class="pb-dot" style="background:#f59e0b;"></span> 拉群</span><span>{{ weekStats.fbGrouped }} / {{ budgets.groupGoal||0 }}</span></div>
+            <div class="pb-track"><div class="pb-fill amber" :style="{width: groupPct+'%'}"></div></div>
+          </div>
         </div>
       </div>
 
@@ -125,7 +132,7 @@
           <div class="qc-icon-wrap"><el-icon :size="22"><Calendar /></el-icon></div>
           <div class="qc-text">
             <div class="qc-title">周计划</div>
-            <div class="qc-desc">{{ week?.countries?.length || 0 }} 个国家</div>
+            <div class="qc-desc">{{ weekInfoShort }}</div>
           </div>
           <el-icon class="qc-arrow" :size="14"><ArrowRight /></el-icon>
         </div>
@@ -180,11 +187,12 @@ import { useRouter } from 'vue-router'
 import {
   DataBoard, Edit, WarningFilled, Money, UserFilled, ChatDotRound,
   Monitor, DataAnalysis, TrendCharts, Calendar, PictureFilled, Document,
-  ArrowRight
+  ArrowRight, Close
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { useWeekStore } from '../stores/week'
 import { api, formatDateCN, todayStr, daysBetween, formatDate, getDateRange } from '../api'
+import { axisTheme } from '../utils/echarts-theme'
 
 const weekStore = useWeekStore()
 const router = useRouter()
@@ -211,6 +219,12 @@ const trendData = ref([])
 const loadErrors = ref([])
 const accounts = ref([])
 const selectedAccountId = ref(localStorage.getItem('dash_accountId') || '')
+const showYesterdayBanner = ref(true)
+const weekInfoShort = computed(() => {
+  if (!week.value) return ''
+  const remaining = Math.max(0, daysBetween(todayStr(), week.value.endDate) + 1)
+  return `剩余 ${remaining} 天`
+})
 
 const todayCN = computed(() => formatDateCN(todayStr()))
 const weekRange = computed(() => {
@@ -261,7 +275,8 @@ const weekBudgetPct = computed(() => budgets.value.weekBudget ? Math.min(100, Ma
 
 function fmtK(n) {
   const v = Math.round(n || 0)
-  return v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(v)
+  if (v >= 1000) return (v / 1000).toFixed(1) + 'k'
+  return v.toLocaleString('en-US')
 }
 
 // ====== ECharts ======
@@ -274,13 +289,15 @@ function initDonut() {
   if (!donutRef.value) return
   donutChart = echarts.init(donutRef.value)
   donutChart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
     series: [{
       type: 'pie', radius: ['70%', '90%'], center: ['50%', '50%'],
-      avoidLabelOverlap: false, silent: true,
-      label: { show: false }, emphasis: { disabled: true },
+      avoidLabelOverlap: false,
+      label: { show: false },
+      emphasis: { scale: true, scaleSize: 6 },
       data: [
-        { value: weekStats.fbGrouped, itemStyle: { color: '#10b981' } },
-        { value: Math.max(0, (budgets.value.groupGoal || 1) - weekStats.fbGrouped), itemStyle: { color: '#f3f4f6' } }
+        { name: '拉群', value: weekStats.fbGrouped, itemStyle: { color: '#10b981' } },
+        { name: '剩余', value: Math.max(0, (budgets.value.groupGoal || 1) - weekStats.fbGrouped), itemStyle: { color: document.documentElement.classList.contains('dark') ? '#24243a' : '#f3f4f6' } }
       ]
     }]
   })
@@ -295,25 +312,13 @@ function initTrend() {
   const customerData = trendData.value.map(d => d.customer)
 
   trendChart.setOption({
-    tooltip: { trigger: 'axis' },
-    grid: { left: 5, right: 15, top: 10, bottom: 0, containLabel: true },
+    tooltip: { trigger: 'axis', ...(axisTheme().tooltip || {}) },
+    grid: axisTheme().grid,
     legend: { show: false },
-    xAxis: {
-      type: 'category', data: dates,
-      axisLine: { lineStyle: { color: '#e5e7eb' } },
-      axisLabel: { color: '#9ca3af', fontSize: 10 }
-    },
+    xAxis: { type: 'category', data: dates, ...axisTheme().xAxis || axisTheme() },
     yAxis: [
-      {
-        type: 'value', name: '元', nameTextStyle: { color: '#9ca3af', fontSize: 10 },
-        splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } },
-        axisLabel: { color: '#9ca3af', fontSize: 10 }
-      },
-      {
-        type: 'value', name: '个', nameTextStyle: { color: '#9ca3af', fontSize: 10 },
-        splitLine: { show: false },
-        axisLabel: { color: '#9ca3af', fontSize: 10 }
-      }
+      { type: 'value', name: '元', ...axisTheme() },
+      { type: 'value', name: '个', ...axisTheme(), splitLine: { show: false } }
     ],
     series: [
       {
@@ -475,141 +480,81 @@ onUnmounted(() => {
 @keyframes fadeIn { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
 
 /* ====== 顶部 ====== */
-.page-top {
-  display:flex; justify-content:space-between; align-items:flex-start;
-  margin-bottom:20px;
-}
-.page-top h2 { font-size:22px; font-weight:700; display:flex; align-items:center; gap:8px; }
-.top-sub { font-size:13px; color:#6b7280; margin-top:4px; }
-.btn-hero {
-  display:inline-flex !important; align-items:center; gap:6px;
-  font-weight:700 !important; border-radius:10px !important;
-  padding:10px 22px !important; font-size:14px !important;
-}
+.page-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:var(--space-5); }
+.page-top h2 { font-size:var(--text-2xl); font-weight:800; display:flex; align-items:center; gap:var(--space-3); color:var(--text-primary); letter-spacing:-.3px; }
+.top-sub { font-size:var(--text-sm); color:var(--text-tertiary); margin-top:var(--space-1); }
+.btn-hero { font-weight:700; border-radius:10px; padding:10px 22px; font-size:var(--text-base); }
 .btn-hero:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(99,102,241,.3); }
 
 /* ====== 昨日修正提醒 ====== */
-.yesterday-banner {
-  display: flex; align-items: center; justify-content: space-between; gap: 14px;
-  padding: 14px 20px; margin-bottom: 16px;
-  background: linear-gradient(135deg, #fffbeb, #fef3c7);
-  border: 1px solid #fde68a; border-radius: 14px;
-}
+.yesterday-banner { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 20px; margin-bottom: 16px; background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1px solid #fde68a; border-radius: 14px; }
 .yb-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .yb-title { font-size: 14px; font-weight: 700; color: #92400e; }
 .yb-detail { font-size: 13px; color: #a16207; }
 .yb-detail b { color: #92400e; }
+.yb-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+html.dark .yesterday-banner { background: rgba(251, 191, 36, .08); border-color: rgba(251, 191, 36, .15); }
+html.dark .yb-title { color: #fbbf24; }
+html.dark .yb-detail { color: #fcd34d; }
+html.dark .yb-detail b { color: #fde68a; }
 
 /* ====== 今日快照条 ====== */
-.hero-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
-
-.hero-card {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:20px 24px; border-radius:16px;
-  position:relative; overflow:hidden; cursor:default;
-  transition:all .2s;
-}
-.hero-card:hover { transform:translateY(-2px); }
-.hero-budget { background:linear-gradient(135deg, #f5f3ff, #ede9fe); }
-.hero-customer { background:linear-gradient(135deg, #ecfdf5, #d1fae5); }
-.hero-grouped { background:linear-gradient(135deg, #fffbeb, #fef3c7); }
-.hero-vps { background:linear-gradient(135deg, #fef2f2, #fee2e2); cursor:pointer; }
-.hero-vps.clean { background:linear-gradient(135deg, #ecfdf5, #d1fae5); }
+.hero-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:var(--space-3); margin-bottom:var(--space-5); }
+.hero-card { display:flex; align-items:center; justify-content:space-between; padding:var(--space-5) var(--space-6); border-radius:var(--radius-xl); position:relative; overflow:hidden; cursor:default; transition:all var(--transition-normal); }
+.hero-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); }
+.hero-budget { background:linear-gradient(135deg, var(--brand-50), #ede9fe); }
+.hero-customer { background:linear-gradient(135deg, var(--success-light), #d1fae5); }
+.hero-grouped { background:linear-gradient(135deg, var(--warning-light), #fef3c7); }
+.hero-vps { background:linear-gradient(135deg, var(--danger-light), #fee2e2); cursor:pointer; }
+.hero-vps.clean { background:linear-gradient(135deg, var(--success-light), #d1fae5); }
 .hero-left { position:relative; z-index:1; }
-.hero-label { font-size:12px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
-.hero-val { font-size:30px; font-weight:800; color:#1f2937; line-height:1.1; }
-.hero-val.accent { color:#6366f1; }
-.hero-val.success { color:#059669; }
-.hero-val.danger { color:#ef4444; }
-.hero-sub { font-size:11px; color:#9ca3af; margin-top:3px; font-weight:600; display:flex; align-items:center; gap:3px; }
-.hero-sub.danger { color:#ef4444; }
-.hero-bg-icon {
-  position:absolute; right:10px; bottom:-6px;
-  opacity:.12; color:#1f2937; z-index:0;
-}
+.hero-label { font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.6px; margin-bottom:4px; }
+.hero-val { font-size:32px; font-weight:800; color:var(--text-primary); line-height:1.1; }
+.hero-val.accent { color:var(--brand-600); }
+.hero-val.success { color:var(--success); }
+.hero-val.danger { color:var(--danger); }
+.hero-sub { font-size:11px; color:var(--text-tertiary); margin-top:3px; font-weight:600; display:flex; align-items:center; gap:3px; }
+.hero-sub.danger { color:var(--danger); }
+.hero-bg-icon { position:absolute; right:14px; bottom:-4px; opacity:.08; color:var(--text-primary); z-index:0; }
 
 /* ====== 中部双栏 ====== */
-.mid-split { display:grid; grid-template-columns:320px 1fr; gap:14px; margin-bottom:20px; }
+.mid-split { display:grid; grid-template-columns:320px 1fr; gap:var(--space-3); margin-bottom:var(--space-5); }
+.mid-card { background:var(--surface-card); border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:var(--space-5) var(--space-5); box-shadow:var(--shadow-xs); }
+.mid-card-hd { font-size:var(--text-base); font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:var(--space-2); margin-bottom:14px; }
 
-.mid-card {
-  background:#fff; border:1px solid #e5e7eb; border-radius:16px;
-  padding:18px 20px; box-shadow:0 1px 3px rgba(0,0,0,.03);
-}
-.mid-card-hd {
-  font-size:14px; font-weight:700; color:#374151;
-  display:flex; align-items:center; gap:6px; margin-bottom:14px;
-}
-
-/* Donut + 进度条 */
-.progress-chart-wrap {
-  position:relative; display:flex; justify-content:center;
-  margin-bottom:14px;
-}
+.progress-chart-wrap { position:relative; display:flex; justify-content:center; margin-bottom:14px; }
 .donut { width:160px; height:160px; }
-.donut-center {
-  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-  text-align:center; pointer-events:none;
-}
-.dc-val { font-size:28px; font-weight:800; color:#059669; }
-.dc-label { font-size:11px; color:#9ca3af; margin-top:2px; }
+.donut-center { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none; }
+.dc-val { font-size:var(--text-3xl); font-weight:800; color:var(--success); }
+.dc-label { font-size:11px; color:var(--text-tertiary); margin-top:2px; }
 
 .progress-bars { display:flex; flex-direction:column; gap:10px; }
-.pb-top {
-  display:flex; justify-content:space-between;
-  font-size:12px; color:#6b7280; font-weight:600; margin-bottom:4px;
-}
+.pb-top { display:flex; justify-content:space-between; font-size:12px; color:var(--text-secondary); font-weight:600; margin-bottom:4px; }
 .pb-top span { display:flex; align-items:center; gap:4px; }
 .pb-dot { width:8px; height:8px; border-radius:50%; }
-.pb-track {
-  height:8px; background:#f3f4f6; border-radius:4px; overflow:hidden;
-}
-.pb-fill {
-  height:100%; border-radius:4px; transition:width .6s cubic-bezier(.4,0,.2,1);
-}
-.pb-fill.blue { background:linear-gradient(90deg,#6366f1,#818cf8); }
-.pb-fill.green { background:linear-gradient(90deg,#10b981,#34d399); }
+.pb-track { height:8px; background:var(--border-subtle); border-radius:4px; overflow:hidden; }
+.pb-fill { height:100%; border-radius:4px; transition:width .6s cubic-bezier(.4,0,.2,1); }
+.pb-fill.blue { background:linear-gradient(90deg,var(--brand-500),var(--brand-400)); }
+.pb-fill.green { background:linear-gradient(90deg,var(--success),#34d399); }
+.pb-fill.amber { background:linear-gradient(90deg,var(--warning),#fbbf24); }
 
-/* 趋势图 */
 .chart-card { overflow:hidden; }
-.chart-legend { display:flex; align-items:center; gap:12px; margin-left:auto; font-size:11px; color:#9ca3af; font-weight:600; }
+.chart-legend { display:flex; align-items:center; gap:12px; margin-left:auto; font-size:11px; color:var(--text-tertiary); font-weight:600; }
 .cl-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:3px; }
 .trend-chart { height:260px; width:100%; }
 
 /* ====== 快捷入口 ====== */
-.quick-section { margin-top:4px; }
-.quick-head { font-size:14px; font-weight:700; color:#374151; margin-bottom:12px; }
-.quick-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-
-.quick-card {
-  display:flex; align-items:center; gap:14px;
-  background:#fff; border:1px solid #e5e7eb; border-radius:14px;
-  border-left:3px solid transparent;
-  padding:16px 18px; cursor:pointer;
-  transition:all .2s;
-  box-shadow:0 1px 3px rgba(0,0,0,.03);
-}
-.quick-card:hover {
-  transform:translateY(-2px);
-  box-shadow:0 8px 24px rgba(0,0,0,.06);
-  border-color:#c7d2fe;
-  border-left-color: var(--qc-color, #6366f1);
-}
-.qc-icon-wrap {
-  width:44px; height:44px; border-radius:12px;
-  display:flex; align-items:center; justify-content:center;
-  flex-shrink:0;
-  background: #f3f4f6;
-  color: var(--qc-color, #6366f1);
-}
+.quick-section { margin-top:var(--space-1); }
+.quick-head { font-size:var(--text-base); font-weight:700; color:var(--text-primary); margin-bottom:var(--space-3); }
+.quick-row { display:grid; grid-template-columns:repeat(3,1fr); gap:var(--space-2); }
+.quick-card { display:flex; align-items:center; gap:14px; background:var(--surface-card); border:1px solid var(--border-default); border-radius:var(--radius-lg); border-left:3px solid color-mix(in srgb,var(--qc-color,#6366f1) 30%,#fff); padding:var(--space-4) var(--space-4); cursor:pointer; transition:all var(--transition-normal); box-shadow:var(--shadow-xs); }
+.quick-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); border-left-color:var(--qc-color,#6366f1); }
+.qc-icon-wrap { width:44px; height:44px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; flex-shrink:0; background:color-mix(in srgb,var(--qc-color,#6366f1) 12%,#fff); color:var(--qc-color,#6366f1); }
 .qc-text { flex:1; min-width:0; }
-.qc-title { font-size:14px; font-weight:700; color:#1f2937; }
-.qc-desc { font-size:11px; color:#9ca3af; margin-top:2px; }
-.qc-arrow { color:#d1d5db; flex-shrink:0; transition:color .2s; }
-.quick-card:hover .qc-arrow { color: var(--qc-color, #6366f1); }
+.qc-title { font-size:var(--text-base); font-weight:700; color:var(--text-primary); }
+.qc-desc { font-size:11px; color:var(--text-tertiary); margin-top:2px; }
+.qc-arrow { color:var(--border-strong); flex-shrink:0; transition:color var(--transition-fast); }
+.quick-card:hover .qc-arrow { color:var(--qc-color,#6366f1); }
 
-@media (max-width:900px) {
-  .hero-strip { grid-template-columns:repeat(2,1fr); }
-  .mid-split { grid-template-columns:1fr; }
-  .quick-row { grid-template-columns:repeat(2,1fr); }
-}
+@media (max-width:900px) { .hero-strip{grid-template-columns:repeat(2,1fr)} .mid-split{grid-template-columns:1fr} .quick-row{grid-template-columns:repeat(2,1fr)} }
 </style>

@@ -175,6 +175,7 @@ router.put('/:id', (req, res) => {
   try {
     const item = db.updateLibraryItem(req.params.id, req.body);
     if (!item) return res.status(404).json({ success: false, error: '文件不存在' });
+    db.logOperation('library.update', { name: item.name }, req.user);
     res.json({ success: true, data: item });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
@@ -187,6 +188,7 @@ router.delete('/:id', (req, res) => {
     if (!item) return res.status(404).json({ success: false, error: '文件不存在' });
     const filePath = path.join(UPLOAD_DIR, item.fileName);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    db.logOperation('library.delete', { name: item.name }, req.user);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });

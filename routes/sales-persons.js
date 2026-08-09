@@ -12,6 +12,7 @@ router.post('/', (req, res) => {
     const { name, group } = req.body || {};
     if (!name) return res.json({ success: false, error: '名称不能为空' });
     const person = db.addSalesPerson({ name: name.trim(), group: (group || '').trim() });
+    db.logOperation('salesPerson.add', { name: person.name }, req.user);
     res.json({ success: true, data: person });
   } catch(e) { res.status(500).json({ success: false, error: '服务器内部错误' }); }
 });
@@ -19,6 +20,7 @@ router.post('/', (req, res) => {
 router.delete('/:id', (req, res) => {
   try {
     db.deleteSalesPerson(req.params.id);
+    db.logOperation('salesPerson.delete', { id: req.params.id }, req.user);
     res.json({ success: true });
   } catch(e) { res.status(500).json({ success: false, error: '服务器内部错误' }); }
 });

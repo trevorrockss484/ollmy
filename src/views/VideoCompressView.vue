@@ -1,5 +1,5 @@
 <template>
-  <div class="video-compress-page">
+  <div class="video-compress-page enterprise-page enterprise-page--tool">
 
     <div class="top-section">
       <!-- 上传卡 -->
@@ -313,7 +313,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.video-compress-page { max-width: 1160px; margin: 0 auto; }
+.video-compress-page { }
 
 .top-section { margin-bottom: 24px; }
 

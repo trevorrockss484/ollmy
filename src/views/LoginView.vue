@@ -84,7 +84,7 @@ async function doLogin() {
       authStore.login(data.data.token, data.data.username, data.data.role, data.data.menus, rememberMe.value)
       ElMessage.success('登录成功')
       const menus = data.data.menus || []
-      const menuOrder = ['/', '/plan', '/report', '/history', '/monitor', '/clock', '/assets', '/media', '/video-library', '/scripts', '/customer-stats', '/role-manage', '/user-manage', '/compress', '/video-compress']
+      const menuOrder = ['/', '/plan', '/report', '/history', '/monitor', '/assets', '/media', '/video-library', '/customer-stats', '/logs', '/settings', '/role-manage', '/user-manage', '/compress', '/video-compress']
       const firstMenu = menuOrder.find(m => menus.includes(m)) || '/'
       window.location.href = firstMenu
     } else {
@@ -301,9 +301,13 @@ onUnmounted(() => { destroyThree() })
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(99, 102, 241, 0.12);
-  border-radius: 24px; padding: 44px 40px 36px;
-  width: 400px;
+  border-radius: var(--radius-xl); padding: 44px 40px 40px;
+  width: 420px;
   box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.04), 0 24px 80px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+.login-page {
+  background: radial-gradient(ellipse at 30% 30%, #1a1040 0%, #0a0a18 50%, #03030a 100%);
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
 
 /* ====== 品牌 ====== */
@@ -373,17 +377,18 @@ onUnmounted(() => { destroyThree() })
 }
 
 .login-btn {
-  width: 100%; height: 50px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  width: 100%; height: 52px;
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-600));
   color: #fff; font-size: 16px; font-weight: 700;
-  border: none; border-radius: 14px; cursor: pointer;
-  transition: all .2s; letter-spacing: 1px;
-  font-family: inherit;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
+  border: none; border-radius: var(--radius-md); cursor: pointer;
+  transition: all var(--transition-fast); letter-spacing: 1px;
+  font-family: inherit; box-shadow: 0 4px 14px rgba(99,102,241,.25);
+  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
 }
 .login-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(99, 102, 241, .35);
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-700));
+  box-shadow: 0 8px 24px rgba(99,102,241,.4);
 }
 .login-btn:active:not(:disabled) { transform: translateY(0); }
 .login-btn:disabled { opacity: .6; cursor: not-allowed; }

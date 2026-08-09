@@ -1,5 +1,5 @@
 <template>
-  <div class="report-page">
+  <div class="report-page enterprise-page enterprise-page--wide">
     <!-- ====== 顶部栏 ====== -->
     <div class="top-bar">
       <div class="top-row">
@@ -80,10 +80,6 @@
             <div class="ov-item">
               <div class="ov-val">¥{{ fmtNum(overallTotal.budget) }}</div>
               <div class="ov-label">1. 总费用</div>
-            </div>
-            <div class="ov-item ov-item-usd">
-              <div class="ov-val">${{ fmtNum(overallTotal.usdBudget) }}</div>
-              <div class="ov-label">美金</div>
             </div>
             <div class="ov-item">
               <div class="ov-val">{{ overallTotal.newCustomer }}</div>
@@ -256,23 +252,15 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useWeekStore } from '../stores/week'
 import { api, formatDateCN, todayStr } from '../api'
+import { countryTreeData as sharedCountryTree, allLeafKeys, flagMap } from '../data/countryTree'
+import { ACCOUNTS } from '../data/accounts'
+const countryTreeData = sharedCountryTree
 
 const weekStore = useWeekStore()
 
-// 全量可选国家列表
-const allCountries = [
-  '印度尼西亚','越南','菲律宾','泰国','马来西亚','新加坡','缅甸','柬埔寨','老挝','文莱',
-  '印度','巴基斯坦','孟加拉国','斯里兰卡','尼泊尔',
-  '尼日利亚','埃塞俄比亚','南非','肯尼亚','加纳','埃及','坦桑尼亚','乌干达','摩洛哥','阿尔及利亚','安哥拉','科特迪瓦',
-  '阿联酋','沙特阿拉伯','土耳其','卡塔尔','阿曼','科威特','巴林','伊拉克','约旦','黎巴嫩','以色列','伊朗','也门',
-  '中国','日本','韩国','蒙古',
-  '巴西','墨西哥','哥伦比亚','阿根廷','智利','秘鲁','厄瓜多尔','委内瑞拉',
-  '美国','英国','德国','法国','澳大利亚','俄罗斯','加拿大','意大利','西班牙','荷兰','波兰','乌克兰',
-  '哈萨克斯坦','乌兹别克斯坦','吉尔吉斯斯坦'
-]
-
+// ====== 国家数据（使用共享模块 src/data/countryTree.js） ======
 const activeCountries = ref([])
-const addableCountries = computed(() => allCountries.filter(c => !activeCountries.value.includes(c)))
+const addableCountries = computed(() => allLeafKeys.filter(c => !activeCountries.value.includes(c)))
 const countrySearch = ref('')
 const popVisible = ref(false)
 const countryTreeRef = ref(null)
@@ -289,68 +277,7 @@ watch(popVisible, (v) => {
   }
 })
 
-const countryTreeData = [
-  { key:'se-asia', label:'东南亚',
-    children:[
-      {key:'印度尼西亚',label:'印度尼西亚 +62'},{key:'越南',label:'越南 +84'},
-      {key:'菲律宾',label:'菲律宾 +63'},{key:'泰国',label:'泰国 +66'},
-      {key:'马来西亚',label:'马来西亚 +60'},{key:'新加坡',label:'新加坡 +65'},
-      {key:'缅甸',label:'缅甸 +95'},{key:'柬埔寨',label:'柬埔寨 +855'},
-      {key:'老挝',label:'老挝 +856'},{key:'文莱',label:'文莱 +673'}
-    ]},
-  { key:'s-asia', label:'南亚',
-    children:[
-      {key:'印度',label:'印度 +91'},{key:'巴基斯坦',label:'巴基斯坦 +92'},
-      {key:'孟加拉国',label:'孟加拉国 +880'},{key:'斯里兰卡',label:'斯里兰卡 +94'},
-      {key:'尼泊尔',label:'尼泊尔 +977'}
-    ]},
-  { key:'africa', label:'非洲',
-    children:[
-      {key:'尼日利亚',label:'尼日利亚 +234'},{key:'埃塞俄比亚',label:'埃塞俄比亚 +251'},
-      {key:'南非',label:'南非 +27'},{key:'肯尼亚',label:'肯尼亚 +254'},
-      {key:'加纳',label:'加纳 +233'},{key:'埃及',label:'埃及 +20'},
-      {key:'坦桑尼亚',label:'坦桑尼亚 +255'},{key:'乌干达',label:'乌干达 +256'},
-      {key:'摩洛哥',label:'摩洛哥 +212'},{key:'阿尔及利亚',label:'阿尔及利亚 +213'},
-      {key:'安哥拉',label:'安哥拉 +244'},{key:'科特迪瓦',label:'科特迪瓦 +225'}
-    ]},
-  { key:'mid-east', label:'中东',
-    children:[
-      {key:'阿联酋',label:'阿联酋 +971'},{key:'沙特阿拉伯',label:'沙特阿拉伯 +966'},
-      {key:'土耳其',label:'土耳其 +90'},{key:'卡塔尔',label:'卡塔尔 +974'},
-      {key:'阿曼',label:'阿曼 +968'},{key:'科威特',label:'科威特 +965'},
-      {key:'巴林',label:'巴林 +973'},{key:'伊拉克',label:'伊拉克 +964'},
-      {key:'约旦',label:'约旦 +962'},{key:'黎巴嫩',label:'黎巴嫩 +961'},
-      {key:'以色列',label:'以色列 +972'},{key:'伊朗',label:'伊朗 +98'},
-      {key:'也门',label:'也门 +967'}
-    ]},
-  { key:'e-asia', label:'东亚',
-    children:[
-      {key:'中国',label:'中国 +86'},{key:'日本',label:'日本 +81'},{key:'韩国',label:'韩国 +82'},
-      {key:'蒙古',label:'蒙古 +976'}
-    ]},
-  { key:'latam', label:'拉美',
-    children:[
-      {key:'巴西',label:'巴西 +55'},{key:'墨西哥',label:'墨西哥 +52'},
-      {key:'哥伦比亚',label:'哥伦比亚 +57'},{key:'阿根廷',label:'阿根廷 +54'},
-      {key:'智利',label:'智利 +56'},{key:'秘鲁',label:'秘鲁 +51'},
-      {key:'厄瓜多尔',label:'厄瓜多尔 +593'},{key:'委内瑞拉',label:'委内瑞拉 +58'}
-    ]},
-  { key:'emea', label:'欧美',
-    children:[
-      {key:'美国',label:'美国 +1'},{key:'英国',label:'英国 +44'},
-      {key:'德国',label:'德国 +49'},{key:'法国',label:'法国 +33'},
-      {key:'澳大利亚',label:'澳大利亚 +61'},{key:'俄罗斯',label:'俄罗斯 +7'},
-      {key:'加拿大',label:'加拿大 +1'},{key:'意大利',label:'意大利 +39'},
-      {key:'西班牙',label:'西班牙 +34'},{key:'荷兰',label:'荷兰 +31'},
-      {key:'波兰',label:'波兰 +48'},{key:'乌克兰',label:'乌克兰 +380'}
-    ]},
-  { key:'central-asia', label:'中亚',
-    children:[
-      {key:'哈萨克斯坦',label:'哈萨克斯坦 +7'},{key:'乌兹别克斯坦',label:'乌兹别克斯坦 +998'},
-      {key:'吉尔吉斯斯坦',label:'吉尔吉斯斯坦 +996'}
-    ]}
-]
-const allLeafKeys = countryTreeData.flatMap(g => g.children.map(c => c.key))
+// countryTreeData 来自共享模块 src/data/countryTree.js
 
 function onCountryTreeCheck(_n, checked) {
   pendingCountryChecks.value = checked.checkedKeys.filter(k => allLeafKeys.includes(k))
@@ -373,17 +300,6 @@ const filteredAddable = computed(() => {
   return addableCountries.value.filter(c => c.toLowerCase().includes(q))
 })
 
-// 国旗代码映射
-const flagMap = {
-  印度尼西亚:"id", 印尼:"id", 越南:"vn", 泰国:"th", 菲律宾:"ph", 马来西亚:"my", 新加坡:"sg", 缅甸:"mm", 柬埔寨:"kh", 老挝:"la", 文莱:"bn",
-  印度:"in", 巴基斯坦:"pk", 孟加拉国:"bd", 斯里兰卡:"lk", 尼泊尔:"np",
-  尼日利亚:"ng", 埃塞俄比亚:"et", 南非:"za", 肯尼亚:"ke", 加纳:"gh", 埃及:"eg", 坦桑尼亚:"tz", 乌干达:"ug", 摩洛哥:"ma", 阿尔及利亚:"dz", 安哥拉:"ao", 科特迪瓦:"ci",
-  阿联酋:"ae", 沙特阿拉伯:"sa", 沙特:"sa", 土耳其:"tr", 卡塔尔:"qa", 阿曼:"om", 科威特:"kw", 巴林:"bh", 伊拉克:"iq", 约旦:"jo", 黎巴嫩:"lb", 以色列:"il", 伊朗:"ir", 也门:"ye",
-  日本:"jp", 韩国:"kr", 蒙古:"mn",
-  巴西:"br", 墨西哥:"mx", 哥伦比亚:"co", 阿根廷:"ar", 智利:"cl", 秘鲁:"pe", 厄瓜多尔:"ec", 委内瑞拉:"ve",
-  美国:"us", 英国:"gb", 德国:"de", 法国:"fr", 澳大利亚:"au", 俄罗斯:"ru", 加拿大:"ca", 意大利:"it", 西班牙:"es", 荷兰:"nl", 波兰:"pl", 乌克兰:"ua",
-  哈萨克斯坦:"kz", 乌兹别克斯坦:"uz", 吉尔吉斯斯坦:"kg"
-}
 function flagCode(name) { return flagMap[name] || "" }
 
 // 国家卡片颜色调色板
@@ -492,11 +408,7 @@ const reportDate = ref(todayStr())
 const saveMsg = ref('')
 const saveOk = ref(true)
 const existingData = ref(false)
-const accounts = ref([
-  { id: 'lisa-office', name: '莉莎办公家具' },
-  { id: 'zhenshan-office', name: '甄珊办公家具' },
-  { id: 'xiege-office', name: '谢哥办公家具' },
-])
+const accounts = ref(ACCOUNTS)
 const selectedAccountId = ref('lisa-office')
 const selectedAccount = computed(() => accounts.value.find(a => a.id === selectedAccountId.value) || accounts.value[0])
 
@@ -585,6 +497,7 @@ const overallTotal = computed(() => {
 function fmtNum(v) { if (v == null) return '0.00'; const r = Math.round(v * 100) / 100; return r.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 
 // ====== 数据加载 ======
+let loadSeq = 0
 async function loadExistingData(d) {
   if (!d || !weekReady.value) return
   const seq = ++loadSeq; autoSaveSkip = true; dataLoading.value = true
@@ -619,7 +532,7 @@ async function loadExistingData(d) {
   autoSaveSkip = false; dataLoading.value = false
 }
 
-const skipAutoLoad = ref(false); let loadSeq = 0
+const skipAutoLoad = ref(false)
 const dataLoading = ref(false)
 watch(reportDate, (d) => { if (!d) return; saveMsg.value = ''; if (skipAutoLoad.value) { skipAutoLoad.value = false; return }; loadExistingData(d) })
 
@@ -732,7 +645,7 @@ async function saveData(silent) {
   if (!silent) { saveMsg.value = '保存中...'; saveOk.value = true }
   try {
     const res = await api.daily.save(date, { countries }, { accountId: selectedAccountId.value })
-    if (res.success) { saveMsg.value = silent ? '已自动保存' : ' 已保存'; saveOk.value = true; existingData.value = true; if (silent) setTimeout(() => { if (saveMsg.value === '已自动保存') saveMsg.value = '' }, 2000) }
+    if (res.success) { saveMsg.value = silent ? '已自动保存' : ' 已保存'; saveOk.value = true; existingData.value = true; const curMsg = saveMsg.value; setTimeout(() => { if (saveMsg.value === curMsg) saveMsg.value = '' }, 2500) }
     else { saveMsg.value = '❌ ' + (res.error||'未知错误'); saveOk.value = false }
   } catch(e) { saveMsg.value = '❌ ' + e.message; saveOk.value = false }
 }
@@ -858,14 +771,14 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 </script>
 
 <style scoped>
-.report-page { animation: fadeIn .3s ease; max-width: 1300px; margin: 0 auto; padding-bottom: 40px; }
+.report-page { animation: fadeIn .3s ease; padding-bottom: 40px; }
 @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 
 /* ====== 顶部 ====== */
 .top-bar {
-  background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+  background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 14px;
   padding: 16px 24px 12px; margin-bottom: 10px;
-  box-shadow: 0 1px 2px rgba(0,0,0,.03);
+  box-shadow: var(--shadow-xs);
   display: flex; flex-direction: column; gap: 10px;
 }
 .top-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
@@ -911,15 +824,16 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .tree-pop-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f3f4f6; }
 
 /* ====== 操作栏 ====== */
-.action-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px 20px; margin-bottom: 16px; }
+.action-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.action-bar .el-button { font-weight: 600; border-radius: 8px; }
 .save-msg { font-size: 12px; font-weight: 600; margin-left: 8px; }
 .save-msg.ok { color: #059669; }
 .save-msg.err { color: #ef4444; }
 
 /* ====== 布局 ====== */
-.main-layout { display: flex; gap: 20px; align-items: flex-start; }
+.main-layout { flex:1; min-height:0; display: flex; gap: 20px; align-items: flex-start; }
 .left-panel { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-.right-panel { width: 380px; flex-shrink: 0; }
+.right-panel { width: 380px; flex-shrink: 0; align-self: flex-start; position: sticky; top: 16px; }
 
 /* ====== 整体汇总卡片 ====== */
 .overall-card {
@@ -932,13 +846,11 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .overall-auto { font-size: 11px; font-weight: 400; opacity: .6; background: rgba(255,255,255,.12); padding: 2px 8px; border-radius: 10px; }
 .overall-grid { display: flex; gap: 8px; flex-wrap: wrap; }
 .ov-item { background: rgba(255,255,255,.1); border-radius: 10px; padding: 10px 14px; flex: 1; min-width: 90px; text-align: center; backdrop-filter: blur(4px); }
-.ov-item-usd { background: rgba(253,224,71,.2); }
-.ov-item-usd .ov-val { color: #fef08a; }
 .ov-val { font-size: 20px; font-weight: 800; }
 .ov-val.highlight { color: #c7d2fe; }
 .ov-label { font-size: 11px; opacity: .65; margin-top: 2px; }
 /* 拉群全局 */
-.gd-global { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px; }
+.gd-global { background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 12px; padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px; }
 .gd-global-label { font-size: 13px; font-weight: 700; color: #374151; white-space: nowrap; min-width: 120px; }
 
 /* ====== 区块标题 ====== */
@@ -961,7 +873,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 
 /* ====== 可编辑表格 ====== */
 .report-table-wrap {
-  background:#fff; border:1px solid #e5e7eb; border-radius:12px; overflow-x:auto;
+  background:var(--surface-card); border:1px solid var(--border-default); border-radius:12px; overflow-x:auto;
 }
 .rt-head {
   display:grid;
@@ -1012,7 +924,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .rt-country-name { font-size:13px; font-weight:700; color:#1f2937; white-space:nowrap; }
 
 .rt-input { width:100%; }
-.rt-input :deep(.el-input__wrapper) { background:#fff; border-radius:8px; box-shadow:0 0 0 1px #e5e7eb; padding:2px 10px; transition:box-shadow .15s; }
+.rt-input :deep(.el-input__wrapper) { background:var(--surface-input); border-radius:8px; box-shadow:0 0 0 1px var(--border-default); padding:2px 10px; transition:box-shadow .15s; }
 .rt-input :deep(.el-input__wrapper:hover) { box-shadow:0 0 0 1.5px #c7d2fe; }
 .rt-input :deep(.el-input__wrapper.is-focus) { box-shadow:0 0 0 2px #6366f1 !important; }
 .rt-input :deep(.el-input__inner) { font-size:15px; font-weight:700; color:#1f2937; height:36px; }
@@ -1046,7 +958,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 
 /* ====== 拉群详情展开区 ====== */
 .gd-expand {
-  background:#fff; border:1px solid #e5e7eb; border-radius:10px;
+  background:var(--surface-card); border:1px solid var(--border-default); border-radius:10px;
   margin-top:4px; overflow:hidden;
 }
 .gd-expand-hd {
@@ -1066,9 +978,9 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
   border:1px solid #e5e7eb; border-radius:6px;
   transition:border-color .12s;
 }
-.gd-compact-row:hover { border-color:#c7d2fe; background:#fff; }
+.gd-compact-row:hover { border-color:#c7d2fe; background:var(--surface-hover); }
 .gd-compact-text { flex:1; }
-.gd-compact-text :deep(.el-input__wrapper) { background:#fff; }
+.gd-compact-text :deep(.el-input__wrapper) { background:var(--surface-input); }
 .gd-compact-status { width:90px; flex-shrink:0; }
 .gd-compact-del { flex-shrink:0; opacity:.5; }
 .gd-compact-del:hover { opacity:1; }
@@ -1089,14 +1001,14 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .gd-global-val { font-size: 13px; color: #6b7280; line-height: 1.8; }
 
 /* ====== 预览（右侧固定） ====== */
-.preview-sticky { position: sticky; top: 16px; background: #fff; border: 1px solid #c7d2fe; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 16px rgba(99,102,241,.08); }
+.preview-sticky { position: sticky; top: 16px; background: var(--surface-card); border: 1px solid var(--brand-200); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-sm); }
 .preview-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #f5f3ff; border-bottom: 1px solid #e0e7ff; font-weight: 700; font-size: 14px; }
 .preview-content { white-space: pre-wrap; line-height: 1.9; font-size: 13px; padding: 16px 18px; color: #1f2937; max-height: calc(100vh - 180px); overflow-y: auto; }
-.preview-empty { text-align: center; padding: 60px 20px; color: #9ca3af; background: #fff; border: 1px dashed #e5e7eb; border-radius: 14px; position: sticky; top: 16px; }
+.preview-empty { text-align: center; padding: 60px 20px; color: var(--text-tertiary); background: var(--surface-card); border: 1px dashed var(--border-default); border-radius: 14px; position: sticky; top: 16px; }
 .preview-empty p { margin: 10px 0 0; font-size: 14px; line-height: 1.6; }
 
 /* ====== 空状态 ====== */
-.empty-state { text-align: center; padding: 80px 20px; color: #9ca3af; background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; }
+.empty-state { text-align: center; padding: 80px 20px; color: var(--text-tertiary); background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 14px; }
 .empty-state p { font-size: 16px; font-weight: 600; margin: 12px 0 4px; color: #6b7280; }
 .empty-state span { font-size: 13px; }
 @media (max-width: 960px) { .main-layout { flex-direction: column; } .right-panel { width: 100%; } .preview-sticky { position: static; } }

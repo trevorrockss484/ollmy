@@ -1,5 +1,5 @@
 <template>
-  <div class="um-page">
+  <div class="um-page enterprise-page enterprise-page--form">
     <div class="um-top">
       <h2><el-icon :size="22"><User /></el-icon> 用户管理</h2>
       <el-button type="primary" @click="openAdd"><el-icon :size="14"><Plus /></el-icon> 新增用户</el-button>
@@ -152,7 +152,7 @@ onMounted(loadUsers)
 </script>
 
 <style scoped>
-.um-page { max-width: 760px; margin: 0 auto; }
+.um-page { }
 .um-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
 .um-top h2 { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
 

@@ -8,11 +8,11 @@ const routes = [
   { path: '/report', name: 'report', component: () => import('../views/ReportView.vue') },
   { path: '/history', name: 'history', component: () => import('../views/HistoryView.vue') },
   { path: '/monitor', name: 'monitor', component: () => import('../views/MonitorView.vue') },
-  { path: '/clock', name: 'clock', component: () => import('../views/ClockView.vue') },
+
   { path: '/prompts', redirect: '/assets' },
   { path: '/assets', name: 'assets', component: () => import('../views/AssetsView.vue') },
-  { path: '/library', redirect: '/assets' },
-  { path: '/scripts', name: 'scripts', component: () => import('../views/ScriptsView.vue') },
+
+
   { path: '/compress', name: 'compress', component: () => import('../views/ImageCompressView.vue') },
   { path: '/video-compress', name: 'video-compress', component: () => import('../views/VideoCompressView.vue') },
   { path: '/video-library', name: 'video-library', component: () => import('../views/VideoLibraryView.vue') },
@@ -20,6 +20,9 @@ const routes = [
   { path: '/customer-stats', name: 'customerStats', component: () => import('../views/CustomerStatsView.vue') },
   { path: '/role-manage', name: 'roleManage', component: () => import('../views/RoleManageView.vue') },
   { path: '/user-manage', name: 'userManage', component: () => import('../views/UserManageView.vue') },
+  { path: '/settings', name: 'settings', component: () => import('../views/SystemSettingsView.vue') },
+  { path: '/logs', name: 'logs', component: () => import('../views/LogViewer.vue') },
+  { path: '/:pathMatch(.*)*', name: 'notFound', component: () => import('../views/NotFoundView.vue') },
 ]
 
 const router = createRouter({ history: createWebHistory(), routes })
@@ -27,7 +30,7 @@ const router = createRouter({ history: createWebHistory(), routes })
 let tokenVerified = false
 
 // 菜单优先级顺序（与 App.vue allMenuItems 保持一致）
-const menuOrder = ['/', '/plan', '/report', '/history', '/monitor', '/clock', '/assets', '/media', '/video-library', '/scripts', '/customer-stats', '/role-manage', '/user-manage', '/compress', '/video-compress']
+const menuOrder = ['/', '/plan', '/report', '/history', '/monitor', '/assets', '/media', '/video-library', '/customer-stats', '/logs', '/settings', '/role-manage', '/user-manage', '/compress', '/video-compress']
 
 router.beforeEach(async (to, from, next) => {
   if (to.meta.public) return next()

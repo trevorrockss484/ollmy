@@ -65,6 +65,7 @@ export const api = {
     add: (data) => request('/vps', { method: 'POST', body: JSON.stringify(data) }),
     update: (id, data) => request('/vps/' + id, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id) => request('/vps/' + id, { method: 'DELETE' }),
+    restore: (id) => request('/vps/' + id + '/restore', { method: 'PUT' }),
   },
   prompts: {
     list: () => request('/prompts'),

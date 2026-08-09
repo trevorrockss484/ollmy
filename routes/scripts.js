@@ -47,6 +47,7 @@ router.get('/', (req, res) => {
 router.post('/', (req, res) => {
   try {
     const item = db.addShowScript(req.body);
+    db.logOperation('scripts.add', { showName: item.showName, title: item.title }, req.user);
     res.json({ success: true, data: item });
   } catch (e) {
     res.status(500).json({ success: false, error: '服务器内部错误' });
@@ -58,6 +59,7 @@ router.put('/:id', (req, res) => {
   try {
     const item = db.updateShowScript(req.params.id, req.body);
     if (!item) return res.status(404).json({ success: false, error: '不存在' });
+    db.logOperation('scripts.update', { showName: item.showName, title: item.title }, req.user);
     res.json({ success: true, data: item });
   } catch (e) {
     res.status(500).json({ success: false, error: '服务器内部错误' });
@@ -75,6 +77,7 @@ router.delete('/:id', (req, res) => {
       if (fs.existsSync(fp)) fs.unlinkSync(fp);
     }
     db.deleteShowScript(req.params.id);
+    db.logOperation('scripts.delete', { showName: item.showName }, req.user);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, error: '服务器内部错误' });

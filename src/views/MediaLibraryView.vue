@@ -1,5 +1,5 @@
 <template>
-  <div class="medialib-page">
+  <div class="medialib-page enterprise-page enterprise-page--wide">
 
     <!-- 顶栏 -->
     <div class="ml-topbar">
@@ -380,7 +380,8 @@ watch([search, filterCat, sortBy], () => {})
 </script>
 
 <style scoped>
-.medialib-page { max-width: 1280px; margin: 0 auto; }
+.medialib-page { }
+.ml-title h2 { font-size:var(--text-2xl); font-weight:800; display:flex; align-items:center; gap:var(--space-3); color:var(--text-primary); letter-spacing:-.3px; }
 
 .ml-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
 .ml-title { display: flex; align-items: center; gap: 12px; }

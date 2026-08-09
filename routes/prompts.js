@@ -61,6 +61,7 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
   try {
     const p = db.addPrompt(req.body);
+    db.logOperation('prompt.add', { title: p.title, step: p.step }, req.user);
     res.json({ success: true, data: p });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
@@ -72,6 +73,7 @@ router.put('/:id', (req, res) => {
   try {
     const p = db.updatePrompt(req.params.id, req.body);
     if (!p) return res.status(404).json({ success: false, error: '提示词不存在' });
+    db.logOperation('prompt.update', { title: p.title, step: p.step }, req.user);
     res.json({ success: true, data: p });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
@@ -81,7 +83,9 @@ router.put('/:id', (req, res) => {
 // 删除
 router.delete('/:id', (req, res) => {
   try {
+    const p = db.getPrompt(req.params.id);
     db.deletePrompt(req.params.id);
+    if (p) db.logOperation('prompt.delete', { title: p.title }, req.user);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });

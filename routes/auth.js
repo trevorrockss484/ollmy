@@ -61,6 +61,37 @@ router.post('/verify', (req, res) => {
   res.status(401).json({ success: false, error: '未授权' });
 });
 
+const fs = require('fs');
+const path = require('path');
+
+// 成本锁密码持久化
+const PIN_FILE = path.join(__dirname, '..', 'database', 'data', 'cost-pin.txt');
+function loadCostPin() {
+  try { return fs.readFileSync(PIN_FILE, 'utf8').trim() || null } catch { return null }
+}
+function saveCostPin(pin) {
+  const dir = path.dirname(PIN_FILE);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(PIN_FILE, pin, 'utf8');
+}
+let COST_PIN = loadCostPin() || process.env.PAN_COST_PIN || 'default-change-me';
+
+// 系统管理：更新成本锁密码
+router.put('/update-cost-pin', (req, res) => {
+  if (!req.user || req.user.role !== 'admin') return res.status(403).json({ success: false, error: '需要管理员权限' });
+  if (!req.body.pin) return res.json({ success: false, error: '密码不能为空' });
+  COST_PIN = req.body.pin;
+  saveCostPin(req.body.pin);
+  db.logOperation('system.updateCostPin', {}, req.user);
+  res.json({ success: true });
+});
+
+// 验证成本锁密码
+router.post('/verify-pin', (req, res) => {
+  if (req.body.pin === COST_PIN) return res.json({ success: true })
+  res.json({ success: false })
+});
+
 // 导出 verifyToken 供中间件使用
 router.verifyToken = verifyToken;
 

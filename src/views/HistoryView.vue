@@ -1,5 +1,5 @@
 <template>
-  <div class="data-page">
+  <div class="data-page enterprise-page enterprise-page--wide">
     <div class="page-header">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
@@ -40,7 +40,7 @@
     </div>
 
     <!-- ====== 趋势图 ====== -->
-    <div v-if="list.length >= 2" class="chart-card">
+    <div v-if="list.length" class="chart-card">
       <div class="chart-header">
         <span class="chart-title"><el-icon :size="16"><TrendCharts /></el-icon> 数据趋势</span>
         <el-radio-group v-model="chartMetric" size="small">
@@ -64,7 +64,6 @@
           <span>日均 ¥{{ fmtMoney(rangeAgg.dailyAvg) }}</span>
         </div>
         <div class="copy-actions">
-          <el-button type="primary" plain size="default" @click="copyCompactReport"><el-icon :size="15"><DocumentCopy /></el-icon> 复制精简版</el-button>
           <el-button type="primary" size="default" @click="copyReportText"><el-icon :size="15"><DocumentCopy /></el-icon> 一键复制报告</el-button>
         </div>
       </div>
@@ -87,13 +86,14 @@
 
       <!-- 报告预览 -->
       <div class="copy-preview-card">
-        <div class="copy-preview-header">
+        <div class="copy-preview-header" @click="previewOpen = !previewOpen" style="cursor:pointer;">
           <div>
             <div class="copy-preview-title">报告预览</div>
-            <div class="copy-preview-sub">下方内容会被一键复制，可直接粘贴发送</div>
+            <div class="copy-preview-sub">{{ displayReport.split('\n').length - 1 }} 行 · 点击{{ previewOpen ? '收起' : '展开' }}</div>
           </div>
+          <el-icon :size="16" style="color:#9ca3af;transition:transform .2s;" :style="{ transform: previewOpen ? 'rotate(180deg)' : '' }"><ArrowDown /></el-icon>
         </div>
-        <div class="copy-preview-content">{{ displayReport }}</div>
+        <div v-show="previewOpen" class="copy-preview-content">{{ displayReport }}</div>
       </div>
 
       <!-- 二、每个国家明细 -->
@@ -101,24 +101,29 @@
         <div class="country-section-title"><span class="sec-badge alt">二</span> 每个国家明细 <span class="cs-sub">{{ rangeAgg.countries.length }} 个国家 · 按消耗排序</span></div>
         <div class="country-list">
           <div v-for="(c, index) in rangeAgg.countries" :key="c.name" class="country-item">
-            <div class="ci-header">
+            <div class="ci-header" @click="toggleCountry(index)" style="cursor:pointer;">
               <div class="ci-title">
                 <span class="ci-index">{{ index + 1 }}</span>
                 <span class="ci-name">{{ c.name }}</span>
               </div>
-              <span class="ci-mini">¥{{ fmtMoney(c.budget) }} · 拉群 {{ c.grouped }} 个</span>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="ci-mini">¥{{ fmtMoney(c.budget) }} · 拉群 {{ c.grouped }} 个</span>
+                <el-icon :size="14" style="color:#9ca3af;transition:transform .2s;" :style="{ transform: expandedCountries.has(index) ? 'rotate(180deg)' : '' }"><ArrowDown /></el-icon>
+              </div>
             </div>
-            <div class="ci-metrics">
-              <div class="cm"><span class="cm-label">1. 费用</span><span class="cm-val">{{ c.budget > 0 ? '¥' + fmtMoney(c.budget) + ' 元' : '—' }}</span></div>
-              <div class="cm"><span class="cm-label">2. 客资</span><span class="cm-val">{{ c.customer > 0 ? c.customer + ' 个' : '—' }}</span></div>
-              <div class="cm"><span class="cm-label">3. 拉群</span><span class="cm-val">{{ c.grouped > 0 ? c.grouped + ' 个' : '—' }}</span></div>
-              <div class="cm"><span class="cm-label">4. 询盘客价</span><span class="cm-val hl">{{ c.avg ? '¥' + c.avg + ' / 元' : '—' }}</span></div>
-              <div class="cm"><span class="cm-label">5. 有效客价</span><span class="cm-val hl">{{ c.eff ? '¥' + c.eff + ' / 元' : '—' }}</span></div>
-            </div>
-            <div v-if="c.details.length" class="ci-details">
-              <div class="ci-details-title">拉群及客户详情（{{ c.grouped }}）</div>
-              <div v-for="(d, i) in c.details" :key="i" class="ci-detail-line">{{ d }}</div>
-            </div>
+            <template v-if="expandedCountries.has(index)">
+              <div class="ci-metrics">
+                <div class="cm"><span class="cm-label">1. 费用</span><span class="cm-val">{{ c.budget > 0 ? '¥' + fmtMoney(c.budget) + ' 元' : '—' }}</span></div>
+                <div class="cm"><span class="cm-label">2. 客资</span><span class="cm-val">{{ c.customer > 0 ? c.customer + ' 个' : '—' }}</span></div>
+                <div class="cm"><span class="cm-label">3. 拉群</span><span class="cm-val">{{ c.grouped > 0 ? c.grouped + ' 个' : '—' }}</span></div>
+                <div class="cm"><span class="cm-label">4. 询盘客价</span><span class="cm-val hl">{{ c.avg ? '¥' + c.avg + ' / 元' : '—' }}</span></div>
+                <div class="cm"><span class="cm-label">5. 有效客价</span><span class="cm-val hl">{{ c.eff ? '¥' + c.eff + ' / 元' : '—' }}</span></div>
+              </div>
+              <div v-if="c.details.length" class="ci-details">
+                <div class="ci-details-title">拉群及客户详情（{{ c.grouped }}）</div>
+                <div v-for="(d, i) in c.details" :key="i" class="ci-detail-line">{{ d }}</div>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -138,23 +143,28 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { api, formatDateCN, todayStr } from '../api'
+import { axisTheme } from '../utils/echarts-theme'
+import { ACCOUNTS, getAccountLabel as acLabel } from '../data/accounts'
 
 const route = useRoute()
 const router = useRouter()
 
-const accounts = ref([
-  { id: 'lisa-office', name: '莉莎办公家具' },
-  { id: 'zhenshan-office', name: '甄珊办公家具' },
-  { id: 'xiege-office', name: '谢哥办公家具' },
-])
+const accounts = ref(ACCOUNTS)
 const selectedAccountId = ref('lisa-office')
-const accountLabel = computed(() => selectedAccountId.value === 'all' ? '全部账号' : (accounts.value.find(a => a.id === selectedAccountId.value)?.name || '莉莎办公家具'))
+const accountLabel = computed(() => acLabel(selectedAccountId.value) || '莉莎办公家具')
 
 
 // ====== 筛选状态 — URL 优先 ======
 const dateRange = ref(null)
 const monthPicked = ref(todayStr().substring(0, 7))
 const searchText = ref('')
+const previewOpen = ref(false)
+const expandedCountries = ref(new Set())
+function toggleCountry(idx) {
+  const s = expandedCountries.value
+  if (s.has(idx)) s.delete(idx); else s.add(idx)
+  expandedCountries.value = new Set(s)
+}
 
 // 最近 12 个月
 const recentMonths = computed(() => {
@@ -334,27 +344,19 @@ function updateChart() {
     return val
   })
 
+  const isDark = document.documentElement.classList.contains('dark')
   chartInstance.setOption({
-    tooltip: { trigger: 'axis' },
+    tooltip: { trigger: 'axis', ...(axisTheme().tooltip || {}) },
     grid: { left: 10, right: 20, top: 10, bottom: 5, containLabel: true },
-    xAxis: {
-      type: 'category',
-      data: dates.map(d => d.substring(5)),
-      axisLine: { lineStyle: { color: '#e5e7eb' } },
-      axisLabel: { color: '#9ca3af', fontSize: 10 }
-    },
-    yAxis: {
-      type: 'value',
-      splitLine: { lineStyle: { color: '#f3f4f6', type: 'dashed' } },
-      axisLabel: { color: '#9ca3af', fontSize: 10 }
-    },
+    xAxis: { type: 'category', data: dates.map(d => d.substring(5)), ...axisTheme().xAxis || axisTheme() },
+    yAxis: { type: 'value', ...axisTheme() },
     series: [{
       data, type: 'line', smooth: true, symbol: 'circle', symbolSize: 4,
       lineStyle: { color: colorMap[key], width: 2 },
       itemStyle: { color: colorMap[key] },
       areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-        { offset: 0, color: colorMap[key] + '30' },
-        { offset: 1, color: colorMap[key] + '05' }
+        { offset: 0, color: colorMap[key] + (isDark ? '40' : '30') },
+        { offset: 1, color: colorMap[key] + (isDark ? '08' : '05') }
       ]) }
     }]
   }, true)
@@ -370,7 +372,6 @@ function loadMonthly() {
 }
 
 const displayReport = computed(() => buildRangeReport())
-const compactReport = computed(() => buildCompactReport())
 
 
 // 金额格式：千分位，固定保留 2 位小数
@@ -438,10 +439,6 @@ ${c.details.join('\n')}
 
 ----------`
   return text
-}
-
-function buildCompactReport() {
-  return buildRangeReport()
 }
 
 async function copyText(text, successMsg = '报告已复制，可直接粘贴') {
@@ -559,23 +556,18 @@ function handleResize() { chartInstance?.resize() }
 </script>
 
 <style scoped>
-.data-page {
-  animation: fadeIn .4s cubic-bezier(.4,0,.2,1);
-  max-width: 1280px;
-  margin: 0 auto;
-  padding-bottom: 40px;
-}
+.data-page { animation: fadeIn .4s cubic-bezier(.4,0,.2,1); padding-bottom: 40px; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(12px);} to{opacity:1;transform:translateY(0);} }
-.page-header { margin-bottom:24px; }
-.page-header h2 { font-size:24px; font-weight:800; display:flex; align-items:center; gap:10px; color:#1e1b4b; }
+.page-header { margin-bottom:var(--space-6); }
+.page-header h2 { font-size:var(--text-2xl); font-weight:800; display:flex; align-items:center; gap:var(--space-3); color:var(--text-primary); letter-spacing:-.3px; }
 .page-header .sub { font-size:13px; color:#6b7280; margin-top:6px; letter-spacing:.3px; }
 .header-right { display:flex; align-items:center; gap:10px; }
 
 /* ====== 筛选栏 ====== */
 .query-toolbar {
-  background:#fff; border:1px solid #e5e7eb; border-radius:16px;
+  background:var(--surface-card); border:1px solid var(--border-default); border-radius:16px;
   padding:16px 20px; margin-bottom:24px;
-  box-shadow:0 2px 8px rgba(0,0,0,.04), 0 0 0 1px rgba(99,102,241,.04);
+  box-shadow:var(--shadow-xs);
   backdrop-filter:blur(8px);
 }
 .qt-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:space-between; }
@@ -584,9 +576,9 @@ function handleResize() { chartInstance?.resize() }
 
 /* ====== 趋势图 ====== */
 .chart-card {
-  background:#fff; border:1px solid #e5e7eb; border-radius:16px;
+  background:var(--surface-card); border:1px solid var(--border-default); border-radius:16px;
   margin-bottom:24px; overflow:hidden;
-  box-shadow:0 2px 8px rgba(0,0,0,.04);
+  box-shadow:var(--shadow-xs);
 }
 .chart-header {
   display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
@@ -610,8 +602,8 @@ function handleResize() { chartInstance?.resize() }
   border:1px solid rgba(224,231,255,.9);
 }
 .summary-card, .country-section, .copy-preview-card {
-  background:#fff; border:1px solid #e5e7eb; border-radius:14px;
-  box-shadow:0 2px 12px rgba(15,23,42,.05); overflow:hidden;
+  background:var(--surface-card); border:1px solid var(--border-default); border-radius:14px;
+  box-shadow:var(--shadow-xs); overflow:hidden;
 }
 .summary-card { padding:20px; }
 .summary-title, .country-section-title {
@@ -674,7 +666,7 @@ function handleResize() { chartInstance?.resize() }
 .ci-details-title { font-size:13px; font-weight:800; color:#374151; margin-bottom:8px; }
 .ci-detail-line {
   display: block; line-height:1.7; font-size:13px; color:#374151;
-  background:#fff; border:1px solid #e5e7eb; border-radius:8px;
+  background:var(--surface-card); border:1px solid var(--border-default); border-radius:8px;
   padding:10px 14px; margin-top:4px;
 }
 
@@ -690,7 +682,7 @@ function handleResize() { chartInstance?.resize() }
 .copy-preview-sub { margin-top:4px; font-size:12px; color:#6b7280; }
 .copy-preview-content {
   white-space:pre-wrap; line-height:1.9; font-size:13px; color:#1f2937;
-  padding:16px 18px; max-height:360px; overflow-y:auto; background:#fff;
+  padding:16px 18px; max-height:360px; overflow-y:auto; background:var(--surface-card);
 }
 
 /* ====== 空状态 ====== */

@@ -490,8 +490,10 @@ function deleteDailyData(date) {
 }
 
 // ==================== VPS操作 ====================
-function getVpsList() {
-  return read().vpsList;
+function getVpsList(includeDeleted) {
+  const list = read().vpsList;
+  if (includeDeleted) return list;
+  return list.filter(v => !v.deleted);
 }
 
 function addVps(vps) {
@@ -512,10 +514,10 @@ function updateVps(id, updates) {
 }
 
 function deleteVps(id) {
-  const data = read();
-  data.vpsList = data.vpsList.filter(v => v.id != id);
-  write(data);
-  return true;
+  return updateVps(id, { deleted: true, deletedAt: new Date().toISOString() });
+}
+function restoreVps(id) {
+  return updateVps(id, { deleted: false, deletedAt: null });
 }
 
 // ==================== 通用CRUD工厂 ====================
@@ -732,7 +734,7 @@ function getCustomerStatsMonthly(month, accountId) {
 const usersDb = makeCrud('users', { username: '', passwordHash: '', role: 'staff', displayName: '', enabled: true })
 const rolesDb = makeCrud('roles', { name: '', displayName: '', menus: [], enabled: true })
 
-const ALL_MENUS = ['/', '/plan', '/report', '/history', '/monitor', '/clock', '/assets', '/media', '/video-library', '/scripts', '/compress', '/video-compress', '/customer-stats', '/user-manage', '/role-manage']
+const ALL_MENUS = ['/', '/plan', '/report', '/history', '/monitor', '/assets', '/media', '/video-library', '/compress', '/video-compress', '/customer-stats', '/logs', '/settings', '/user-manage', '/role-manage']
 
 // 种子默认角色和管理员
 function seedDefaultRoles() {
@@ -740,6 +742,15 @@ function seedDefaultRoles() {
   // 默认角色
   if (!rolesDb.list().some(r => r.name === 'admin')) {
     rolesDb.add({ name: 'admin', displayName: '管理员', menus: [...ALL_MENUS], enabled: true })
+  } else {
+    // 已有 admin 角色 — 补全新菜单项（如 /logs /monitor 等）
+    const admin = rolesDb.list().find(r => r.name === 'admin')
+    if (admin) {
+      const merged = [...new Set([...(admin.menus || []), ...ALL_MENUS])]
+      if (merged.length !== (admin.menus || []).length) {
+        rolesDb.update(admin.id, { menus: merged })
+      }
+    }
   }
   if (!rolesDb.list().some(r => r.name === 'staff')) {
     rolesDb.add({ name: 'staff', displayName: '同事', menus: ['/customer-stats'], enabled: true })
@@ -767,12 +778,29 @@ function getRoleByName(name) {
 }
 
 
+// 操作日志
+const LOG_DIR = path.join(__dirname, '..', 'logs');
+if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+function logOperation(action, detail, user) {
+  try {
+    const line = JSON.stringify({
+      ts: new Date().toISOString(),
+      action,
+      detail,
+      user: user ? user.username : 'system',
+      role: user ? user.role : ''
+    }) + '\n';
+    const logFile = path.join(LOG_DIR, new Date().toISOString().slice(0,10).replace(/-/g,'') + '.log');
+    fs.appendFileSync(logFile, line, 'utf8');
+  } catch {}
+}
+
 module.exports = {
   getWeeks, getCurrentWeek, addWeek, updateWeek, deleteWeek, restoreWeek, permanentlyDeleteWeek, setCurrentWeek,
   getWeekAccountBudgets,
   getAccounts, getDefaultAccountId, normalizeAccountId,
   getDailyData, getAllDailyData, saveDailyData, deleteDailyData,
-  getVpsList, addVps, updateVps, deleteVps,
+  getVpsList, addVps, updateVps, deleteVps, restoreVps,
   getPrompts, getPrompt, addPrompt, updatePrompt, deletePrompt, reorderPrompts,
   getAssets, getAsset, addAsset, updateAsset, deleteAsset, batchDeleteAssets,
   getPromptSteps, savePromptSteps,
@@ -780,6 +808,7 @@ module.exports = {
   getShowScripts, getShowScript, addShowScript, updateShowScript, deleteShowScript,
   hasOverlap,
   getCompressed, getCompressedItem, addCompressed, updateCompressed, deleteCompressed,
+  logOperation,
   getScripts() { return scriptsDb.list(); },
   getScript(id) { return scriptsDb.get(id); },
   addScript(item) { return scriptsDb.add(item); },

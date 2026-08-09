@@ -44,6 +44,7 @@ router.post('/', (req, res) => {
     const record = db.upsertCustomerStat(req.body);
     const { date, accountId, countryBreakdown } = req.body
     syncToDailyReport(date, accountId, countryBreakdown)
+    db.logOperation('customerStats.save', { date, accountId }, req.user);
     res.json({ success: true, data: record });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
@@ -66,6 +67,7 @@ router.put('/:id', (req, res) => {
 router.delete('/:id', (req, res) => {
   try {
     db.deleteCustomerStat(req.params.id);
+    db.logOperation('customerStats.delete', { id: req.params.id }, req.user);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });

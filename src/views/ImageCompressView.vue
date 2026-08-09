@@ -1,5 +1,5 @@
 <template>
-  <div class="compress-page">
+  <div class="compress-page enterprise-page enterprise-page--tool">
 
     <!-- 上传 + 设置 -->
     <div class="top-section">
@@ -601,7 +601,7 @@ onUnmounted(() => { for (const u of previewCache.value.values()) URL.revokeObjec
 </script>
 
 <style scoped>
-.compress-page { max-width: 1160px; margin: 0 auto; }
+.compress-page { }
 
 /* 上传 + 设置 */
 .top-section { margin-bottom: 24px; }

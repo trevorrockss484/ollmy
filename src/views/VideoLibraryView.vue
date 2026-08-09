@@ -1,5 +1,5 @@
 <template>
-  <div class="vlib-page">
+  <div class="vlib-page enterprise-page enterprise-page--wide">
 
     <!-- 顶栏 + Tab -->
     <div class="vl-topbar">
@@ -382,7 +382,8 @@ watch([search, sortBy], () => {})
 </script>
 
 <style scoped>
-.vlib-page { max-width: 1400px; margin: 0 auto; }
+.vlib-page { }
+.vl-title h2 { font-size:var(--text-2xl); font-weight:800; letter-spacing:-.3px; }
 
 /* 顶栏 */
 .vl-topbar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }

@@ -31,7 +31,9 @@ router.post('/week', (req, res) => {
     if (db.hasOverlap({ weeks: db.getWeeks() }, startDate, endDate)) {
       return res.status(400).json({ success: false, error: '该日期范围与已有周重叠，不能重复创建' });
     }
-    res.json({ success: true, data: db.addWeek(req.body) });
+    const w = db.addWeek(req.body);
+    db.logOperation('config.addWeek', { startDate, endDate }, req.user);
+    res.json({ success: true, data: w });
   } catch (e) { res.status(500).json({ success: false, error: "服务器内部错误" }); }
 });
 
@@ -40,13 +42,14 @@ router.put('/week/:id', (req, res) => {
   try {
     const w = db.updateWeek(req.params.id, req.body);
     if (!w) return res.status(404).json({ success: false, error: '周计划不存在' });
+    db.logOperation('config.updateWeek', { id: req.params.id, startDate: req.body.startDate }, req.user);
     res.json({ success: true, data: w });
   } catch (e) { res.status(500).json({ success: false, error: "服务器内部错误" }); }
 });
 
 // 关闭周计划（软删除）
 router.delete('/week/:id', (req, res) => {
-  try { db.deleteWeek(req.params.id); res.json({ success: true }); }
+  try { db.deleteWeek(req.params.id); db.logOperation('config.deleteWeek', { id: req.params.id }, req.user); res.json({ success: true }); }
   catch (e) { res.status(500).json({ success: false, error: "服务器内部错误" }); }
 });
 
@@ -55,13 +58,14 @@ router.put('/week/:id/restore', (req, res) => {
   try {
     const w = db.restoreWeek(req.params.id);
     if (!w) return res.status(404).json({ success: false, error: '周不存在' });
+    db.logOperation('config.restoreWeek', { id: req.params.id }, req.user);
     res.json({ success: true, data: w });
   } catch (e) { res.status(500).json({ success: false, error: "服务器内部错误" }); }
 });
 
 // 永久删除周计划
 router.delete('/week/:id/permanent', (req, res) => {
-  try { db.permanentlyDeleteWeek(req.params.id); res.json({ success: true }); }
+  try { db.permanentlyDeleteWeek(req.params.id); db.logOperation('config.permDeleteWeek', { id: req.params.id }, req.user); res.json({ success: true }); }
   catch (e) { res.status(500).json({ success: false, error: "服务器内部错误" }); }
 });
 
