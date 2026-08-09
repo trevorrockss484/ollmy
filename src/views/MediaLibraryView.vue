@@ -21,7 +21,7 @@
         <el-button round @click="batchMode = !batchMode; selected.length = 0">
           <el-icon><List /></el-icon> {{ batchMode ? '取消选择' : '批量选择' }}
         </el-button>
-        <el-button type="primary" round @click="openUpload"><el-icon><Plus /></el-icon> 上传素材</el-button>
+        <el-button v-if="authStore.canAdd(PAGE)" type="primary" round @click="openUpload"><el-icon><Plus /></el-icon> 上传素材</el-button>
       </div>
     </div>
 
@@ -123,7 +123,7 @@
           <el-button type="primary" round size="large" @click="saveDetail"><el-icon><Check /></el-icon> 保存修改</el-button>
           <el-button round size="large" @click="downloadSaved(detailItem)"><el-icon><Download /></el-icon> 下载</el-button>
           <el-button round size="large" @click="shareImage(detailItem)"><el-icon><Link /></el-icon> 分享</el-button>
-          <el-button round size="large" type="danger" plain @click="deleteDetail"><el-icon><Delete /></el-icon> 删除</el-button>
+          <el-button v-if="authStore.canDelete(PAGE)" round size="large" type="danger" plain @click="deleteDetail"><el-icon><Delete /></el-icon> 删除</el-button>
         </div>
       </div>
     </el-dialog>
@@ -215,6 +215,10 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { formatSize, authUrl } from '../api'
+import { useAuthStore } from '../stores/auth'
+
+const authStore = useAuthStore()
+const PAGE = '/media'
 
 const list = ref([])
 const search = ref('')

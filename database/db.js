@@ -739,21 +739,28 @@ const ALL_MENUS = ['/', '/plan', '/report', '/history', '/monitor', '/assets', '
 // 种子默认角色和管理员
 function seedDefaultRoles() {
   const crypto = require('crypto')
-  // 默认角色
+  const DEF_FULL = { edit: true, add: true, delete: true }
+  const DEF_RO = { edit: false, add: false, delete: false }
   if (!rolesDb.list().some(r => r.name === 'admin')) {
-    rolesDb.add({ name: 'admin', displayName: '管理员', menus: [...ALL_MENUS], enabled: true })
+    rolesDb.add({ name: 'admin', displayName: '管理员', menus: [...ALL_MENUS], permissions: DEF_FULL, perPagePerms: {}, enabled: true })
   } else {
-    // 已有 admin 角色 — 补全新菜单项（如 /logs /monitor 等）
     const admin = rolesDb.list().find(r => r.name === 'admin')
     if (admin) {
       const merged = [...new Set([...(admin.menus || []), ...ALL_MENUS])]
-      if (merged.length !== (admin.menus || []).length) {
-        rolesDb.update(admin.id, { menus: merged })
-      }
+      const fixes = {}
+      if (merged.length !== (admin.menus || []).length) fixes.menus = merged
+      if (!admin.perPagePerms) fixes.perPagePerms = {}
+      if (Object.keys(fixes).length) rolesDb.update(admin.id, fixes)
     }
   }
   if (!rolesDb.list().some(r => r.name === 'staff')) {
-    rolesDb.add({ name: 'staff', displayName: '同事', menus: ['/customer-stats'], enabled: true })
+    rolesDb.add({ name: 'staff', displayName: '访客', menus: [...ALL_MENUS], permissions: DEF_RO, perPagePerms: {}, enabled: true })
+  }
+  for (const r of rolesDb.list()) {
+    const fixes = {}
+    if (!r.permissions) fixes.permissions = r.name === 'admin' ? {...DEF_FULL} : {...DEF_RO}
+    if (!r.perPagePerms) fixes.perPagePerms = {}
+    if (Object.keys(fixes).length) rolesDb.update(r.id, fixes)
   }
   // 默认管理员用户
   if (!usersDb.list().some(u => u.role === 'admin')) {

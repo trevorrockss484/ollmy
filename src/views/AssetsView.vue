@@ -29,7 +29,7 @@
       <!-- 工具栏 -->
       <div class="assets-toolbar">
         <div class="toolbar-left">
-          <el-button type="primary" class="tb-btn-primary" @click="openUpload">
+          <el-button v-if="authStore.canAdd(PAGE)" type="primary" class="tb-btn-primary" @click="openUpload">
             <el-icon :size="16"><Plus /></el-icon> 上传资产
           </el-button>
           <span class="tb-count">{{ assets.length }} 项</span>
@@ -68,7 +68,7 @@
           <el-button type="primary" round size="default" @click="batchDownload">
             <el-icon :size="15"><Download /></el-icon> 一键下载 ({{ selectedIds.size }})
           </el-button>
-          <el-button type="danger" round size="default" plain @click="batchDelete">
+          <el-button v-if="authStore.canDelete(PAGE)" type="danger" round size="default" plain @click="batchDelete">
             <el-icon :size="15"><Delete /></el-icon> 一键删除 ({{ selectedIds.size }})
           </el-button>
           <el-button round size="default" @click="selectAll">全选</el-button>
@@ -130,8 +130,8 @@
             <a :href="authUrl(api.assets.downloadUrl(a.id))" class="card-btn card-btn-dl" title="下载" @click.stop>
               <el-icon :size="16"><Download /></el-icon>
             </a>
-            <button class="card-btn" title="编辑" @click="openEdit(a)"><el-icon :size="16"><Edit /></el-icon></button>
-            <button class="card-btn card-btn-del" title="删除" @click.stop="doDelete(a)"><el-icon :size="16"><Delete /></el-icon></button>
+            <button v-if="authStore.canEdit(PAGE)" class="card-btn" title="编辑" @click="openEdit(a)"><el-icon :size="16"><Edit /></el-icon></button>
+            <button v-if="authStore.canDelete(PAGE)" class="card-btn card-btn-del" title="删除" @click.stop="doDelete(a)"><el-icon :size="16"><Delete /></el-icon></button>
           </div>
         </div>
       </div>
@@ -253,9 +253,9 @@
             @click="selectShow(show)">
             <el-icon :size="14"><VideoCamera /></el-icon>
             <span>{{ show }}</span>
-            <span class="show-pill-del" @click.stop="confirmDeleteShow(show)"><el-icon :size="12"><Close /></el-icon></span>
+            <span v-if="authStore.canDelete(PAGE)" class="show-pill-del" @click.stop="confirmDeleteShow(show)"><el-icon :size="12"><Close /></el-icon></span>
           </div>
-          <span class="show-pill show-pill--add" @click="openCreateShowDialog">
+          <span v-if="authStore.canAdd(PAGE)" class="show-pill show-pill--add" @click="openCreateShowDialog">
             <el-icon :size="16"><Plus /></el-icon> 新增剧集
           </span>
         </div>
@@ -327,7 +327,7 @@
         </template>
         <template #footer>
           <el-button @click="showAddDialog = false" :disabled="showAdding">取消</el-button>
-          <el-button type="primary" @click="addShow" :disabled="!newShowName.trim() || showAdding" :loading="showAdding">
+          <el-button v-if="authStore.canAdd(PAGE)" type="primary" @click="addShow" :disabled="!newShowName.trim() || showAdding" :loading="showAdding">
             <el-icon :size="14"><Plus /></el-icon>
             {{ hasAnyFile ? '创建并提取内容' : '创建空剧集' }}
           </el-button>
@@ -340,7 +340,7 @@
         <p style="color:#9ca3af;font-size:12px;">该剧的剧本和分镜将被永久删除，无法恢复</p>
         <template #footer>
           <el-button @click="showDeleteDialog = false">取消</el-button>
-          <el-button type="danger" @click="deleteShow(deletingShow)">
+          <el-button v-if="authStore.canDelete(PAGE)" type="danger" @click="deleteShow(deletingShow)">
             <el-icon :size="14"><Delete /></el-icon> 确认删除
           </el-button>
         </template>
@@ -368,7 +368,7 @@
               <el-button size="small" round @click="scriptPreview = !scriptPreview">
                 <el-icon :size="13"><View /></el-icon> {{ scriptPreview ? '编辑' : '预览' }}
               </el-button>
-              <el-button size="small" round @click="downloadScript('script')">
+              <el-button v-if="authStore.canEdit(PAGE)" size="small" round @click="downloadScript('script')">
                 <el-icon :size="13"><Download /></el-icon> 下载
               </el-button>
             </div>
@@ -382,6 +382,7 @@
               @scroll.passive="onScriptScroll('script', $event)"
               @input="onScriptEdit('script', $event.target.value)"
               ref="scriptTextareaRef"
+              :disabled="!authStore.canEdit(PAGE)"
             ></textarea>
             <div v-show="scriptPreview" class="script-preview-content" v-html="renderedScript || fallbackPreviewHtml"
               @scroll="onPreviewScroll('script', $event)"></div>
@@ -399,7 +400,7 @@
               <el-button size="small" round @click="storyboardPreview = !storyboardPreview">
                 <el-icon :size="13"><View /></el-icon> {{ storyboardPreview ? '编辑' : '预览' }}
               </el-button>
-              <el-button size="small" round @click="downloadScript('storyboard')">
+              <el-button v-if="authStore.canEdit(PAGE)" size="small" round @click="downloadScript('storyboard')">
                 <el-icon :size="13"><Download /></el-icon> 下载
               </el-button>
             </div>
@@ -413,6 +414,7 @@
               @scroll.passive="onScriptScroll('storyboard', $event)"
               @input="onScriptEdit('storyboard', $event.target.value)"
               ref="storyboardTextareaRef"
+          :disabled="!authStore.canEdit(PAGE)"
           ></textarea>
           <div v-show="storyboardPreview" class="script-preview-content" v-html="renderedStoryboard || fallbackPreviewHtml"
             @scroll="onPreviewScroll('storyboard', $event)"></div>
@@ -429,7 +431,7 @@
         <aside class="prompts-sidebar">
           <div class="sidebar-header">
             <h3>流程步骤</h3>
-            <el-button size="small" text @click="pmtOpenStepManager">
+            <el-button v-if="authStore.canEdit(PAGE)" size="small" text @click="pmtOpenStepManager">
               <el-icon :size="14"><Setting /></el-icon> 管理
             </el-button>
           </div>
@@ -456,14 +458,14 @@
           <!-- 顶部操作栏 -->
           <div class="prompts-topbar">
             <div class="toolbar-left">
-              <el-button type="primary" class="tb-btn-primary" @click="pmtOpenAdd">
+              <el-button v-if="authStore.canAdd(PAGE)" type="primary" class="tb-btn-primary" @click="pmtOpenAdd">
                 <el-icon :size="16"><Plus /></el-icon> 新增模板
               </el-button>
               <span class="tb-count">{{ pmtFiltered.length }} 条</span>
             </div>
             <div class="toolbar-right">
               <el-button size="small" @click="pmtExport">导出</el-button>
-              <el-button size="small" @click="pmtImportInput?.click()">导入</el-button>
+              <el-button v-if="authStore.canAdd(PAGE)" size="small" @click="pmtImportInput?.click()">导入</el-button>
               <input ref="pmtImportInput" type="file" accept=".json" style="display:none" @change="pmtImport" />
               <div class="assets-search-box">
                 <el-icon :size="15" class="search-icon"><Search /></el-icon>
@@ -516,10 +518,10 @@
                   <el-button type="primary" size="small" round @click="pmtDoCopy(pmtActiveItem)">
                     <el-icon><DocumentCopy /></el-icon> 复制全文
                   </el-button>
-                  <el-button size="small" round @click="pmtOpenEdit(pmtActiveItem)">
+                  <el-button v-if="authStore.canEdit(PAGE)" size="small" round @click="pmtOpenEdit(pmtActiveItem)">
                     <el-icon><Edit /></el-icon> 编辑
                   </el-button>
-                  <el-button size="small" round type="danger" plain @click="pmtDeleteCard(pmtActiveItem)">
+                  <el-button v-if="authStore.canDelete(PAGE)" size="small" round type="danger" plain @click="pmtDeleteCard(pmtActiveItem)">
                     <el-icon><Delete /></el-icon>
                   </el-button>
                 </div>
@@ -558,11 +560,11 @@
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button v-if="pmtIsEditing" type="danger" @click="pmtDoDelete" style="margin-right:auto;">
+          <el-button v-if="pmtIsEditing && authStore.canDelete(PAGE)" type="danger" @click="pmtDoDelete" style="margin-right:auto;">
             <el-icon :size="14"><Delete /></el-icon> 删除
           </el-button>
           <el-button @click="pmtDialogOpen = false">取消</el-button>
-          <el-button type="primary" @click="pmtDoSave"><el-icon :size="14"><Check /></el-icon> 保存</el-button>
+          <el-button v-if="authStore.canEdit(PAGE)" type="primary" @click="pmtDoSave"><el-icon :size="14"><Check /></el-icon> 保存</el-button>
         </template>
       </el-dialog>
 
@@ -594,7 +596,7 @@
         </el-button>
         <template #footer>
           <el-button @click="pmtStepDialog = false">取消</el-button>
-          <el-button type="primary" @click="pmtSaveSteps">保存步骤配置</el-button>
+          <el-button v-if="authStore.canEdit(PAGE)" type="primary" @click="pmtSaveSteps">保存步骤配置</el-button>
         </template>
       </el-dialog>
     </div>
@@ -635,7 +637,11 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from
 import MarkdownIt from 'markdown-it'
 const md = new MarkdownIt({ breaks: true, linkify: true })
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useAuthStore } from '../stores/auth'
 import { api, formatSize, authUrl } from '../api'
+
+const authStore = useAuthStore()
+const PAGE = '/assets'
 
 // ===== Tab =====
 const tab = ref('assets')

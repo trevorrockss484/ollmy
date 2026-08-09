@@ -11,15 +11,15 @@
         <span v-else class="cs-badge cs-badge--new">新日期</span>
       </div>
       <div class="cs-top-right">
-        <el-button @click="salesManageVisible = true" class="cs-ghost-btn"><el-icon :size="14"><User /></el-icon> 销售名单</el-button>
+        <el-button v-if="authStore.canEdit(PAGE)" @click="salesManageVisible = true" class="cs-ghost-btn"><el-icon :size="14"><User /></el-icon> 销售名单</el-button>
       </div>
     </div>
 
     <div class="cs-toolbar">
-      <el-button type="primary" @click="saveData"><el-icon :size="15"><Check /></el-icon> 保存</el-button>
-      <el-button @click="pasteVisible = true"><el-icon :size="15"><Files /></el-icon> 粘贴识别</el-button>
+      <el-button v-if="authStore.canEdit(PAGE)" type="primary" @click="saveData"><el-icon :size="15"><Check /></el-icon> 保存</el-button>
+      <el-button v-if="authStore.canEdit(PAGE)" @click="pasteVisible = true"><el-icon :size="15"><Files /></el-icon> 粘贴识别</el-button>
       <el-button @click="copyPreview"><el-icon :size="15"><DocumentCopy /></el-icon> 一键复制</el-button>
-      <el-button @click="clearForm" class="cs-clear-btn"><el-icon :size="15"><Delete /></el-icon> 清空</el-button>
+      <el-button v-if="authStore.canEdit(PAGE)" @click="clearForm" class="cs-clear-btn"><el-icon :size="15"><Delete /></el-icon> 清空</el-button>
       <transition name="cs-fade">
         <span v-if="saveMsg" class="cs-save-msg" :class="{ ok: saveOk, fail: !saveOk }">{{ saveMsg }}</span>
       </transition>
@@ -34,12 +34,12 @@
             <span class="cs-hd-date">{{ dailyLabel }}</span>
           </header>
           <div class="cs-daily-grid">
-            <label class="cs-ditem"><span class="cs-dnum" style="--c:#6366f1">1</span><span class="cs-dlabel">新客户</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.newCustomers" min="0" placeholder="0" class="cs-dinput-raw" /></span></label>
-            <label class="cs-ditem"><span class="cs-dnum" style="--c:#8b5cf6">2</span><span class="cs-dlabel">有回复</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.repliedCustomers" min="0" placeholder="0" class="cs-dinput-raw" /></span></label>
-            <label class="cs-ditem"><span class="cs-dnum" style="--c:#06b6d4">3</span><span class="cs-dlabel">已登记</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.registeredCustomers" min="0" placeholder="0" class="cs-dinput-raw" /></span></label>
-            <label class="cs-ditem"><span class="cs-dnum" style="--c:#10b981">4</span><span class="cs-dlabel">拉群+图</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.groupedWithPlan" min="0" placeholder="0" class="cs-dinput-raw" /></span></label>
-            <label class="cs-ditem"><span class="cs-dnum" style="--c:#f59e0b">5</span><span class="cs-dlabel">来访</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.visitingCustomers" min="0" placeholder="0" class="cs-dinput-raw" /></span></label>
-            <label class="cs-ditem"><span class="cs-dnum" style="--c:#ef4444">6</span><span class="cs-dlabel">成交</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.closedDeals" min="0" placeholder="0" class="cs-dinput-raw" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#6366f1">1</span><span class="cs-dlabel">新客户</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.newCustomers" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE)" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#8b5cf6">2</span><span class="cs-dlabel">有回复</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.repliedCustomers" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE)" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#06b6d4">3</span><span class="cs-dlabel">已登记</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.registeredCustomers" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE)" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#10b981">4</span><span class="cs-dlabel">拉群+图</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.groupedWithPlan" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE)" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#f59e0b">5</span><span class="cs-dlabel">来访</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.visitingCustomers" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE)" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#ef4444">6</span><span class="cs-dlabel">成交</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.closedDeals" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE)" /></span></label>
           </div>
 
           <div class="cs-bottom-row">
@@ -47,15 +47,15 @@
               <div class="cs-sales-hd"><span class="cs-dnum" style="--c:#a78bfa">7</span><span class="cs-dlabel">国家客资</span><span class="cs-sales-cnt" v-if="selectedCountries.length">{{ totalCountryCount }}个</span></div>
               <div class="cs-sales-body">
                 <div class="cs-sales-tree">
-                  <el-tree ref="countryTreeRef" :data="countryTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onCountryTreeCheck" />
+                  <el-tree ref="countryTreeRef" :data="countryTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onCountryTreeCheck" :default-expanded-keys="[]" :disabled="!authStore.canEdit(PAGE)" />
                 </div>
                 <div class="cs-sales-chips" v-if="selectedCountries.length">
                   <div v-for="ct in selectedCountries" :key="ct.country" class="cs-chip-row">
-                    <el-tag size="small" effect="dark" type="success" closable @close="removeCountryRow(ct.country)">{{ ct.country }}</el-tag>
+                    <el-tag size="small" effect="dark" type="success" :closable="authStore.canEdit(PAGE)" @close="removeCountryRow(ct.country)">{{ ct.country }}</el-tag>
                     <span class="cs-stepper">
-                      <button class="cs-step-btn" @click="countryMap[ct.country] = Math.max(1, (countryMap[ct.country]||1) - 1); syncCountryTotal()">−</button>
+                      <button :disabled="!authStore.canEdit(PAGE)" class="cs-step-btn" @click="countryMap[ct.country] = Math.max(1, (countryMap[ct.country]||1) - 1); syncCountryTotal()">−</button>
                       <span class="cs-step-val">{{ countryMap[ct.country] || 0 }}</span>
-                      <button class="cs-step-btn cs-step-btn--plus" @click="countryMap[ct.country] = (countryMap[ct.country]||0) + 1; syncCountryTotal()">+</button>
+                      <button :disabled="!authStore.canEdit(PAGE)" class="cs-step-btn cs-step-btn--plus" @click="countryMap[ct.country] = (countryMap[ct.country]||0) + 1; syncCountryTotal()">+</button>
                     </span>
                   </div>
                 </div>
@@ -67,15 +67,15 @@
               <div class="cs-sales-hd"><span class="cs-dnum" style="--c:#f472b6">8</span><span class="cs-dlabel">分配销售</span><span class="cs-sales-cnt" v-if="selectedSales.length">{{ selectedSales.length }}人</span></div>
               <div class="cs-sales-body">
                 <div class="cs-sales-tree">
-                  <el-tree ref="salesTreeRef" :data="salesTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onSalesTreeCheck" />
+                  <el-tree ref="salesTreeRef" :data="salesTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onSalesTreeCheck" :disabled="!authStore.canEdit(PAGE)" />
                 </div>
                 <div class="cs-sales-chips" v-if="selectedSales.length">
                   <div v-for="sa in selectedSales" :key="sa.name" class="cs-chip-row">
-                    <el-tag size="small" effect="dark" closable @close="removeSalesRow(sa.name)">{{ sa.name }}</el-tag>
+                    <el-tag size="small" effect="dark" :closable="authStore.canEdit(PAGE)" @close="removeSalesRow(sa.name)">{{ sa.name }}</el-tag>
                     <span class="cs-stepper">
-                      <button class="cs-step-btn" @click="salesMap[sa.name] = Math.max(1, (salesMap[sa.name]||1) - 1)">−</button>
+                      <button :disabled="!authStore.canEdit(PAGE)" class="cs-step-btn" @click="salesMap[sa.name] = Math.max(1, (salesMap[sa.name]||1) - 1)">−</button>
                       <span class="cs-step-val">{{ salesMap[sa.name] || 0 }}</span>
-                      <button class="cs-step-btn cs-step-btn--plus" @click="salesMap[sa.name] = (salesMap[sa.name]||0) + 1">+</button>
+                      <button :disabled="!authStore.canEdit(PAGE)" class="cs-step-btn cs-step-btn--plus" @click="salesMap[sa.name] = (salesMap[sa.name]||0) + 1">+</button>
                     </span>
                   </div>
                 </div>
@@ -112,7 +112,7 @@
           <header class="cs-card-hd"><span class="cs-hd-dot cs-hd-dot--sec"></span> 历史记录 <span class="cs-hd-hint">点击可编辑</span></header>
           <div class="cs-ht" v-if="history.length">
             <div class="cs-ht-row cs-ht-row--head"><span>日期</span><span>新客户</span><span>回复</span><span>登记</span><span>拉群+图</span><span>来访</span><span>成交</span><span class="cs-ht-s">分配销售</span></div>
-            <div v-for="r in history" :key="r.id" class="cs-ht-row" @click="editRecord(r)">
+            <div v-for="r in history" :key="r.id" class="cs-ht-row" @click="authStore.canEdit(PAGE) && editRecord(r)" :style="!authStore.canEdit(PAGE) ? {cursor:'default',opacity:.8} : {}">
               <span class="cs-ht-date">{{ shortDate(r.date) }}<i>{{ dayName(r.date) }}</i></span>
               <span class="cs-ht-v">{{ r.newCustomers || 0 }}</span>
               <span class="cs-ht-v">{{ r.repliedCustomers || 0 }}</span>
@@ -161,8 +161,12 @@
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api, todayStr } from '../api'
+import { useAuthStore } from '../stores/auth'
 import { countryTreeData, allLeafKeys as allCountryKeys } from '../data/countryTree'
 import { ACCOUNTS } from '../data/accounts'
+
+const authStore = useAuthStore()
+const PAGE = '/customer-stats'
 
 const accounts = ref(ACCOUNTS)
 const accountId = ref(localStorage.getItem('cs_accountId') || accounts.value[0].id)

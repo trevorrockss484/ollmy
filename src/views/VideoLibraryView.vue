@@ -21,7 +21,7 @@
         <el-button round size="large" @click="batchMode = !batchMode; selected.length = 0">
           <el-icon :size="16"><List /></el-icon> {{ batchMode ? '取消选择' : '批量选择' }}
         </el-button>
-        <el-button type="primary" round size="large" @click="openUpload"><el-icon><Plus /></el-icon> 上传视频</el-button>
+        <el-button v-if="authStore.canAdd(PAGE)" type="primary" round size="large" @click="openUpload"><el-icon><Plus /></el-icon> 上传视频</el-button>
       </div>
     </div>
 
@@ -207,6 +207,10 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { formatSize, authUrl } from '../api'
+import { useAuthStore } from '../stores/auth'
+
+const authStore = useAuthStore()
+const PAGE = '/video-library'
 import { Search } from '@element-plus/icons-vue'
 
 const list = ref([])

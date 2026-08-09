@@ -21,8 +21,8 @@
         <el-select v-model="selectedAccountId" placeholder="选择账号" size="small" style="width:150px;margin-right:6px" @change="onAccountChange">
           <el-option v-for="a in accounts" :key="a.id" :label="a.name" :value="a.id" />
         </el-select>
-        <el-button size="small" @click="openCreateWeek"><el-icon :size="14"><Plus /></el-icon> 新增周</el-button>
-        <el-button size="small" type="primary" @click="openSettings"><el-icon :size="14"><Setting /></el-icon> 设置</el-button>
+        <el-button v-if="authStore.canAdd(PAGE)" size="small" @click="openCreateWeek"><el-icon :size="14"><Plus /></el-icon> 新增周</el-button>
+        <el-button v-if="authStore.canEdit(PAGE)" size="small" type="primary" @click="openSettings"><el-icon :size="14"><Setting /></el-icon> 设置</el-button>
         <el-button size="small" @click="manageOpen = true">管理周计划</el-button>
       </div>
     </div>
@@ -201,7 +201,7 @@
         <template #footer>
           <el-button type="danger" @click="deleteThisWeek" style="margin-right:auto;"><el-icon :size="14"><Delete /></el-icon> 删除本周</el-button>
           <el-button @click="settingsOpen = false">取消</el-button>
-          <el-button type="primary" @click="saveSettings"><el-icon :size="14"><Check /></el-icon> 保存</el-button>
+          <el-button v-if="authStore.canEdit(PAGE)" type="primary" @click="saveSettings"><el-icon :size="14"><Check /></el-icon> 保存</el-button>
         </template>
       </el-dialog>
 
@@ -265,8 +265,12 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useWeekStore } from '../stores/week'
+import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+
+const authStore = useAuthStore()
+const PAGE = '/plan'
 import * as echarts from 'echarts'
 import { api, formatDate, formatDateCN, getDateRange, getDayName, todayStr } from '../api'
 import { countryTreeData, allLeafKeys, flagMap } from '../data/countryTree'

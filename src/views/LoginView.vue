@@ -81,7 +81,7 @@ async function doLogin() {
     })
     const data = await res.json()
     if (data.success) {
-      authStore.login(data.data.token, data.data.username, data.data.role, data.data.menus, rememberMe.value)
+      authStore.login(data.data.token, data.data.username, data.data.role, data.data.menus, rememberMe.value, data.data.permissions, data.data.perPagePerms)
       ElMessage.success('登录成功')
       const menus = data.data.menus || []
       const menuOrder = ['/', '/plan', '/report', '/history', '/monitor', '/assets', '/media', '/video-library', '/customer-stats', '/logs', '/settings', '/role-manage', '/user-manage', '/compress', '/video-compress']

@@ -33,7 +33,9 @@ function verifyToken(token) {
     if (!user || user.role !== role) return null;
     const roleObj = db.getRoleByName(role);
     if (!roleObj) return null;
-    return { username, role, menus: roleObj.menus || [] };
+    const perms = roleObj.permissions || { edit: false, add: false, delete: false };
+    const perPage = roleObj.perPagePerms || {};
+    return { username, role, menus: roleObj.menus || [], permissions: perms, perPagePerms: perPage };
   } catch { return null; }
 }
 
@@ -46,7 +48,9 @@ router.post('/login', (req, res) => {
     const now = Date.now();
     const token = signToken(username, user.role, now);
     const roleObj = db.getRoleByName(user.role);
-    return res.json({ success: true, data: { token, username, role: user.role, displayName: user.displayName, menus: roleObj ? roleObj.menus : [] } });
+    const permissions = roleObj ? (roleObj.permissions || { edit: false, add: false, delete: false }) : { edit: false, add: false, delete: false };
+    const perPagePerms = roleObj ? (roleObj.perPagePerms || {}) : {};
+    return res.json({ success: true, data: { token, username, role: user.role, displayName: user.displayName, menus: roleObj ? roleObj.menus : [], permissions, perPagePerms } });
   }
   res.status(401).json({ success: false, error: '用户名或密码错误' });
 });
@@ -56,7 +60,7 @@ router.post('/verify', (req, res) => {
   const { token } = req.body || {};
   const result = token ? verifyToken(token) : null;
   if (result) {
-    return res.json({ success: true, data: { username: result.username, role: result.role, menus: result.menus } });
+    return res.json({ success: true, data: { username: result.username, role: result.role, menus: result.menus, permissions: result.permissions, perPagePerms: result.perPagePerms } });
   }
   res.status(401).json({ success: false, error: '未授权' });
 });

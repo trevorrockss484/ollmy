@@ -41,7 +41,7 @@
     <!-- 操作 & 筛选栏 -->
     <div class="vps-toolbar">
       <div class="vps-toolbar-left">
-        <el-button :type="formOpen ? '' : 'primary'" size="default" @click="formOpen = !formOpen">
+        <el-button v-if="authStore.canAdd(PAGE)" :type="formOpen ? '' : 'primary'" size="default" @click="formOpen = !formOpen">
           <el-icon :size="14"><Plus /></el-icon> {{ formOpen ? '收起表单' : '添加VPS' }}
         </el-button>
         <span class="vps-count-badge"><span class="vps-count-num">{{ list.length }}</span><span class="vps-count-label"> 台</span></span>
@@ -252,8 +252,8 @@
             <el-button size="small" round @click="renew(v, 90)">+90天</el-button>
             <el-button size="small" round @click="renew(v, 365)">+1年</el-button>
             <div style="flex:1;"></div>
-            <el-button size="small" round type="primary" plain @click="editVps(v)"><el-icon :size="14"><Edit /></el-icon> 编辑</el-button>
-            <el-button size="small" round type="danger" plain @click="remove(v)"><el-icon :size="14"><Delete /></el-icon> 删除</el-button>
+            <el-button v-if="authStore.canEdit(PAGE)" size="small" round type="primary" plain @click="editVps(v)"><el-icon :size="14"><Edit /></el-icon> 编辑</el-button>
+            <el-button v-if="authStore.canDelete(PAGE)" size="small" round type="danger" plain @click="remove(v)"><el-icon :size="14"><Delete /></el-icon> 删除</el-button>
           </div>
         </template>
       </div>
@@ -265,6 +265,10 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api, formatDateCN, todayStr, daysBetween } from '../api'
+import { useAuthStore } from '../stores/auth'
+
+const authStore = useAuthStore()
+const PAGE = '/monitor'
 
 const list = ref([])
 const formOpen = ref(false)

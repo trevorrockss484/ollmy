@@ -2,7 +2,7 @@
   <div class="rm-page enterprise-page enterprise-page--form">
     <div class="rm-top">
       <h2><el-icon :size="22"><Key /></el-icon> 角色管理</h2>
-      <el-button type="primary" @click="openAdd"><el-icon :size="14"><Plus /></el-icon> 新增角色</el-button>
+      <el-button v-if="authStore.canAdd(PAGE)" type="primary" @click="openAdd"><el-icon :size="14"><Plus /></el-icon> 新增角色</el-button>
     </div>
 
     <!-- 角色卡片列表 -->
@@ -33,8 +33,8 @@
           </el-popover>
         </div>
         <div class="rmc-actions">
-          <el-button size="small" round @click="openEdit(r)"><el-icon :size="13"><Edit /></el-icon> 编辑</el-button>
-          <el-button size="small" round type="danger" plain @click="doDelete(r)" :disabled="r.name==='admin'">
+          <el-button v-if="authStore.canEdit(PAGE)" size="small" round @click="openEdit(r)"><el-icon :size="13"><Edit /></el-icon> 编辑</el-button>
+          <el-button v-if="authStore.canDelete(PAGE)" size="small" round type="danger" plain @click="doDelete(r)" :disabled="r.name==='admin'">
             <el-icon :size="13"><Delete /></el-icon>
           </el-button>
         </div>
@@ -43,51 +43,88 @@
     <div v-else class="rm-empty">暂无角色，点击右上角「新增角色」创建</div>
 
     <!-- 新增/编辑弹窗 -->
-    <el-dialog v-model="dialogVisible" :title="editId ? '编辑角色' : '新增角色'" width="600px" destroy-on-close :close-on-click-modal="false">
+    <el-dialog v-model="dialogVisible" :title="editId ? '编辑角色' : '新增角色'" width="720px" destroy-on-close :close-on-click-modal="false">
       <div class="dlg-body">
         <!-- 基础信息 -->
         <div class="dlg-section">
-          <div class="dlg-sec-title">基础信息</div>
           <div class="dlg-row">
             <div class="dlg-field">
               <label>角色标识 <span class="dlg-required">*</span></label>
-              <el-input v-model="form.name" :disabled="!!editId" placeholder="英文，如：sales-manager" size="large" />
+              <el-input v-model="form.name" :disabled="!!editId" placeholder="英文标识，如 sales-manager" size="default" />
               <span class="dlg-hint" v-if="!editId">保存后不可修改</span>
             </div>
             <div class="dlg-field">
               <label>显示名称 <span class="dlg-required">*</span></label>
-              <el-input v-model="form.displayName" placeholder="如：销售主管" size="large" />
+              <el-input v-model="form.displayName" placeholder="如：销售主管" size="default" />
             </div>
+          </div>
+          <div class="dlg-row dlg-row--status">
+            <label>状态</label>
+            <el-switch v-model="form.enabled" active-text="启用" inactive-text="禁用" />
           </div>
         </div>
 
-        <!-- 菜单权限 -->
-        <div class="dlg-section">
-          <div class="dlg-sec-title">
-            菜单权限
-            <span class="dlg-sec-extra">{{ form.menus.length }} / {{ allMenus.length }} 项</span>
-          </div>
-          <div class="dlg-menu-grid">
-            <div v-for="group in menuGroups" :key="group.label" class="dlg-menu-group">
-              <div class="dlg-mg-label">{{ group.label }}</div>
-              <div class="dlg-mg-items">
-                <label v-for="m in group.items" :key="m.path" class="dlg-mg-item" :class="{ checked: form.menus.includes(m.path) }">
-                  <el-checkbox :model-value="form.menus.includes(m.path)" @change="toggleMenu(m.path)" :label="m.label" />
-                </label>
+        <!-- 菜单 + 权限 Tab -->
+        <el-tabs v-model="permTab" type="border-card" class="dlg-tabs">
+          <el-tab-pane label="菜单可见" name="menus">
+            <div class="dlg-menu-grid">
+              <div v-for="group in menuGroups" :key="group.label" class="dlg-menu-group">
+                <div class="dlg-mg-label">{{ group.label }} <span class="dlg-mg-n">{{ group.items.filter(m => form.menus.includes(m.path)).length }}/{{ group.items.length }}</span></div>
+                <div class="dlg-mg-items">
+                  <label v-for="m in group.items" :key="m.path" class="dlg-mg-item" :class="{ checked: form.menus.includes(m.path) }">
+                    <el-checkbox :model-value="form.menus.includes(m.path)" @change="toggleMenu(m.path)">{{ m.label }}</el-checkbox>
+                  </label>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="dlg-menu-actions">
-            <el-button size="small" @click="form.menus = allMenus.map(m=>m.path)">全选</el-button>
-            <el-button size="small" @click="form.menus = []">清空</el-button>
-          </div>
-        </div>
+            <div class="dlg-menu-actions">
+              <el-button size="small" @click="form.menus = allMenus.map(m=>m.path)">全选</el-button>
+              <el-button size="small" @click="form.menus = []">清空</el-button>
+            </div>
+          </el-tab-pane>
 
-        <!-- 状态 -->
-        <div class="dlg-section dlg-section--status">
-          <div class="dlg-sec-title">状态</div>
-          <el-switch v-model="form.enabled" active-text="启用" inactive-text="禁用" size="large" />
-        </div>
+          <el-tab-pane label="全局权限" name="global">
+            <p class="dlg-tab-hint">以下权限对所有未单独设置的模块生效。默认全部关闭=仅可查看。</p>
+            <div class="dlg-perm-row">
+              <div class="dlg-perm-card">
+                <div class="dlg-perm-card-hd">
+                  <el-checkbox v-model="form.permissions.edit" size="large"><b>可以编辑</b></el-checkbox>
+                </div>
+                <p>允许修改已有数据（如编辑日报、VPS信息、提示词等）</p>
+              </div>
+              <div class="dlg-perm-card">
+                <div class="dlg-perm-card-hd">
+                  <el-checkbox v-model="form.permissions.add" size="large"><b>可以新增</b></el-checkbox>
+                </div>
+                <p>允许创建新数据（如新增VPS、上传资产、添加日报等）</p>
+              </div>
+              <div class="dlg-perm-card">
+                <div class="dlg-perm-card-hd">
+                  <el-checkbox v-model="form.permissions.delete" size="large"><b>可以删除</b></el-checkbox>
+                </div>
+                <p>允许删除数据（如删除VPS、日报、提示词、资产等）</p>
+              </div>
+            </div>
+          </el-tab-pane>
+
+          <el-tab-pane label="逐模块" name="pages">
+            <p class="dlg-tab-hint">勾选则覆盖全局权限 · 不勾选跟随全局</p>
+            <div class="dlg-ppm-table">
+              <div class="dlg-ppm-row dlg-ppm-head">
+                <span class="dlg-ppm-cell dlg-ppm-label">模块</span>
+                <span class="dlg-ppm-cell">编</span>
+                <span class="dlg-ppm-cell">增</span>
+                <span class="dlg-ppm-cell">删</span>
+              </div>
+              <div v-for="m in pagePermList" :key="m.path" class="dlg-ppm-row">
+                <span class="dlg-ppm-cell dlg-ppm-label">{{ m.label }}</span>
+                <span class="dlg-ppm-cell"><el-checkbox :model-value="!!pagePermValue(m.path, 'edit')" @change="(v) => setPagePerm(m.path, 'edit', v)" size="small" /></span>
+                <span class="dlg-ppm-cell"><el-checkbox :model-value="!!pagePermValue(m.path, 'add')" @change="(v) => setPagePerm(m.path, 'add', v)" size="small" /></span>
+                <span class="dlg-ppm-cell"><el-checkbox :model-value="!!pagePermValue(m.path, 'delete')" @change="(v) => setPagePerm(m.path, 'delete', v)" size="small" /></span>
+              </div>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
 
         <!-- 同时创建用户（仅新增时） -->
         <div class="dlg-section" v-if="!editId">
@@ -100,16 +137,16 @@
             <div class="dlg-row">
               <div class="dlg-field">
                 <label>登录账号 <span class="dlg-required">*</span></label>
-                <el-input v-model="form.userUsername" placeholder="如：zhangsan" size="large" />
+                <el-input v-model="form.userUsername" placeholder="如：zhangsan" size="default" />
               </div>
               <div class="dlg-field">
                 <label>显示名称</label>
-                <el-input v-model="form.userDisplayName" :placeholder="form.displayName || '如：张三'" size="large" />
+                <el-input v-model="form.userDisplayName" :placeholder="form.displayName || '如：张三'" size="default" />
               </div>
             </div>
             <div class="dlg-field" style="margin-top:12px;">
               <label>登录密码 <span class="dlg-required">*</span></label>
-              <el-input v-model="form.userPassword" type="password" placeholder="设置密码" show-password size="large" />
+              <el-input v-model="form.userPassword" type="password" placeholder="设置密码" show-password size="default" />
             </div>
             <div class="dlg-user-note">
               <el-icon :size="13"><InfoFilled /></el-icon>
@@ -119,17 +156,21 @@
         </div>
       </div>
       <template #footer>
-        <el-button @click="dialogVisible = false" size="large">取消</el-button>
-        <el-button type="primary" @click="saveRole" size="large">{{ editId ? '保存修改' : '创建角色' }}</el-button>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveRole">{{ editId ? '保存修改' : '创建角色' }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
+import { useAuthStore } from '../stores/auth'
+
+const authStore = useAuthStore()
+const PAGE = '/role-manage'
 
 const allMenus = [
   { path: '/', label: '仪表盘' },
@@ -164,8 +205,35 @@ const roles = ref([])
 const dialogVisible = ref(false)
 const editId = ref(null)
 const createUser = ref(false)
+const permTab = ref('menus')
 
-const defaultForm = () => ({ name: '', displayName: '', menus: [], enabled: true, userUsername: '', userDisplayName: '', userPassword: '' })
+const defaultForm = () => ({ name: '', displayName: '', menus: [], permissions: { edit: false, add: false, delete: false }, perPagePerms: {}, enabled: true, userUsername: '', userDisplayName: '', userPassword: '' })
+const pagePermList = computed(() => allMenus.map(m => ({ path: m.path, label: m.label })))
+
+function pagePermValue(path, key) {
+  const pp = form.perPagePerms[path]
+  if (!pp) return null                          // null = 未设置，checkbox 不勾
+  if (pp[key] === undefined || pp[key] === null) return null
+  return pp[key]
+}
+function setPagePerm(path, key, val) {
+  const next = { ...form.perPagePerms }
+  const cur = next[path] || { edit: false, add: false, delete: false }
+  if (!next[path]) {
+    // 首次设置：只在 val=true 时创建，false 则不写（保持跟随全局）
+    if (!val) {
+      const hasAny = cur.edit || cur.add || cur.delete
+      if (!hasAny) return // 还没设置过又不勾 → 不创建
+    }
+    next[path] = cur
+  }
+  next[path] = { ...next[path], [key]: val }
+  // 如果三个全关 → 删除该项（变回跟随全局）
+  if (!next[path].edit && !next[path].add && !next[path].delete) {
+    delete next[path]
+  }
+  form.perPagePerms = next
+}
 const form = reactive(defaultForm())
 
 function toggleMenu(path) {
@@ -191,6 +259,8 @@ function openEdit(r) {
   form.name = r.name
   form.displayName = r.displayName || ''
   form.menus = [...(r.menus || [])]
+  form.permissions = r.permissions ? { ...r.permissions } : { edit: false, add: false, delete: false }
+  form.perPagePerms = r.perPagePerms ? JSON.parse(JSON.stringify(r.perPagePerms)) : {}
   form.enabled = r.enabled
   dialogVisible.value = true
 }
@@ -206,11 +276,11 @@ async function saveRole() {
   }
 
   if (editId.value) {
-    const res = await api.roles.update(editId.value, { displayName: form.displayName.trim(), menus: form.menus, enabled: form.enabled })
+    const res = await api.roles.update(editId.value, { displayName: form.displayName.trim(), menus: form.menus, permissions: form.permissions, perPagePerms: form.perPagePerms, enabled: form.enabled })
     if (res.success) { ElMessage.success('角色已更新'); dialogVisible.value = false; loadRoles() }
     else ElMessage.error(res.error || '更新失败')
   } else {
-    const res = await api.roles.add({ name: form.name.trim(), displayName: form.displayName.trim(), menus: form.menus })
+    const res = await api.roles.add({ name: form.name.trim(), displayName: form.displayName.trim(), menus: form.menus, permissions: form.permissions, perPagePerms: form.perPagePerms })
     if (res.success) {
       // 同时创建用户
       if (createUser.value) {
@@ -248,19 +318,18 @@ onMounted(loadRoles)
 
 <style scoped>
 .rm-page { }
-.rm-top h2 { font-size:var(--text-2xl); font-weight:800; display:flex; align-items:center; gap:var(--space-3); color:var(--text-primary); letter-spacing:-.3px; }
 .rm-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-.rm-top h2 { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.rm-top h2 { font-size: var(--text-2xl); font-weight: 800; display: flex; align-items: center; gap: var(--space-3); color: var(--text-primary); letter-spacing: -.3px; }
 
 /* ====== 卡片列表 ====== */
 .rm-cards { display: flex; flex-direction: column; gap: 10px; }
 .rm-card {
   display: flex; align-items: center; gap: 16px;
-  background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+  background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 14px;
   padding: 16px 20px;
   transition: all .15s;
 }
-.rm-card:hover { border-color: #c7d2fe; box-shadow: 0 2px 8px rgba(99,102,241,.06); }
+.rm-card:hover { border-color: var(--brand-300); box-shadow: var(--shadow-sm); }
 .rm-card.disabled { opacity: .55; }
 
 .rmc-left { display: flex; align-items: center; gap: 14px; min-width: 180px; }
@@ -282,39 +351,50 @@ onMounted(loadRoles)
 
 .rmc-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
-.rm-empty { text-align: center; padding: 60px 20px; color: #9ca3af; font-size: 14px; background: #fff; border: 1px dashed #e5e7eb; border-radius: 14px; }
+.rm-empty { text-align: center; padding: 60px 20px; color: var(--text-tertiary); font-size: 14px; background: var(--surface-card); border: 1px dashed var(--border-default); border-radius: 14px; }
 
 /* ====== 弹窗 ====== */
-.dlg-body { display: flex; flex-direction: column; gap: 24px; }
+.dlg-body { display: flex; flex-direction: column; gap: 16px; max-height: 70vh; overflow-y: auto; }
 .dlg-section { }
-.dlg-sec-title {
-  font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 12px;
-  display: flex; align-items: center; gap: 8px;
-}
-.dlg-sec-extra { font-size: 11px; color: #9ca3af; font-weight: 500; }
+.dlg-sec-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.dlg-sec-extra { font-size: 11px; color: var(--text-tertiary); font-weight: 500; }
 .dlg-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.dlg-row--status { display: flex; align-items: center; gap: 16px; margin-top: 4px; grid-template-columns: auto 1fr; }
+.dlg-row--status label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
 .dlg-field { display: flex; flex-direction: column; gap: 4px; }
-.dlg-field label { font-size: 12px; font-weight: 600; color: #6b7280; }
-.dlg-required { color: #ef4444; }
-.dlg-hint { font-size: 11px; color: #9ca3af; }
+.dlg-field label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.dlg-required { color: var(--danger); }
+.dlg-hint { font-size: 11px; color: var(--text-tertiary); }
 
-/* 菜单勾选分组 */
+/* Tabs */
+.dlg-tabs { margin-top: 4px; }
+.dlg-tab-hint { font-size: 12px; color: var(--text-tertiary); margin: 0 0 12px; }
+.dlg-tabs :deep(.el-tabs__content) { max-height: 320px; overflow-y: auto; padding: 12px 0; }
+
+/* 菜单勾选 */
 .dlg-menu-grid { display: flex; flex-direction: column; gap: 10px; }
-.dlg-menu-group {
-  background: #f9fafb; border: 1px solid #f3f4f6;
-  border-radius: 10px; padding: 12px 14px;
-}
-.dlg-mg-label { font-size: 11px; font-weight: 700; color: #9ca3af; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .5px; }
+.dlg-menu-group { background: var(--surface-hover); border: 1px solid var(--border-default); border-radius: 10px; padding: 12px 14px; }
+.dlg-mg-label { font-size: 11px; font-weight: 700; color: var(--text-tertiary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .5px; display: flex; justify-content: space-between; }
+.dlg-mg-n { font-weight: 600; color: var(--brand-400); }
 .dlg-mg-items { display: flex; flex-wrap: wrap; gap: 4px 16px; }
-.dlg-mg-item {
-  font-size: 13px; color: #374151; cursor: pointer;
-  display: inline-flex; align-items: center;
-}
+.dlg-mg-item { font-size: 13px; color: var(--text-secondary); cursor: pointer; display: inline-flex; align-items: center; }
+.dlg-menu-actions { margin-top: 8px; display: flex; gap: 6px; }
 
-.dlg-menu-actions { margin-top: 4px; display: flex; gap: 6px; }
+/* 权限卡片 */
+.dlg-perm-row { display: flex; flex-direction: column; gap: 12px; }
+.dlg-perm-card { background: var(--surface-hover); border: 1px solid var(--border-default); border-radius: 10px; padding: 14px 16px; }
+.dlg-perm-card-hd { }
+.dlg-perm-card p { font-size: 12px; color: var(--text-tertiary); margin: 4px 0 0 28px; line-height: 1.5; }
 
-.dlg-section--status { display: flex; align-items: center; gap: 20px; }
-.dlg-section--status .dlg-sec-title { margin-bottom: 0; }
+/* 逐模块表格 */
+.dlg-ppm-table { border: 1px solid var(--border-default); border-radius: 10px; overflow: hidden; }
+.dlg-ppm-head { background: var(--surface-hover); border-bottom: 1px solid var(--border-default); }
+.dlg-ppm-head .dlg-ppm-label { font-size: 11px; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .5px; }
+.dlg-ppm-row { display: grid; grid-template-columns: 1fr 50px 50px 50px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border-default); }
+.dlg-ppm-row:last-child { border-bottom: none; }
+.dlg-ppm-cell { display: flex; justify-content: center; }
+.dlg-ppm-cell.dlg-ppm-label { justify-content: flex-start; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.dlg-ppm-row:hover { background: var(--surface-hover); }
 
 .dlg-user-fields {
   margin-top: 10px;

@@ -10,7 +10,7 @@
         <el-select v-model="selectedAccountId" placeholder="选择账号" size="default" style="width:160px;margin-right:8px" @change="onAccountChange">
           <el-option v-for="a in accounts" :key="a.id" :label="a.name" :value="a.id" />
         </el-select>
-        <el-button type="primary" class="btn-hero" @click="$router.push('/report')">
+        <el-button v-if="authStore.canAdd(PAGE)" type="primary" class="btn-hero" @click="$router.push('/report')">
           <el-icon :size="16"><Edit /></el-icon>
           写日报
         </el-button>
@@ -191,8 +191,12 @@ import {
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { useWeekStore } from '../stores/week'
+import { useAuthStore } from '../stores/auth'
 import { api, formatDateCN, todayStr, daysBetween, formatDate, getDateRange } from '../api'
 import { axisTheme } from '../utils/echarts-theme'
+
+const authStore = useAuthStore()
+const PAGE = '/'
 
 const weekStore = useWeekStore()
 const router = useRouter()

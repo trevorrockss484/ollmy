@@ -2,7 +2,7 @@
   <div class="um-page enterprise-page enterprise-page--form">
     <div class="um-top">
       <h2><el-icon :size="22"><User /></el-icon> 用户管理</h2>
-      <el-button type="primary" @click="openAdd"><el-icon :size="14"><Plus /></el-icon> 新增用户</el-button>
+      <el-button v-if="authStore.canAdd(PAGE)" type="primary" @click="openAdd"><el-icon :size="14"><Plus /></el-icon> 新增用户</el-button>
     </div>
 
     <div class="um-cards" v-if="users.length">
@@ -25,8 +25,8 @@
           </el-tag>
         </div>
         <div class="umc-actions">
-          <el-button size="small" round @click="openEdit(u)"><el-icon :size="13"><Edit /></el-icon> 编辑</el-button>
-          <el-button size="small" round type="danger" plain @click="doDelete(u)"
+          <el-button v-if="authStore.canEdit(PAGE)" size="small" round @click="openEdit(u)"><el-icon :size="13"><Edit /></el-icon> 编辑</el-button>
+          <el-button v-if="authStore.canDelete(PAGE)" size="small" round type="danger" plain @click="doDelete(u)"
             :disabled="users.filter(x=>x.role==='admin'&&x.enabled).length<=1 && u.role==='admin'">
             <el-icon :size="13"><Delete /></el-icon>
           </el-button>
@@ -88,6 +88,10 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
+import { useAuthStore } from '../stores/auth'
+
+const authStore = useAuthStore()
+const PAGE = '/user-manage'
 
 const users = ref([])
 const roleList = ref([])

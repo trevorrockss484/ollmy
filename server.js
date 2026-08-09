@@ -70,11 +70,32 @@ app.use('/api', (req, res, next) => {
   const token = req.headers['x-auth-token'] || req.query.token || '';
   const result = token ? authRoutes.verifyToken(token) : null;
   if (result) {
-    req.user = result; // { username, role }
+    req.user = result; // { username, role, menus, permissions }
     return next();
   }
   res.status(401).json({ success: false, error: '未登录' });
 });
+
+// 写入权限中间件
+function checkPerm(req, res, next) {
+  const method = req.method.toUpperCase();
+  if (method === 'GET') return next();
+  if (!req.user) return next();
+  if (req.user.role === 'admin') return next();
+  const path = req.path.toLowerCase();
+  if (path.startsWith('/logs') || path.startsWith('/system')) return next();
+  // 逐页面权限：先匹配 perPagePerms，fallback 到全局 permissions
+  const perPage = req.user.perPagePerms || {};
+  const globalPerms = req.user.permissions || {};
+  // 尝试匹配最长的路径前缀
+  const matched = Object.keys(perPage).filter(k => path.startsWith(k)).sort((a,b) => b.length - a.length)[0];
+  const perms = matched ? perPage[matched] : globalPerms;
+  if (method === 'POST' && !perms.add) return res.status(403).json({ success: false, error: '无新增权限，仅可查看' });
+  if (method === 'PUT' && !perms.edit) return res.status(403).json({ success: false, error: '无编辑权限，仅可查看' });
+  if (method === 'DELETE' && !perms.delete) return res.status(403).json({ success: false, error: '无删除权限，仅可查看' });
+  next();
+}
+app.use('/api', checkPerm);
 
 // API 路由
 app.use('/api/config', require('./routes/config'));

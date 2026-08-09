@@ -61,9 +61,9 @@
     <div class="action-bar">
       <el-button type="success" size="default" @click="copyReport" :disabled="!reportText"><el-icon :size="15"><DocumentCopy /></el-icon> 一键复制</el-button>
       <el-button size="default" @click="pasteVisible = true"><el-icon :size="15"><Files /></el-icon> 粘贴识别</el-button>
-      <el-button size="default" @click="syncFromStats"><el-icon :size="15"><Refresh /></el-icon> 从统计同步</el-button>
-      <el-button size="default" @click="saveData"><el-icon :size="15"><Check /></el-icon> 保存</el-button>
-      <el-button size="default" @click="clearForm" type="danger" plain><el-icon :size="15"><Delete /></el-icon> 清空</el-button>
+      <el-button v-if="authStore.canAdd(PAGE)" size="default" @click="syncFromStats"><el-icon :size="15"><Refresh /></el-icon> 从统计同步</el-button>
+      <el-button v-if="authStore.canEdit(PAGE)" size="default" @click="saveData"><el-icon :size="15"><Check /></el-icon> 保存</el-button>
+      <el-button v-if="authStore.canEdit(PAGE)" size="default" @click="clearForm" type="danger" plain><el-icon :size="15"><Delete /></el-icon> 清空</el-button>
       <span v-if="saveMsg" class="save-msg" :class="{ ok: saveOk, err: !saveOk }">{{ saveMsg }}</span>
     </div>
 
@@ -154,16 +154,16 @@
               <span class="rt-country-name">{{ c }}</span>
             </span>
             <span class="rt-cell rt-cell--budget">
-              <el-input-number v-model="countryData[c].budget" :min="0" :precision="2" :controls="false" placeholder="0" class="rt-input" />
+              <el-input-number v-model="countryData[c].budget" :min="0" :precision="2" :controls="false" placeholder="0" class="rt-input" :disabled="!authStore.canEdit(PAGE)" />
             </span>
             <span class="rt-cell rt-cell--usd" :class="{ collapsed: usdCollapsed }">
-              <el-input-number v-model="countryData[c].usdBudget" :min="0" :precision="2" :controls="false" placeholder="$" class="rt-input rt-input--usd" />
+              <el-input-number v-model="countryData[c].usdBudget" :min="0" :precision="2" :controls="false" placeholder="$" class="rt-input rt-input--usd" :disabled="!authStore.canEdit(PAGE)" />
             </span>
             <span class="rt-cell rt-cell--customer">
-              <el-input-number v-model="countryData[c].newCustomer" :min="0" :controls="false" placeholder="0" class="rt-input" />
+              <el-input-number v-model="countryData[c].newCustomer" :min="0" :controls="false" placeholder="0" class="rt-input" :disabled="!authStore.canEdit(PAGE)" />
             </span>
             <span class="rt-cell rt-cell--grouped">
-              <el-input-number v-model="countryData[c].grouped" :min="0" :controls="false" placeholder="0" class="rt-input" @change="onGroupedChange(c)" />
+              <el-input-number v-model="countryData[c].grouped" :min="0" :controls="false" placeholder="0" class="rt-input" @change="onGroupedChange(c)" :disabled="!authStore.canEdit(PAGE)" />
             </span>
             <span class="rt-cell rt-cell--cost">
               <span class="rt-cost-line">{{ countryAvg(c) > 0 ? '¥' + countryAvg(c).toFixed(1) : '—' }}</span>
@@ -251,7 +251,11 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useWeekStore } from '../stores/week'
+import { useAuthStore } from '../stores/auth'
 import { api, formatDateCN, todayStr } from '../api'
+
+const authStore = useAuthStore()
+const PAGE = '/report'
 import { countryTreeData as sharedCountryTree, allLeafKeys, flagMap } from '../data/countryTree'
 import { ACCOUNTS } from '../data/accounts'
 const countryTreeData = sharedCountryTree
