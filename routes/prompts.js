@@ -5,7 +5,9 @@ const db = require('../database/db');
 // 获取全部提示词
 router.get('/', (req, res) => {
   try {
-    const list = db.getPrompts();
+    const isAdmin = req.user && req.user.role === 'admin'
+    const userId = isAdmin ? null : (req.user ? req.user.username : null)
+    const list = db.getPrompts(userId);
     res.json({ success: true, data: list });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
@@ -60,7 +62,8 @@ router.get('/:id', (req, res) => {
 // 新增
 router.post('/', (req, res) => {
   try {
-    const p = db.addPrompt(req.body);
+    const item = { ...req.body, userId: req.user ? req.user.username : 'admin' };
+    const p = db.addPrompt(item);
     db.logOperation('prompt.add', { title: p.title, step: p.step }, req.user);
     res.json({ success: true, data: p });
   } catch (e) {

@@ -9,6 +9,7 @@ export const useAuthStore = defineStore('auth', () => {
   const rememberMe = ref(localStorage.getItem('pan_remember') === '1')
   const permissions = ref(JSON.parse(localStorage.getItem('pan_perms') || '{"edit":false,"add":false,"delete":false}'))
   const perPagePerms = ref(JSON.parse(localStorage.getItem('pan_pperms') || '{}'))
+  const tabAccess = ref(JSON.parse(localStorage.getItem('pan_tabs') || '{"assets":true,"scripts":true,"prompts":true}'))
 
   function _resolve(path) {
     if (isAdmin()) return true
@@ -33,13 +34,14 @@ export const useAuthStore = defineStore('auth', () => {
     return typeof r === 'object' ? r.delete : isAdmin()
   }
 
-  async function login(t, u, r, m, remember, p, pp) {
+  async function login(t, u, r, m, remember, p, pp, ta) {
     token.value = t
     username.value = u
     role.value = r || 'staff'
     menus.value = m || []
     permissions.value = p || { edit: false, add: false, delete: false }
     perPagePerms.value = pp || {}
+    tabAccess.value = ta || { assets: true, scripts: true, prompts: true }
     rememberMe.value = remember
     localStorage.setItem('pan_token', t)
     localStorage.setItem('pan_user', u)
@@ -47,6 +49,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('pan_menus', JSON.stringify(m || []))
     localStorage.setItem('pan_perms', JSON.stringify(permissions.value))
     localStorage.setItem('pan_pperms', JSON.stringify(pp || {}))
+    localStorage.setItem('pan_tabs', JSON.stringify(tabAccess.value))
     if (remember) { localStorage.setItem('pan_remember', '1') }
     else { localStorage.removeItem('pan_remember') }
   }
@@ -62,11 +65,13 @@ export const useAuthStore = defineStore('auth', () => {
         menus.value = data.data.menus || []
         permissions.value = data.data.permissions || { edit: false, add: false, delete: false }
         perPagePerms.value = data.data.perPagePerms || {}
+        tabAccess.value = data.data.tabAccess || { assets: true, scripts: true, prompts: true }
         localStorage.setItem('pan_user', data.data.username)
         localStorage.setItem('pan_role', data.data.role)
         localStorage.setItem('pan_menus', JSON.stringify(data.data.menus || []))
         localStorage.setItem('pan_perms', JSON.stringify(permissions.value))
         localStorage.setItem('pan_pperms', JSON.stringify(perPagePerms.value))
+        localStorage.setItem('pan_tabs', JSON.stringify(tabAccess.value))
         return true
       }
     } catch(e) {}
@@ -77,13 +82,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   function logout() {
     token.value = ''
-    ;['pan_token','pan_remember','pan_role','pan_menus','pan_perms','pan_pperms'].forEach(k => localStorage.removeItem(k))
+    ;['pan_token','pan_remember','pan_role','pan_menus','pan_perms','pan_pperms','pan_tabs'].forEach(k => localStorage.removeItem(k))
     window.location.href = '/login'
   }
 
   function isLoggedIn() { return !!token.value }
   function isAdmin() { return role.value === 'admin' }
   function canAccess(path) { return isAdmin() || menus.value.includes(path) }
+  function canAccessTab(tab) { return isAdmin() || (tabAccess.value && tabAccess.value[tab]) }
 
-  return { token, username, role, menus, permissions, perPagePerms, rememberMe, login, logout, autoLogin, isLoggedIn, isAdmin, canAccess, canEdit, canAdd, canDelete }
+  return { token, username, role, menus, permissions, perPagePerms, tabAccess, rememberMe, login, logout, autoLogin, isLoggedIn, isAdmin, canAccess, canAccessTab, canEdit, canAdd, canDelete }
 })

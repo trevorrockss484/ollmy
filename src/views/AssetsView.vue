@@ -9,17 +9,17 @@
         </div>
       </div>
       <div class="tab-bar">
-        <button class="tab-btn" :class="{ active: tab === 'assets' }" @click="switchTab('assets')">
-          <el-icon :size="16"><PictureFilled /></el-icon> AI资产
-          <span class="tab-n">{{ assets.length }}</span>
+        <button v-if="authStore.canAccessTab('prompts')" class="tab-btn" :class="{ active: tab === 'prompts' }" @click="switchTab('prompts')">
+          <el-icon :size="16"><Document /></el-icon> AI提示词
+          <span class="tab-n">{{ prompts.length }}</span>
         </button>
-        <button class="tab-btn" :class="{ active: tab === 'library' }" @click="switchTab('library')">
+        <button v-if="authStore.canAccessTab('scripts')" class="tab-btn" :class="{ active: tab === 'library' }" @click="switchTab('library')">
           <el-icon :size="16"><Film /></el-icon> 剧本与分镜
           <span class="tab-n">{{ showScripts.length }}</span>
         </button>
-        <button class="tab-btn" :class="{ active: tab === 'prompts' }" @click="switchTab('prompts')">
-          <el-icon :size="16"><Document /></el-icon> AI提示词
-          <span class="tab-n">{{ prompts.length }}</span>
+        <button v-if="authStore.canAccessTab('assets')" class="tab-btn" :class="{ active: tab === 'assets' }" @click="switchTab('assets')">
+          <el-icon :size="16"><PictureFilled /></el-icon> AI资产
+          <span class="tab-n">{{ assets.length }}</span>
         </button>
       </div>
     </div>
@@ -123,6 +123,7 @@
               </span>
               <span class="card-size">{{ formatSize(a.fileSize) }}</span>
             </div>
+            <span v-if="authStore.isAdmin() && a.userId && a.userId !== 'admin'" class="card-owner-tag" :title="'创建者: ' + a.userId">{{ a.userId }}</span>
           </div>
           <!-- 操作 -->
           <div class="card-footer">
@@ -645,6 +646,14 @@ const PAGE = '/assets'
 
 // ===== Tab =====
 const tab = ref('assets')
+// 初始化：选择第一个有权限的 Tab
+function getDefaultTab() {
+  if (authStore.canAccessTab('prompts')) return 'prompts'
+  if (authStore.canAccessTab('scripts')) return 'library'
+  if (authStore.canAccessTab('assets')) return 'assets'
+  return 'prompts'
+}
+tab.value = getDefaultTab()
 async function switchTab(newTab) {
   if (newTab === tab.value) return
   // 离开剧本Tab时检查未保存内容
@@ -1598,6 +1607,12 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
 .card-tag { font-size:10px; padding:2px 7px; border-radius:4px; background:#eef2ff; color:#6366f1; font-weight:600; cursor:pointer; }
 .card-tag:hover { background:#dbeafe; }
 .card-size { font-size:11px; color:#9ca3af; white-space:nowrap; }
+.card-owner-tag {
+  display: inline-block; margin-top: 4px; padding: 1px 8px;
+  border-radius: 4px; font-size: 10px; font-weight: 700;
+  color: #6d28d9; background: #f3e8ff;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 .card-footer { display:flex; gap:4px; padding:8px 16px 14px; border-top:1px solid #f3f4f6; }
 .card-btn { width:34px; height:34px; border-radius:8px; border:1px solid var(--border-default); background:var(--surface-card); color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }

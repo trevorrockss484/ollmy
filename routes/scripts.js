@@ -37,7 +37,9 @@ const upload = multer({
 // 列表
 router.get('/', (req, res) => {
   try {
-    res.json({ success: true, data: db.getShowScripts() });
+    const isAdmin = req.user && req.user.role === 'admin'
+    const userId = isAdmin ? null : (req.user ? req.user.username : null)
+    res.json({ success: true, data: db.getShowScripts(userId) });
   } catch (e) {
     res.status(500).json({ success: false, error: '服务器内部错误' });
   }
@@ -46,7 +48,7 @@ router.get('/', (req, res) => {
 // 新增剧本/分镜
 router.post('/', (req, res) => {
   try {
-    const item = db.addShowScript(req.body);
+    const item = db.addShowScript({ ...req.body, userId: req.user ? req.user.username : 'admin' });
     db.logOperation('scripts.add', { showName: item.showName, title: item.title }, req.user);
     res.json({ success: true, data: item });
   } catch (e) {

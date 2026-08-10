@@ -81,9 +81,14 @@ async function doLogin() {
     })
     const data = await res.json()
     if (data.success) {
-      authStore.login(data.data.token, data.data.username, data.data.role, data.data.menus, rememberMe.value, data.data.permissions, data.data.perPagePerms)
-      ElMessage.success('登录成功')
       const menus = data.data.menus || []
+      if (!menus.length) {
+        error.value = '该账号没有分配任何页面权限，请联系管理员配置角色菜单'
+        loading.value = false
+        return
+      }
+      authStore.login(data.data.token, data.data.username, data.data.role, data.data.menus, rememberMe.value, data.data.permissions, data.data.perPagePerms, data.data.tabAccess)
+      ElMessage.success('登录成功')
       const menuOrder = ['/', '/plan', '/report', '/history', '/monitor', '/assets', '/media', '/video-library', '/customer-stats', '/logs', '/settings', '/role-manage', '/user-manage', '/compress', '/video-compress']
       const firstMenu = menuOrder.find(m => menus.includes(m)) || '/'
       window.location.href = firstMenu

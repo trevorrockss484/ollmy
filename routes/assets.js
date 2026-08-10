@@ -50,7 +50,9 @@ const upload = multer({
 router.get('/', (req, res) => {
   try {
     const type = req.query.type || '';
-    const list = db.getAssets(type || null);
+    const isAdmin = req.user && req.user.role === 'admin'
+    const userId = isAdmin ? null : (req.user ? req.user.username : null)
+    const list = db.getAssets(type || null, userId);
     res.json({ success: true, data: list });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
@@ -83,7 +85,8 @@ router.post('/upload', upload.array('files', 20), (req, res) => {
         fileSize: file.size,
         mediaType: getMediaType(file.originalname),
         gridOverlay: type === 'character',
-        tags
+        tags,
+        userId: req.user ? req.user.username : 'admin'
       });
       assets.push(asset);
     }

@@ -27,37 +27,30 @@ const routes = [
 
 const router = createRouter({ history: createWebHistory(), routes })
 
-let tokenVerified = false
-
 // 菜单优先级顺序（与 App.vue allMenuItems 保持一致）
 const menuOrder = ['/', '/plan', '/report', '/history', '/monitor', '/assets', '/media', '/video-library', '/customer-stats', '/logs', '/settings', '/role-manage', '/user-manage', '/compress', '/video-compress']
+
+let lastVerifiedAt = 0
+const REVERIFY_MS = 120_000 // 2分钟重新向服务端验证一次权限
 
 router.beforeEach(async (to, from, next) => {
   if (to.meta.public) return next()
   const auth = useAuthStore()
-  // 首次访问：向服务端验证 token 有效性
-  if (!tokenVerified && auth.isLoggedIn()) {
-    tokenVerified = true
+  if (!auth.isLoggedIn()) return next('/login')
+
+  const needVerify = Date.now() - lastVerifiedAt > REVERIFY_MS
+  if (needVerify) {
+    lastVerifiedAt = Date.now()
     const ok = await auth.autoLogin()
-    if (ok) {
-      // 检查目标路由权限
-      if (!auth.canAccess(to.path)) {
-        const firstMenu = menuOrder.find(m => auth.canAccess(m)) || '/login'
-        return next(firstMenu)
-      }
-      return next()
-    }
-    return next('/login')
+    if (!ok) return next('/login')
   }
-  if (auth.isLoggedIn()) {
-    // 检查目标路由权限
-    if (!auth.canAccess(to.path)) {
-      const firstMenu = menuOrder.find(m => auth.canAccess(m)) || '/login'
-      return next(firstMenu)
-    }
-    return next()
+
+  if (!auth.canAccess(to.path)) {
+    const firstMenu = menuOrder.find(m => auth.canAccess(m))
+    if (!firstMenu) { auth.logout(); return }
+    return next(firstMenu)
   }
-  next('/login')
+  return next()
 })
 
 export default router

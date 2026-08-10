@@ -123,87 +123,94 @@
           </div>
         </div>
 
-        <div class="report-table-wrap" :class="{ 'rt--no-usd': usdCollapsed }">
-          <div class="rt-head">
-            <span class="rt-cell rt-cell--seq">#</span>
-            <span class="rt-cell rt-cell--country">国家</span>
-            <span class="rt-cell rt-cell--budget">费用(元)</span>
-            <span class="rt-cell rt-cell--usd" :class="{ collapsed: usdCollapsed }">
-              <span>美金</span>
-              <button class="rt-usd-toggle" @click="usdCollapsed = !usdCollapsed" :title="usdCollapsed ? '展开美金列' : '收起美金列'" :aria-expanded="!usdCollapsed" aria-label="切换美金列显示">
-                <el-icon :size="12"><ArrowRight v-if="usdCollapsed" /><ArrowDown v-else /></el-icon>
-              </button>
-            </span>
-            <span class="rt-cell rt-cell--customer">客资</span>
-            <span class="rt-cell rt-cell--grouped">拉群</span>
-            <span class="rt-cell rt-cell--cost">客价(询盘/有效)</span>
-            <span class="rt-cell rt-cell--actions"></span>
-          </div>
+        <!-- 每个国家卡片 -->
+        <div class="country-cards">
           <div
             v-for="(c, i) in activeCountries"
             :key="c"
-            class="rt-row"
-            :class="{ 'rt-row--expanded': expandedCountries.has(c) }"
+            class="country-card"
+            :class="{ 'country-card--expanded': expandedCountries.has(c) }"
             :style="{ '--row-color': countryColors[i], '--row-color-light': countryColors[i] + '12' }"
           >
-            <span class="rt-cell rt-cell--seq">
-              <span class="rt-seq" :style="{ background: countryColors[i] }">{{ i + 1 }}</span>
-            </span>
-            <span class="rt-cell rt-cell--country">
-              <span class="fi" :class="'fi-' + flagCode(c)" style="border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.1);"></span>
-              <span class="rt-country-name">{{ c }}</span>
-            </span>
-            <span class="rt-cell rt-cell--budget">
-              <el-input-number v-model="countryData[c].budget" :min="0" :precision="2" :controls="false" placeholder="0" class="rt-input" :disabled="!authStore.canEdit(PAGE)" />
-            </span>
-            <span class="rt-cell rt-cell--usd" :class="{ collapsed: usdCollapsed }">
-              <el-input-number v-model="countryData[c].usdBudget" :min="0" :precision="2" :controls="false" placeholder="$" class="rt-input rt-input--usd" :disabled="!authStore.canEdit(PAGE)" />
-            </span>
-            <span class="rt-cell rt-cell--customer">
-              <el-input-number v-model="countryData[c].newCustomer" :min="0" :controls="false" placeholder="0" class="rt-input" :disabled="!authStore.canEdit(PAGE)" />
-            </span>
-            <span class="rt-cell rt-cell--grouped">
-              <el-input-number v-model="countryData[c].grouped" :min="0" :controls="false" placeholder="0" class="rt-input" @change="onGroupedChange(c)" :disabled="!authStore.canEdit(PAGE)" />
-            </span>
-            <span class="rt-cell rt-cell--cost">
-              <span class="rt-cost-line">{{ countryAvg(c) > 0 ? '¥' + countryAvg(c).toFixed(1) : '—' }}</span>
-              <span class="rt-cost-line rt-cost-line--eff">{{ countryEffCost(c) > 0 ? '¥' + countryEffCost(c).toFixed(1) : '—' }}</span>
-            </span>
-            <span class="rt-cell rt-cell--actions">
-              <button class="rt-act-btn" :disabled="i===0" @click="moveCountry(i,-1)" title="上移" aria-label="向上移动"><el-icon :size="12"><Top /></el-icon></button>
-              <button class="rt-act-btn" :disabled="i===activeCountries.length-1" @click="moveCountry(i,1)" title="下移" aria-label="向下移动"><el-icon :size="12"><Bottom /></el-icon></button>
-              <button class="rt-act-btn rt-act-btn--expand" @click="toggleExpand(c)" :title="expandedCountries.has(c)?'收起详情':'展开详情'" :aria-label="expandedCountries.has(c)?'收起详情':'展开详情'">
-                <el-icon :size="12"><ArrowDown v-if="expandedCountries.has(c)" /><ArrowRight v-else /></el-icon>
-                <span class="rt-expand-badge" v-if="n(countryData[c].grouped) > 0">{{ n(countryData[c].grouped) }}</span>
-              </button>
-              <button class="rt-act-btn rt-act-btn--del" @click="removeCountry(c)" :disabled="activeCountries.length<=1" title="移除" aria-label="移除国家"><el-icon :size="12"><Close /></el-icon></button>
-            </span>
-          </div>
-        </div>
+            <!-- 卡片头部 -->
+            <div class="cc-header">
+              <div class="cc-header-left">
+                <span class="cc-seq" :style="{ background: countryColors[i] }">{{ i + 1 }}</span>
+                <span class="fi" :class="'fi-' + flagCode(c)" style="border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.1);"></span>
+                <span class="cc-name">{{ c }}</span>
+                <span class="cc-summary">¥{{ fmtNum(countryData[c].budget) }} · {{ n(countryData[c].newCustomer) }}客 · {{ n(countryData[c].grouped) }}拉群</span>
+              </div>
+              <div class="cc-header-right">
+                <button class="cc-act-btn" :disabled="i===0" @click="moveCountry(i,-1)" title="上移"><el-icon :size="12"><Top /></el-icon></button>
+                <button class="cc-act-btn" :disabled="i===activeCountries.length-1" @click="moveCountry(i,1)" title="下移"><el-icon :size="12"><Bottom /></el-icon></button>
+                <button class="cc-act-btn cc-act-btn--expand" @click="toggleExpand(c)" :title="expandedCountries.has(c)?'收起详情':'展开详情'">
+                  <el-icon :size="12"><ArrowDown v-if="expandedCountries.has(c)" /><ArrowRight v-else /></el-icon>
+                  <span v-if="n(countryData[c].grouped) > 0" class="cc-expand-badge">{{ n(countryData[c].grouped) }}</span>
+                </button>
+                <button class="cc-act-btn cc-act-btn--del" @click="removeCountry(c)" :disabled="activeCountries.length<=1" title="移除"><el-icon :size="12"><Close /></el-icon></button>
+              </div>
+            </div>
 
-        <!-- 拉群详情展开区 -->
-        <div v-for="c in activeCountries.filter(c => expandedCountries.has(c))" :key="'gd-'+c" class="gd-expand">
-          <div class="gd-expand-hd" @click="toggleExpand(c)">
-            <el-icon :size="14"><ArrowDown /></el-icon>
-            <span class="fi" :class="'fi-' + flagCode(c)" style="border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.1);margin:0 6px;"></span>
-            <b>{{ c }}</b>
-            <span class="gd-expand-count">拉群 {{ n(countryData[c].grouped) }} 个 · 详情 {{ (countryData[c].groupEntries||[]).filter(e => e.text && e.text.trim()).length }} 条</span>
-          </div>
-          <div class="gd-expand-body">
-            <div v-for="entry in countryData[c].groupEntries" :key="entry.id" class="gd-compact-row">
-              <el-input v-model="entry.text" placeholder="如：印度x2，平面图" size="small" class="gd-compact-text" />
-              <el-select v-model="entry.status" placeholder="状态" size="small" class="gd-compact-status" clearable>
-                <el-option label="到现场" value="到现场" />
-                <el-option label="未到现场" value="未到现场" />
-                <el-option label="待确认" value="待确认" />
-              </el-select>
-              <el-button size="small" text type="danger" class="gd-compact-del" @click="removeGroupEntry(c, entry.id)">
-                <el-icon :size="14"><Close /></el-icon>
+            <!-- 指标输入行 -->
+            <div class="cc-inputs">
+              <div class="cc-input-item">
+                <label class="cc-input-label">费用(元)</label>
+                <el-input-number v-model="countryData[c].budget" :min="0" :precision="2" :controls="false" placeholder="0" class="cc-input-num" :disabled="!authStore.canEdit(PAGE)" />
+              </div>
+              <div class="cc-input-item" :class="{ collapsed: usdCollapsed }">
+                <label class="cc-input-label">
+                  美金
+                  <button class="cc-usd-toggle" @click="usdCollapsed = !usdCollapsed" :title="usdCollapsed ? '展开' : '收起'" aria-label="切换美金列">
+                    <el-icon :size="10"><ArrowRight v-if="usdCollapsed" /><ArrowDown v-else /></el-icon>
+                  </button>
+                </label>
+                <el-input-number v-model="countryData[c].usdBudget" :min="0" :precision="2" :controls="false" placeholder="$" class="cc-input-num cc-input-num--usd" :disabled="!authStore.canEdit(PAGE)" />
+              </div>
+              <div class="cc-input-item">
+                <label class="cc-input-label">客资</label>
+                <el-input-number v-model="countryData[c].newCustomer" :min="0" :controls="false" placeholder="0" class="cc-input-num" :disabled="!authStore.canEdit(PAGE)" />
+              </div>
+              <div class="cc-input-item">
+                <label class="cc-input-label">拉群 <span v-if="n(countryData[c].grouped) > 0 && n(countryData[c].grouped) !== validEntryCount(c)" class="cc-required-tag">待补全</span></label>
+                <el-input-number v-model="countryData[c].grouped" :min="0" :controls="false" placeholder="0" class="cc-input-num" @change="onGroupedChange(c)" :disabled="!authStore.canEdit(PAGE)" />
+              </div>
+              <div class="cc-input-item cc-input-item--cost">
+                <label class="cc-input-label">客价(询盘/有效)</label>
+                <div class="cc-cost-pair">
+                  <span class="cc-cost-val">{{ countryAvg(c) > 0 ? '¥' + countryAvg(c).toFixed(1) : '—' }}</span>
+                  <span class="cc-cost-sep">/</span>
+                  <span class="cc-cost-val cc-cost-val--eff">{{ countryEffCost(c) > 0 ? '¥' + countryEffCost(c).toFixed(1) : '—' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 拉群详情（卡片内展开） -->
+            <div v-if="expandedCountries.has(c)" class="cc-details">
+              <div class="cc-details-hd">
+                <span class="cc-details-title">拉群及客户详情</span>
+                <span class="cc-details-meta" :class="{ 'cc-details-meta--warn': n(countryData[c].grouped) > 0 && validEntryCount(c) !== n(countryData[c].grouped) }">
+                  {{ validEntryCount(c) }}/{{ n(countryData[c].grouped) }} 条已填
+                  <template v-if="n(countryData[c].grouped) > 0 && validEntryCount(c) !== n(countryData[c].grouped)"> — 需填满 {{ n(countryData[c].grouped) }} 条</template>
+                </span>
+              </div>
+              <div v-for="entry in countryData[c].groupEntries" :key="entry.id" class="cc-detail-row">
+                <el-input v-model="entry.text" placeholder="如：印度x2，平面图" size="small" class="cc-detail-text" :disabled="!authStore.canEdit(PAGE)" />
+                <el-select v-model="entry.status" placeholder="状态" size="small" class="cc-detail-status" clearable :disabled="!authStore.canEdit(PAGE)">
+                  <el-option label="到现场" value="到现场" />
+                  <el-option label="未到现场" value="未到现场" />
+                  <el-option label="待确认" value="待确认" />
+                </el-select>
+                <el-button v-if="authStore.canEdit(PAGE)" size="small" text type="danger" class="cc-detail-del" @click="removeGroupEntry(c, entry.id)">
+                  <el-icon :size="14"><Close /></el-icon>
+                </el-button>
+              </div>
+              <el-button v-if="authStore.canEdit(PAGE) && n(countryData[c].grouped) > 0 && (countryData[c].groupEntries||[]).length >= n(countryData[c].grouped)" size="small" text type="info" class="cc-detail-add" disabled>
+                已达 {{ n(countryData[c].grouped) }} 条上限
+              </el-button>
+              <el-button v-else-if="authStore.canEdit(PAGE)" size="small" text type="primary" class="cc-detail-add" @click="addGroupEntry(c)">
+                <el-icon :size="13"><Plus /></el-icon> 添加客户详情
               </el-button>
             </div>
-            <el-button size="small" text type="primary" class="gd-compact-add" @click="addGroupEntry(c)">
-              <el-icon :size="13"><Plus /></el-icon> 添加客户详情
-            </el-button>
           </div>
         </div>
       </div>
@@ -421,11 +428,22 @@ const defaultCountryFb = () => ({ budget:null, usdBudget:null, newCustomer:null,
 
 function addGroupEntry(c) {
   if (!countryData[c]) countryData[c] = defaultCountryFb()
+  const grouped = n(countryData[c].grouped)
+  const current = (countryData[c].groupEntries || []).length
+  // 拉群数已设定时，不允许超量添加
+  if (grouped > 0 && current >= grouped) {
+    ElMessage.warning(`拉群数为 ${grouped}，最多添加 ${grouped} 条详情`)
+    return
+  }
   countryData[c].groupEntries.push({ id: ++entryIdSeq, text: '', status: '' })
 }
 
 function removeGroupEntry(c, id) {
   countryData[c].groupEntries = countryData[c].groupEntries.filter(e => e.id !== id)
+}
+
+function validEntryCount(c) {
+  return (countryData[c].groupEntries || []).filter(e => e.text && e.text.trim()).length
 }
 
 // 将旧 groupDetail 字符串迁移为 groupEntries 数组
@@ -469,11 +487,25 @@ function onAccountChange() {
 }
 
 const weekReady = ref(false)
-watch(() => weekStore.currentWeek?.countries, (countries) => {
-  if (countries?.length) {
+let loadSeq = 0
+const dataLoading = ref(false)
+let autoSaveSkip = false
+let autoSaveReady = false
+let autoSaveTimer = null
+watch(() => weekStore.currentWeek?.countries, async (countries) => {
+  if (!countries?.length) return
+  weekReady.value = true
+  // 优先加载已保存数据，没有则用周计划国家初始化
+  const hasDate = !!reportDate.value
+  if (hasDate) {
+    // 尝试加载已有数据
+    await loadExistingData(reportDate.value)
+    // 如果加载后仍无数据，用周计划国家初始化
+    if (!existingData.value) {
+      initCountryData(countries)
+    }
+  } else {
     initCountryData(countries)
-    weekReady.value = true
-    if (reportDate.value) loadExistingData(reportDate.value)
   }
 }, { immediate: true })
 
@@ -492,7 +524,7 @@ const overallTotal = computed(() => {
     // 收集所有客户详情条目
     const entries = d.groupEntries || []
     for (const e of entries) {
-      if (e.text) allEntries.push(e.status ? `${e.text}，${e.status}` : e.text)
+      if (e.text && e.text.trim()) allEntries.push(e.status ? `${e.text}，${e.status}` : e.text)
     }
   }
   return { budget, usdBudget, newCustomer, grouped, avgCost: (budget && newCustomer) ? budget / newCustomer : 0, effCost: (budget && grouped) ? budget / grouped : 0, allEntries, groupCountSummary: groupCountParts.join('  ') }
@@ -501,7 +533,7 @@ const overallTotal = computed(() => {
 function fmtNum(v) { if (v == null) return '0.00'; const r = Math.round(v * 100) / 100; return r.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 
 // ====== 数据加载 ======
-let loadSeq = 0
+
 async function loadExistingData(d) {
   if (!d || !weekReady.value) return
   const seq = ++loadSeq; autoSaveSkip = true; dataLoading.value = true
@@ -537,7 +569,6 @@ async function loadExistingData(d) {
 }
 
 const skipAutoLoad = ref(false)
-const dataLoading = ref(false)
 watch(reportDate, (d) => { if (!d) return; saveMsg.value = ''; if (skipAutoLoad.value) { skipAutoLoad.value = false; return }; loadExistingData(d) })
 
 // ====== 生成日报（实时预览） ======
@@ -626,16 +657,21 @@ async function saveData(silent) {
     ElMessage.warning('请至少填写一个国家的数据'); return
   }
 
-  // 2. 拉群数必须等于有效详情条目数（不能多也不能少）
+  // 2. 拉群详情校验：有拉群数则必须逐一填写详情，且条目数一致
   const errors = []
   for (const c of activeCountries.value) {
     const d = countryData[c]; if (!d) continue
     const grouped = n(d.grouped)
-    const validEntries = (d.groupEntries || []).filter(e => e.text && e.text.trim())
-    if (grouped > 0 && validEntries.length !== grouped) {
-      errors.push(`「${c}」拉群数为 ${grouped}，但详情条目为 ${validEntries.length} 条 → 必须一致`)
-    } else if (grouped === 0 && validEntries.length > 0) {
-      errors.push(`「${c}」拉群数为 0，但有 ${validEntries.length} 条详情 → 请清除详情或填写拉群数`)
+    const filled = validEntryCount(c)
+    // 拉群数 > 0：必须有对应的详情条目，且数量一致
+    if (grouped > 0) {
+      if (filled === 0) {
+        errors.push(`「${c}」拉群数为 ${grouped}，但未填写任何客户详情 → 请填写详情`)
+      } else if (filled !== grouped) {
+        errors.push(`「${c}」拉群数为 ${grouped}，但详情条目为 ${filled} 条 → 必须一致`)
+      }
+    } else if (grouped === 0 && filled > 0) {
+      errors.push(`「${c}」拉群数为 0，但有 ${filled} 条详情 → 请清除详情或填写拉群数`)
     }
   }
   if (errors.length) { ElMessageBox.alert(errors.join('\n'), '拉群详情校验不通过', { confirmButtonText: '知道了', type: 'warning' }); return }
@@ -703,7 +739,7 @@ function parsePasted() {
   parseDetail.value.length ? ElMessage.success('识别 '+parseDetail.value.length+' 个字段') : ElMessage.warning('未识别到数据')
 }
 
-// 从客户统计同步国家客资
+// 从客户统计同步国家客资（替换国家列表）
 async function syncFromStats() {
   const d = reportDate.value; if (!d) return
   try {
@@ -711,26 +747,35 @@ async function syncFromStats() {
     if (!res.success || !res.data.length) { ElMessage.warning('当日无客户统计数据'); return }
     const breakdown = res.data[0].countryBreakdown || []
     if (!breakdown.length) { ElMessage.warning('客户统计中无国家客资数据'); return }
+    const statCountries = breakdown.filter(cb => cb.country && cb.count > 0).map(cb => cb.country)
+    if (!statCountries.length) { ElMessage.warning('客户统计中无有效国家数据'); return }
     let count = 0
-    const newCountries = []
+    // 清理不在统计中的国家数据
+    for (const c of Object.keys(countryData)) {
+      if (!statCountries.includes(c)) delete countryData[c]
+    }
+    // 用统计中的国家替换当前列表，同步客资数
     for (const cb of breakdown) {
       if (cb.country && cb.count > 0) {
-        if (!activeCountries.value.includes(cb.country)) newCountries.push(cb.country)
         if (!(cb.country in countryData)) countryData[cb.country] = defaultCountryFb()
         countryData[cb.country].newCustomer = cb.count
         count++
       }
     }
-    if (newCountries.length) activeCountries.value = [...activeCountries.value, ...newCountries]
-    ElMessage.success('已从客户统计同步 ' + count + ' 个国家客资')
+    activeCountries.value = statCountries
+    // 清理展开状态中已移除的国家
+    for (const c of [...expandedCountries.value]) {
+      if (!statCountries.includes(c)) expandedCountries.value.delete(c)
+    }
+    expandedCountries.value = new Set(expandedCountries.value)
+    // 立即保存，避免离开页面后数据丢失
+    await saveData(true)
+    ElMessage.success('已从统计同步 ' + count + ' 个国家，国家列表已替换')
   } catch(e) { ElMessage.error('同步失败') }
 }
 
 
 // ====== 自动保存 ======
-let autoSaveSkip = false
-let autoSaveReady = false
-let autoSaveTimer = null
 
 function triggerAutoSave() {
   if (autoSaveSkip) return
@@ -875,126 +920,147 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 }
 .section-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: #eef2ff; color: #6366f1; font-size: 14px; }
 
-/* ====== 可编辑表格 ====== */
-.report-table-wrap {
-  background:var(--surface-card); border:1px solid var(--border-default); border-radius:12px; overflow-x:auto;
+/* ====== 国家卡片 ====== */
+.country-cards {
+  display: flex; flex-direction: column; gap: 10px;
 }
-.rt-head {
-  display:grid;
-  grid-template-columns:38px 130px 1fr 1fr 1fr 1fr 130px 90px;
-  padding:10px 16px; align-items:center;
-  background:#f9fafb; border-bottom:1px solid #e5e7eb;
-  gap:8px;
+.country-card {
+  background: var(--surface-card); border: 1px solid var(--border-default);
+  border-radius: 12px; overflow: hidden;
+  transition: box-shadow .15s, border-color .15s;
+  position: relative;
 }
-.rt--no-usd .rt-head { grid-template-columns:38px 130px 1fr 1fr 1fr 130px 90px; }
+.country-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--row-color, #6366f1);
+  border-radius: 3px 0 0 3px; opacity: .6;
+}
+.country-card:hover { border-color: #c7d2fe; box-shadow: 0 2px 8px rgba(99,102,241,.06); }
+.country-card--expanded { border-color: #c7d2fe; box-shadow: 0 2px 12px rgba(99,102,241,.08); }
 
-.rt-cell { font-size:12px; font-weight:600; color:#6b7280; display:flex; align-items:center; }
-.rt-cell--seq { justify-content:center; }
-.rt-cell--usd { gap:4px; }
-.rt--no-usd .rt-cell--usd { display:none; }
-.rt--no-usd .rt-head .rt-cell--usd { display:flex; } /* 表头始终显示，方便点箭头切回 */
-.rt--no-usd .rt-head .rt-cell--usd span { display:none; } /* 但文字隐藏，只留箭头 */
-.rt-usd-toggle {
-  display:inline-flex; align-items:center; justify-content:center;
-  width:16px; height:16px; border-radius:3px; border:none;
-  background:transparent; cursor:pointer; color:#9ca3af; padding:0;
+/* 卡片头部 */
+.cc-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 14px 16px; cursor: pointer; user-select: none;
+  background: #f9fafb; border-bottom: 1px solid #f3f4f6;
+  transition: background .12s;
+  flex-wrap: wrap;
 }
-.rt-usd-toggle:hover { background:#f3f4f6; color:#6366f1; }
-
-.rt-row {
-  display:grid;
-  grid-template-columns:38px 130px 1fr 1fr 1fr 1fr 130px 90px;
-  padding:10px 16px; align-items:center; gap:8px;
-  border-bottom:1px solid #f3f4f6;
-  transition:background .12s; cursor:default;
-  position:relative;
+.cc-header:hover { background: #f3f4f6; }
+.country-card--expanded .cc-header { background: #eef2ff; border-bottom-color: #e0e7ff; }
+.cc-header-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.cc-header-right { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.cc-seq {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 6px;
+  color: #fff; font-size: 12px; font-weight: 800; flex-shrink: 0;
 }
-.rt--no-usd .rt-row { grid-template-columns:38px 130px 1fr 1fr 1fr 130px 90px; }
-.rt-row:hover { background:var(--row-color-light, #f9fafb); }
-.rt-row--expanded { background:var(--row-color-light, #f9fafb); }
-.rt-row::before {
-  content:''; position:absolute; left:0; top:0; bottom:0;
-  width:3px; background:var(--row-color, #6366f1);
-  border-radius:0; opacity:.5;
-}
-.rt-row:last-of-type { border-bottom:none; }
-
-.rt-seq {
-  display:inline-flex; align-items:center; justify-content:center;
-  width:22px; height:22px; border-radius:5px;
-  color:#fff; font-size:11px; font-weight:700;
-}
-.rt-cell--country { gap:8px; }
-.rt-country-name { font-size:13px; font-weight:700; color:#1f2937; white-space:nowrap; }
-
-.rt-input { width:100%; }
-.rt-input :deep(.el-input__wrapper) { background:var(--surface-input); border-radius:8px; box-shadow:0 0 0 1px var(--border-default); padding:2px 10px; transition:box-shadow .15s; }
-.rt-input :deep(.el-input__wrapper:hover) { box-shadow:0 0 0 1.5px #c7d2fe; }
-.rt-input :deep(.el-input__wrapper.is-focus) { box-shadow:0 0 0 2px #6366f1 !important; }
-.rt-input :deep(.el-input__inner) { font-size:15px; font-weight:700; color:#1f2937; height:36px; }
-.rt-input--usd :deep(.el-input__wrapper) { background:#fffef5; }
-.rt-input--usd :deep(.el-input__inner) { color:#a16207; }
-.rt-cell--usd.collapsed { display:none; }
-
-.rt-cell--cost { flex-direction:column; align-items:flex-start; gap:2px; }
-.rt-cost-line { font-size:13px; font-weight:700; color:var(--row-color, #6366f1); line-height:1.2; }
-.rt-cost-line--eff { font-size:11px; opacity:.7; }
-
-.rt-cell--actions { justify-content:flex-end; gap:2px; }
-.rt-act-btn {
-  display:inline-flex; align-items:center; justify-content:center;
-  width:24px; height:24px; border-radius:4px;
-  border:none; background:transparent; cursor:pointer;
-  color:#9ca3af; padding:0; transition:all .12s;
-}
-.rt-act-btn:hover { background:#f3f4f6; color:#374151; }
-.rt-act-btn:disabled { opacity:.35; cursor:default; }
-.rt-act-btn--del { color:#d1d5db; }
-.rt-act-btn--del:hover { background:#fef2f2; color:#ef4444; }
-.rt-act-btn--expand { position:relative; color:#6b7280; width:auto; padding:0 4px; gap:3px; }
-.rt-act-btn--expand:hover { color:#6366f1; background:#eef2ff; }
-.rt-expand-badge {
-  display:inline-flex; align-items:center; justify-content:center;
-  min-width:16px; height:16px; border-radius:8px;
-  background:#6366f1; color:#fff; font-size:10px; font-weight:700;
-  padding:0 4px; line-height:1;
+.cc-name { font-size: 15px; font-weight: 800; color: #1f2937; white-space: nowrap; }
+.cc-summary {
+  font-size: 11px; font-weight: 600; color: #9ca3af;
+  background: rgba(255,255,255,.7); padding: 3px 10px; border-radius: 20px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* ====== 拉群详情展开区 ====== */
-.gd-expand {
-  background:var(--surface-card); border:1px solid var(--border-default); border-radius:10px;
-  margin-top:4px; overflow:hidden;
+/* 卡片操作按钮 */
+.cc-act-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 5px;
+  border: none; background: transparent; cursor: pointer;
+  color: #9ca3af; padding: 0; transition: all .12s;
 }
-.gd-expand-hd {
-  display:flex; align-items:center; gap:4px; padding:10px 16px;
-  background:#f9fafb; cursor:pointer; user-select:none;
-  border-bottom:1px solid #f3f4f6;
-  transition:background .12s;
+.cc-act-btn:hover { background: rgba(255,255,255,.8); color: #374151; }
+.cc-act-btn:disabled { opacity: .3; cursor: default; }
+.cc-act-btn--expand { color: #6b7280; width: auto; padding: 0 5px; gap: 3px; }
+.cc-act-btn--expand:hover { color: #6366f1; background: #eef2ff; }
+.cc-act-btn--del:hover { background: #fef2f2; color: #ef4444; }
+.cc-expand-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; border-radius: 9px;
+  background: #6366f1; color: #fff; font-size: 10px; font-weight: 700;
+  padding: 0 5px; line-height: 1;
 }
-.gd-expand-hd:hover { background:#f3f4f6; }
-.gd-expand-count { font-size:11px; color:#9ca3af; margin-left:8px; }
-.gd-expand-body { padding:8px 16px 12px; display:flex; flex-direction:column; gap:6px; }
 
-/* 紧凑条目行 */
-.gd-compact-row {
-  display:flex; align-items:center; gap:6px;
-  padding:4px 8px; background:#f9fafb;
-  border:1px solid #e5e7eb; border-radius:6px;
-  transition:border-color .12s;
+/* 指标输入区 */
+.cc-inputs {
+  display: flex; gap: 8px; padding: 12px 16px;
+  flex-wrap: wrap; align-items: flex-end;
 }
-.gd-compact-row:hover { border-color:#c7d2fe; background:var(--surface-hover); }
-.gd-compact-text { flex:1; }
-.gd-compact-text :deep(.el-input__wrapper) { background:var(--surface-input); }
-.gd-compact-status { width:90px; flex-shrink:0; }
-.gd-compact-del { flex-shrink:0; opacity:.5; }
-.gd-compact-del:hover { opacity:1; }
-.gd-compact-add {
-  align-self:flex-start; padding:4px 10px;
-  border:1px dashed #d1d5db; border-radius:6px;
-  font-size:12px; font-weight:600; color:#6b7280;
-  transition:all .12s;
+.cc-input-item {
+  display: flex; flex-direction: column; gap: 4px;
+  flex: 1; min-width: 90px;
 }
-.gd-compact-add:hover { border-color:#6366f1; color:#6366f1; background:#f5f3ff; }
+.cc-input-item.collapsed { display: none; }
+.cc-input-label {
+  font-size: 11px; font-weight: 700; color: #6b7280;
+  display: flex; align-items: center; gap: 4px; white-space: nowrap;
+}
+.cc-usd-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 3px; border: none;
+  background: transparent; cursor: pointer; color: #9ca3af; padding: 0;
+}
+.cc-usd-toggle:hover { background: #f3f4f6; color: #6366f1; }
+.cc-input-num { width: 100%; }
+.cc-input-num :deep(.el-input__wrapper) {
+  background: var(--surface-input); border-radius: 8px;
+  box-shadow: 0 0 0 1px var(--border-default); padding: 2px 10px; transition: box-shadow .15s;
+}
+.cc-input-num :deep(.el-input__wrapper:hover) { box-shadow: 0 0 0 1.5px #c7d2fe; }
+.cc-input-num :deep(.el-input__wrapper.is-focus) { box-shadow: 0 0 0 2px #6366f1 !important; }
+.cc-input-num :deep(.el-input__inner) { font-size: 15px; font-weight: 700; color: #1f2937; height: 36px; }
+.cc-input-num--usd :deep(.el-input__wrapper) { background: #fffef5; }
+.cc-input-num--usd :deep(.el-input__inner) { color: #a16207; }
+
+.cc-required-tag {
+  font-size: 10px; font-weight: 700; color: #ef4444;
+  background: #fef2f2; padding: 1px 6px; border-radius: 3px;
+  animation: ccPulse 1.5s ease-in-out infinite;
+}
+@keyframes ccPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+.cc-input-item--cost { min-width: 110px; }
+.cc-cost-pair { display: flex; align-items: center; gap: 4px; }
+.cc-cost-val { font-size: 14px; font-weight: 800; color: var(--row-color, #6366f1); }
+.cc-cost-val--eff { font-size: 12px; opacity: .7; }
+.cc-cost-sep { color: #d1d5db; font-size: 12px; }
+
+/* ====== 拉群详情（卡片内） ====== */
+.cc-details {
+  border-top: 1px solid #e0e7ff;
+  padding: 10px 16px 14px; display: flex; flex-direction: column; gap: 6px;
+  background: linear-gradient(180deg, #f8faff 0%, #ffffff 100%);
+}
+.cc-details-hd {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding-bottom: 4px;
+}
+.cc-details-title { font-size: 13px; font-weight: 700; color: #374151; }
+.cc-details-meta { font-size: 11px; font-weight: 600; color: #9ca3af; }
+.cc-details-meta--warn { color: #ef4444; }
+
+.cc-detail-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px; background: #fff;
+  border: 1px solid #e5e7eb; border-radius: 8px;
+  transition: border-color .12s;
+}
+.cc-detail-row:hover { border-color: #c7d2fe; }
+.cc-detail-text { flex: 1; }
+.cc-detail-text :deep(.el-input__wrapper) { background: var(--surface-input); }
+.cc-detail-status { width: 90px; flex-shrink: 0; }
+.cc-detail-del { flex-shrink: 0; opacity: .4; }
+.cc-detail-del:hover { opacity: 1; }
+.cc-detail-add {
+  align-self: flex-start; padding: 6px 12px;
+  border: 1px dashed #d1d5db; border-radius: 8px;
+  font-size: 12px; font-weight: 700; color: #6b7280;
+  transition: all .12s;
+}
+.cc-detail-add:hover { border-color: #6366f1; color: #6366f1; background: #f5f3ff; }
 
 /* ====== 全局拉群详情pills ====== */
 .gd-entry-pill {

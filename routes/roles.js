@@ -14,7 +14,7 @@ router.use(requireAdmin);
 // 角色列表
 router.get('/', (req, res) => {
   try {
-    const roles = db.getRoles().map(r => ({ id: r.id, name: r.name, displayName: r.displayName, menus: r.menus, permissions: r.permissions, perPagePerms: r.perPagePerms || {}, enabled: r.enabled, createdAt: r.createdAt }));
+    const roles = db.getRoles().map(r => ({ id: r.id, name: r.name, displayName: r.displayName, menus: r.menus, permissions: r.permissions, perPagePerms: r.perPagePerms || {}, tabAccess: r.tabAccess || { assets: true, scripts: true, prompts: true }, enabled: r.enabled, createdAt: r.createdAt }));
     res.json({ success: true, data: roles });
   } catch (e) {
     res.status(500).json({ success: false, error: '服务器内部错误' });
@@ -24,11 +24,11 @@ router.get('/', (req, res) => {
 // 新增角色
 router.post('/', (req, res) => {
   try {
-    const { name, displayName, menus, permissions, perPagePerms } = req.body || {};
+    const { name, displayName, menus, permissions, perPagePerms, tabAccess } = req.body || {};
     if (!name) return res.json({ success: false, error: '角色名称不能为空' });
     const existing = db.getRoleByName(name);
     if (existing) return res.json({ success: false, error: '角色名已存在' });
-    const role = db.addRole({ name, displayName: displayName || name, menus: menus || [], permissions: permissions || {}, perPagePerms: perPagePerms || {}, enabled: true });
+    const role = db.addRole({ name, displayName: displayName || name, menus: menus || [], permissions: permissions || {}, perPagePerms: perPagePerms || {}, tabAccess: tabAccess || { assets: true, scripts: true, prompts: true }, enabled: true });
     db.logOperation('roles.add', { name: role.name }, req.user);
     res.json({ success: true, data: role });
   } catch (e) {
@@ -39,13 +39,14 @@ router.post('/', (req, res) => {
 // 更新角色
 router.put('/:id', (req, res) => {
   try {
-    const { displayName, menus, enabled, permissions, perPagePerms } = req.body || {};
+    const { displayName, menus, enabled, permissions, perPagePerms, tabAccess } = req.body || {};
     const updates = {};
     if (displayName !== undefined) updates.displayName = displayName;
     if (menus !== undefined) updates.menus = menus;
     if (enabled !== undefined) updates.enabled = enabled;
     if (permissions !== undefined) updates.permissions = permissions;
     if (perPagePerms !== undefined) updates.perPagePerms = perPagePerms;
+    if (tabAccess !== undefined) updates.tabAccess = tabAccess;
     const role = db.updateRole(req.params.id, updates);
     if (!role) return res.json({ success: false, error: '角色不存在' });
     db.logOperation('roles.update', { name: role.name }, req.user);

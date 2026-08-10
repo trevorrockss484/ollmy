@@ -70,7 +70,7 @@ app.use('/api', (req, res, next) => {
   const token = req.headers['x-auth-token'] || req.query.token || '';
   const result = token ? authRoutes.verifyToken(token) : null;
   if (result) {
-    req.user = result; // { username, role, menus, permissions }
+    req.user = result; // { username, role, menus, permissions, perPagePerms, tabAccess }
     return next();
   }
   res.status(401).json({ success: false, error: '未登录' });

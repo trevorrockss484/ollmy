@@ -126,6 +126,17 @@
           </el-tab-pane>
         </el-tabs>
 
+        <!-- AI资产管理 Tab 可见性 -->
+        <div class="dlg-section">
+          <div class="dlg-sec-title">AI资产管理 · Tab可见性</div>
+          <div class="dlg-tab-checks">
+            <el-checkbox v-model="form.tabAccess.assets" size="large"><b>AI资产</b></el-checkbox>
+            <el-checkbox v-model="form.tabAccess.scripts" size="large"><b>剧本与分镜</b></el-checkbox>
+            <el-checkbox v-model="form.tabAccess.prompts" size="large"><b>AI提示词</b></el-checkbox>
+          </div>
+          <p style="font-size:11px;color:#9ca3af;margin-top:6px;">控制该角色在「AI资产管理」页面可以看到哪些 Tab。数据按用户隔离，互不影响。</p>
+        </div>
+
         <!-- 同时创建用户（仅新增时） -->
         <div class="dlg-section" v-if="!editId">
           <div class="dlg-sec-title" style="cursor:pointer;user-select:none;" @click="createUser = !createUser">
@@ -207,7 +218,7 @@ const editId = ref(null)
 const createUser = ref(false)
 const permTab = ref('menus')
 
-const defaultForm = () => ({ name: '', displayName: '', menus: [], permissions: { edit: false, add: false, delete: false }, perPagePerms: {}, enabled: true, userUsername: '', userDisplayName: '', userPassword: '' })
+const defaultForm = () => ({ name: '', displayName: '', menus: [], permissions: { edit: false, add: false, delete: false }, perPagePerms: {}, tabAccess: { assets: true, scripts: true, prompts: true }, enabled: true, userUsername: '', userDisplayName: '', userPassword: '' })
 const pagePermList = computed(() => allMenus.map(m => ({ path: m.path, label: m.label })))
 
 function pagePermValue(path, key) {
@@ -261,6 +272,7 @@ function openEdit(r) {
   form.menus = [...(r.menus || [])]
   form.permissions = r.permissions ? { ...r.permissions } : { edit: false, add: false, delete: false }
   form.perPagePerms = r.perPagePerms ? JSON.parse(JSON.stringify(r.perPagePerms)) : {}
+  form.tabAccess = r.tabAccess ? { ...r.tabAccess } : { assets: true, scripts: true, prompts: true }
   form.enabled = r.enabled
   dialogVisible.value = true
 }
@@ -275,12 +287,17 @@ async function saveRole() {
     if (!form.userPassword) { ElMessage.warning('请设置登录密码'); return }
   }
 
+  // 新增角色时提醒：menus 为空会导致无法访问任何页面
+  if (!editId.value && !form.menus.length) {
+    try { await ElMessageBox.confirm('该角色未选择任何菜单，用户将无法访问任何页面。确定继续？', '菜单为空', { confirmButtonText: '仍然创建', cancelButtonText: '返回配置', type: 'warning' }) } catch { return }
+  }
+
   if (editId.value) {
-    const res = await api.roles.update(editId.value, { displayName: form.displayName.trim(), menus: form.menus, permissions: form.permissions, perPagePerms: form.perPagePerms, enabled: form.enabled })
+    const res = await api.roles.update(editId.value, { displayName: form.displayName.trim(), menus: form.menus, permissions: form.permissions, perPagePerms: form.perPagePerms, tabAccess: form.tabAccess, enabled: form.enabled })
     if (res.success) { ElMessage.success('角色已更新'); dialogVisible.value = false; loadRoles() }
     else ElMessage.error(res.error || '更新失败')
   } else {
-    const res = await api.roles.add({ name: form.name.trim(), displayName: form.displayName.trim(), menus: form.menus, permissions: form.permissions, perPagePerms: form.perPagePerms })
+    const res = await api.roles.add({ name: form.name.trim(), displayName: form.displayName.trim(), menus: form.menus, permissions: form.permissions, perPagePerms: form.perPagePerms, tabAccess: form.tabAccess })
     if (res.success) {
       // 同时创建用户
       if (createUser.value) {

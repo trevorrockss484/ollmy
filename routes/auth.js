@@ -35,7 +35,8 @@ function verifyToken(token) {
     if (!roleObj) return null;
     const perms = roleObj.permissions || { edit: false, add: false, delete: false };
     const perPage = roleObj.perPagePerms || {};
-    return { username, role, menus: roleObj.menus || [], permissions: perms, perPagePerms: perPage };
+    const tabAccess = roleObj.tabAccess || { assets: true, scripts: true, prompts: true };
+    return { username, role, menus: roleObj.menus || [], permissions: perms, perPagePerms: perPage, tabAccess };
   } catch { return null; }
 }
 
@@ -50,7 +51,8 @@ router.post('/login', (req, res) => {
     const roleObj = db.getRoleByName(user.role);
     const permissions = roleObj ? (roleObj.permissions || { edit: false, add: false, delete: false }) : { edit: false, add: false, delete: false };
     const perPagePerms = roleObj ? (roleObj.perPagePerms || {}) : {};
-    return res.json({ success: true, data: { token, username, role: user.role, displayName: user.displayName, menus: roleObj ? roleObj.menus : [], permissions, perPagePerms } });
+    const tabAccess = roleObj ? (roleObj.tabAccess || { assets: true, scripts: true, prompts: true }) : { assets: true, scripts: true, prompts: true };
+    return res.json({ success: true, data: { token, username, role: user.role, displayName: user.displayName, menus: roleObj ? roleObj.menus : [], permissions, perPagePerms, tabAccess } });
   }
   res.status(401).json({ success: false, error: '用户名或密码错误' });
 });
@@ -60,7 +62,7 @@ router.post('/verify', (req, res) => {
   const { token } = req.body || {};
   const result = token ? verifyToken(token) : null;
   if (result) {
-    return res.json({ success: true, data: { username: result.username, role: result.role, menus: result.menus, permissions: result.permissions, perPagePerms: result.perPagePerms } });
+    return res.json({ success: true, data: { username: result.username, role: result.role, menus: result.menus, permissions: result.permissions, perPagePerms: result.perPagePerms, tabAccess: result.tabAccess } });
   }
   res.status(401).json({ success: false, error: '未授权' });
 });

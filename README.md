@@ -59,23 +59,31 @@ docker compose down
 ```
 ├── server.js              # Express 服务器入口
 ├── routes/                # API 路由
-│   ├── auth.js            # 登录认证
+│   ├── auth.js            # 登录认证 + HMAC Token
 │   ├── config.js          # 周计划配置
 │   ├── daily.js           # 日报 CRUD
 │   ├── vps.js             # VPS 管理
 │   ├── summary.js         # 月度/周汇总
-│   ├── assets.js          # AI资产管理（图片+视频）
+│   ├── assets.js          # AI资产管理（图片+视频+音频）
 │   ├── library.js         # 资料库（文档管理）
 │   ├── tools.js           # 图片/视频压缩工具
-│   └── prompts.js         # AI提示词模板
+│   ├── prompts.js         # AI提示词模板
+│   ├── scripts.js         # 剧本与分镜
+│   ├── customer-stats.js  # 客户统计
+│   ├── users.js           # 用户管理
+│   ├── roles.js           # 角色管理
+│   ├── sales-persons.js   # 销售名单
+│   └── logs.js            # 操作日志
 ├── database/              # 数据存储
 │   ├── db.js              # JSON 数据库层（自动备份）
 │   └── data/              # 数据文件（gitignore）
 ├── src/                   # Vue3 前端源码
-│   ├── views/             # 14 个页面组件
+│   ├── views/             # 页面组件
 │   ├── stores/            # Pinia 状态管理
-│   ├── router/            # Vue Router
+│   ├── router/            # Vue Router（路由守卫）
 │   ├── api/               # API 请求层
+│   ├── data/              # 共享数据（国家树、账号列表）
+│   ├── utils/             # 工具函数（ECharts主题）
 │   └── components/        # 公共组件
 ├── uploads/               # 上传文件目录（gitignore）
 │   ├── compress/saved/    # 压缩后图片
@@ -105,12 +113,13 @@ docker compose down
 - 过期周自动标记
 
 ### 📝 日报生成 Report
-- FB/TX 双栏数据填写
+- FB 多国家日报填写，卡片式布局
+- 国家排序（A→Z / 客资 / 消耗 / 拉群）
+- 拉群及客户详情 — 每个国家展开填写，拉群数=详情数校验
 - 粘贴历史日报自动识别解析
-- 模版弹窗快速生成
-- 自动计算均单价、转化率
-- 一键复制日报文本
-- 多国家切换，日期选择
+- 从客户统计同步国家客资（自动替换国家列表）
+- 实时预览 + 一键复制日报文本
+- 自动保存（1.2秒去抖）
 
 ### 🔍 历史查询 History
 - 日期范围筛选 + 国家筛选
@@ -138,10 +147,12 @@ docker compose down
 - 全球运营指挥中心视图
 - 国旗图标展示
 
-### 🎨 AI资产管理 Assets（3合1页面）
-- **AI资产** — 图片上传、预览、批量下载、批量删除、分类标签管理
-- **资料库** — 文档上传、docx 预览（Mammoth 渲染）、下载、标签筛选
-- **AI提示词** — 按流程步骤分类、一键复制、在线编辑、拖拽排序、自定义步骤
+### 🎨 AI资产管理 Assets（3 Tab 页面）
+- **AI提示词** — 按流程步骤分类、一键复制、在线编辑、拖拽排序、自定义步骤、导入/导出
+- **剧本与分镜** — 双栏编辑器（剧本+分镜）、Markdown预览、自动保存、文档上传提取
+- **AI资产** — 图片/视频/音频上传、预览、批量下载、批量删除、分类标签管理
+- **多用户隔离** — 数据按 userId 隔离，admin 可看全部，非 admin 只看自己
+- **Tab 可见性** — 角色可按 Tab 控制（只开提示词/只开剧本），精细权限
 
 ### 💬 话术库 Scripts
 - 英文+中文话术卡片
@@ -188,10 +199,15 @@ docker compose down
 - 微信/社交媒体分享卡片优化
 - 显示尺寸、大小、时长等元信息
 
-### 🔒 登录认证
-- Token 认证，路由守卫
-- Remember-me 自动登录
-- 401 自动跳转登录页
+### 🔒 登录认证 & RBAC
+- HMAC-SHA256 Token 认证，7天有效期
+- 路由守卫 + API 中间件双重拦截
+- Remember-me 自动登录，登录页 Three.js 3D 背景
+- 管理员 / 自定义角色 两级 RBAC
+- 全局权限控制：可编辑 / 可新增 / 可删除
+- 逐模块权限覆盖（perPagePerms）
+- AI资产管理 Tab 级别可见性开关
+- 每 2 分钟自动从服务端刷新权限
 
 ## 路由表
 
@@ -204,9 +220,13 @@ docker compose down
 | `/history` | 历史查询 | 筛选+导出 |
 | `/monitor` | VPS监控 | 到期提醒 |
 | `/clock` | 全球时钟 | 3D 地球 |
-| `/assets` | AI资产管理 | 资产+资料库+提示词 |
-| `/scripts` | 话术库 | 中英文话术 |
-| `/compress` | 图片压缩 | 批量处理 |
+| `/assets` | AI资产管理 | 提示词+剧本+资产 三Tab |
+| `/customer-stats` | 客户统计 | 每日+月度汇总 |
+| `/role-manage` | 角色管理 | RBAC 权限配置 |
+| `/user-manage` | 用户管理 | 用户增删改 |
+| `/settings` | 系统设置 | 全局配置 |
+| `/logs` | 操作日志 | 审计查看 |
+| `/compress` | 图片压缩 | Sharp 批量处理 |
 | `/video-compress` | 视频压缩 | FFmpeg |
 | `/video-library` | 视频素材库 | 分类管理 |
 | `/media` | 素材库 | 统一浏览 |
@@ -216,6 +236,10 @@ docker compose down
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
 | `PORT` | 服务端口 | `3456` |
+| `PAN_USER` | 初始管理员账号 | `admin` |
+| `PAN_PASSWORD` | 初始管理员密码 | `admin123` |
+| `PAN_TOKEN_SECRET` | Token 签名密钥 | `pan-secret-change-me` |
+| `PAN_COST_PIN` | 成本锁初始密码 | `default-change-me` |
 
 ## 数据持久化
 

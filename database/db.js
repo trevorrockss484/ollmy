@@ -573,7 +573,10 @@ const libraryDb = makeCrud('library', { name: '', fileName: '', originalName: ''
 const showScriptsDb = makeCrud('showScripts', { showName: '', type: 'script', title: '', content: '', tags: [], uploadedFile: null });
 const compressedDb = makeCrud('compressed', { originalName: '', compressedName: '', originalSize: 0, compressedSize: 0, width: 0, height: 0, format: 'webp', quality: 80, name: '', category: '' });
 
-function getPrompts() { return promptsDb.list(); }
+function getPrompts(userId) {
+  const all = promptsDb.list();
+  return userId ? all.filter(p => (p.userId || 'admin') === userId) : all;
+}
 function getPrompt(id) { return promptsDb.get(id); }
 function addPrompt(item) { return promptsDb.add(item); }
 function updatePrompt(id, updates) { return promptsDb.update(id, updates); }
@@ -589,9 +592,10 @@ function reorderPrompts(orderedIds) {
   return true;
 }
 
-function getAssets(type) {
+function getAssets(type, userId) {
   const all = assetsDb.list();
-  return type ? all.filter(a => a.type === type) : all;
+  const filtered = userId ? all.filter(a => (a.userId || 'admin') === userId) : all;
+  return type ? filtered.filter(a => a.type === type) : filtered;
 }
 function getAsset(id) { return assetsDb.get(id); }
 function addAsset(item) { return assetsDb.add({ ...item, gridOverlay: item.gridOverlay !== undefined ? item.gridOverlay : (item.type === 'character') }); }
@@ -640,7 +644,10 @@ function addLibraryItem(item) { return libraryDb.add(item); }
 function updateLibraryItem(id, updates) { return libraryDb.update(id, updates); }
 function deleteLibraryItem(id) { return libraryDb.delete(id); }
 
-function getShowScripts() { return showScriptsDb.list(); }
+function getShowScripts(userId) {
+  const all = showScriptsDb.list();
+  return userId ? all.filter(s => (s.userId || 'admin') === userId) : all;
+}
 function getShowScript(id) { return showScriptsDb.get(id); }
 function addShowScript(item) { return showScriptsDb.add(item); }
 function updateShowScript(id, updates) { return showScriptsDb.update(id, updates); }
@@ -741,8 +748,9 @@ function seedDefaultRoles() {
   const crypto = require('crypto')
   const DEF_FULL = { edit: true, add: true, delete: true }
   const DEF_RO = { edit: false, add: false, delete: false }
+  const DEF_TAB_ACCESS = { assets: true, scripts: true, prompts: true }
   if (!rolesDb.list().some(r => r.name === 'admin')) {
-    rolesDb.add({ name: 'admin', displayName: '管理员', menus: [...ALL_MENUS], permissions: DEF_FULL, perPagePerms: {}, enabled: true })
+    rolesDb.add({ name: 'admin', displayName: '管理员', menus: [...ALL_MENUS], permissions: DEF_FULL, perPagePerms: {}, tabAccess: DEF_TAB_ACCESS, enabled: true })
   } else {
     const admin = rolesDb.list().find(r => r.name === 'admin')
     if (admin) {
@@ -750,16 +758,18 @@ function seedDefaultRoles() {
       const fixes = {}
       if (merged.length !== (admin.menus || []).length) fixes.menus = merged
       if (!admin.perPagePerms) fixes.perPagePerms = {}
+      if (!admin.tabAccess) fixes.tabAccess = DEF_TAB_ACCESS
       if (Object.keys(fixes).length) rolesDb.update(admin.id, fixes)
     }
   }
   if (!rolesDb.list().some(r => r.name === 'staff')) {
-    rolesDb.add({ name: 'staff', displayName: '访客', menus: [...ALL_MENUS], permissions: DEF_RO, perPagePerms: {}, enabled: true })
+    rolesDb.add({ name: 'staff', displayName: '访客', menus: [...ALL_MENUS], permissions: DEF_RO, perPagePerms: {}, tabAccess: DEF_TAB_ACCESS, enabled: true })
   }
   for (const r of rolesDb.list()) {
     const fixes = {}
     if (!r.permissions) fixes.permissions = r.name === 'admin' ? {...DEF_FULL} : {...DEF_RO}
     if (!r.perPagePerms) fixes.perPagePerms = {}
+    if (!r.tabAccess) fixes.tabAccess = {...DEF_TAB_ACCESS}
     if (Object.keys(fixes).length) rolesDb.update(r.id, fixes)
   }
   // 默认管理员用户
