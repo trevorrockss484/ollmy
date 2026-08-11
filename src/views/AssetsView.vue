@@ -1882,23 +1882,14 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
 /* Firefox 细滚动条 */
 * { scrollbar-width:thin; scrollbar-color:#d1d5db transparent; }
 
-/* ===== 弹窗固定高度，防止溢出（全局样式，dialog 被 teleport 到 body） ===== */
+/* ===== 弹窗防溢出：仅弹窗整体设上限，内容区滚动由各组件自行处理 ===== */
 .asset-dialog {
   max-height: 86vh !important;
   overflow: hidden !important;
 }
 .asset-dialog > .el-dialog__body {
-  max-height: calc(86vh - 130px);
-  overflow-y: auto;
   padding: 0 24px;
 }
-.asset-dialog > .el-dialog__body .el-form-item {
-  margin-bottom: 14px;
-}
-.asset-dialog > .el-dialog__body .el-form-item:last-child {
-  margin-bottom: 0;
-}
-
 .asset-dialog > .el-dialog__footer {
   padding: 16px 24px 20px;
 }
