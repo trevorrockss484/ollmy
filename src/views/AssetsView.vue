@@ -544,7 +544,7 @@
 
       <!-- 提示词编辑弹窗 -->
       <el-dialog v-model="pmtDialogOpen" :title="pmtIsEditing ? '编辑模板' : '新增模板'" width="720px" top="4vh" class="asset-dialog" destroy-on-close>
-        <el-form label-width="80px" size="default">
+        <el-form label-width="80px" size="default" class="pmt-form">
           <el-form-item label="标题">
             <el-input v-model="pmtForm.title" placeholder="输入模板名称..." size="large" />
           </el-form-item>
@@ -556,8 +556,8 @@
           <el-form-item label="标签">
             <el-input v-model="pmtForm.tagsStr" placeholder="逗号分隔" size="large" />
           </el-form-item>
-          <el-form-item label="内容">
-            <el-input v-model="pmtForm.content" type="textarea" :rows="6" placeholder="粘贴提示词内容..." />
+          <el-form-item label="内容" class="pmt-textarea-item">
+            <el-input v-model="pmtForm.content" type="textarea" placeholder="粘贴提示词内容..." />
           </el-form-item>
         </el-form>
         <template #footer>
@@ -1904,6 +1904,37 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
 }
 .asset-dialog > .el-dialog__body .el-form-item:last-child {
   margin-bottom: 0;
+}
+
+/* 提示词编辑弹窗：form 纵向撑满，textarea 自动填剩余空间 */
+.pmt-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.pmt-textarea-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-bottom: 0 !important;
+}
+.pmt-textarea-item .el-form-item__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.pmt-textarea-item .el-textarea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.pmt-textarea-item .el-textarea__inner {
+  flex: 1;
+  min-height: 120px;
+  resize: none;
 }
 .asset-dialog > .el-dialog__footer {
   flex-shrink: 0;
