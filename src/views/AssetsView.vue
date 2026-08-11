@@ -544,7 +544,7 @@
 
       <!-- 提示词编辑弹窗 -->
       <el-dialog v-model="pmtDialogOpen" :title="pmtIsEditing ? '编辑模板' : '新增模板'" width="720px" top="4vh" class="asset-dialog" destroy-on-close>
-        <el-form label-width="80px" size="default" class="pmt-form">
+        <el-form label-width="80px" size="default">
           <el-form-item label="标题">
             <el-input v-model="pmtForm.title" placeholder="输入模板名称..." size="large" />
           </el-form-item>
@@ -556,8 +556,8 @@
           <el-form-item label="标签">
             <el-input v-model="pmtForm.tagsStr" placeholder="逗号分隔" size="large" />
           </el-form-item>
-          <el-form-item label="内容" class="pmt-textarea-item">
-            <el-input v-model="pmtForm.content" type="textarea" placeholder="粘贴提示词内容..." />
+          <el-form-item label="内容">
+            <el-input v-model="pmtForm.content" type="textarea" :rows="12" placeholder="粘贴提示词内容..." />
           </el-form-item>
         </el-form>
         <template #footer>
@@ -1884,19 +1884,12 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
 
 /* ===== 弹窗固定高度，防止溢出（全局样式，dialog 被 teleport 到 body） ===== */
 .asset-dialog {
-  display: flex !important;
-  flex-direction: column !important;
   max-height: 86vh !important;
   overflow: hidden !important;
 }
-.asset-dialog > .el-dialog__header {
-  flex-shrink: 0;
-  padding: 20px 24px 16px;
-}
 .asset-dialog > .el-dialog__body {
-  flex: 1 1 auto;
+  max-height: calc(86vh - 130px);
   overflow-y: auto;
-  min-height: 0;
   padding: 0 24px;
 }
 .asset-dialog > .el-dialog__body .el-form-item {
@@ -1906,38 +1899,7 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
   margin-bottom: 0;
 }
 
-/* 提示词编辑弹窗：form 纵向撑满，textarea 自动填剩余空间 */
-.pmt-form {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-}
-.pmt-textarea-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  margin-bottom: 0 !important;
-}
-.pmt-textarea-item .el-form-item__content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-.pmt-textarea-item .el-textarea {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-.pmt-textarea-item .el-textarea__inner {
-  flex: 1;
-  min-height: 120px;
-  resize: none;
-}
 .asset-dialog > .el-dialog__footer {
-  flex-shrink: 0;
   padding: 16px 24px 20px;
 }
 </style>
