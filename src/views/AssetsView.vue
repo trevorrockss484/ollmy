@@ -1887,6 +1887,7 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
   display: flex !important;
   flex-direction: column !important;
   max-height: 86vh !important;
+  overflow: hidden !important;
 }
 .asset-dialog > .el-dialog__header {
   flex-shrink: 0;
