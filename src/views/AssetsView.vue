@@ -432,7 +432,7 @@
         <aside class="prompts-sidebar">
           <div class="sidebar-header">
             <h3>流程步骤</h3>
-            <el-button v-if="authStore.canEdit(PAGE)" size="small" text @click="pmtOpenStepManager">
+            <el-button v-if="authStore.isAdmin()" size="small" text @click="pmtOpenStepManager">
               <el-icon :size="14"><Setting /></el-icon> 管理
             </el-button>
           </div>
@@ -459,14 +459,14 @@
           <!-- 顶部操作栏 -->
           <div class="prompts-topbar">
             <div class="toolbar-left">
-              <el-button v-if="authStore.canAdd(PAGE)" type="primary" class="tb-btn-primary" @click="pmtOpenAdd">
+              <el-button type="primary" class="tb-btn-primary" @click="pmtOpenAdd">
                 <el-icon :size="16"><Plus /></el-icon> 新增模板
               </el-button>
               <span class="tb-count">{{ pmtFiltered.length }} 条</span>
             </div>
             <div class="toolbar-right">
               <el-button size="small" @click="pmtExport">导出</el-button>
-              <el-button v-if="authStore.canAdd(PAGE)" size="small" @click="pmtImportInput?.click()">导入</el-button>
+              <el-button size="small" @click="pmtImportInput?.click()">导入</el-button>
               <input ref="pmtImportInput" type="file" accept=".json" style="display:none" @change="pmtImport" />
               <div class="assets-search-box">
                 <el-icon :size="15" class="search-icon"><Search /></el-icon>
@@ -519,10 +519,10 @@
                   <el-button type="primary" size="small" round @click="pmtDoCopy(pmtActiveItem)">
                     <el-icon><DocumentCopy /></el-icon> 复制全文
                   </el-button>
-                  <el-button v-if="authStore.canEdit(PAGE)" size="small" round @click="pmtOpenEdit(pmtActiveItem)">
+                  <el-button v-if="authStore.isAdmin()" size="small" round @click="pmtOpenEdit(pmtActiveItem)">
                     <el-icon><Edit /></el-icon> 编辑
                   </el-button>
-                  <el-button v-if="authStore.canDelete(PAGE)" size="small" round type="danger" plain @click="pmtDeleteCard(pmtActiveItem)">
+                  <el-button v-if="authStore.isAdmin()" size="small" round type="danger" plain @click="pmtDeleteCard(pmtActiveItem)">
                     <el-icon><Delete /></el-icon>
                   </el-button>
                 </div>
@@ -561,11 +561,11 @@
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button v-if="pmtIsEditing && authStore.canDelete(PAGE)" type="danger" @click="pmtDoDelete" style="margin-right:auto;">
+          <el-button v-if="pmtIsEditing && authStore.isAdmin()" type="danger" @click="pmtDoDelete" style="margin-right:auto;">
             <el-icon :size="14"><Delete /></el-icon> 删除
           </el-button>
           <el-button @click="pmtDialogOpen = false">取消</el-button>
-          <el-button v-if="authStore.canEdit(PAGE)" type="primary" @click="pmtDoSave"><el-icon :size="14"><Check /></el-icon> 保存</el-button>
+          <el-button v-if="!pmtIsEditing || authStore.isAdmin()" type="primary" @click="pmtDoSave"><el-icon :size="14"><Check /></el-icon> 保存</el-button>
         </template>
       </el-dialog>
 
@@ -597,7 +597,7 @@
         </el-button>
         <template #footer>
           <el-button @click="pmtStepDialog = false">取消</el-button>
-          <el-button v-if="authStore.canEdit(PAGE)" type="primary" @click="pmtSaveSteps">保存步骤配置</el-button>
+          <el-button v-if="authStore.isAdmin()" type="primary" @click="pmtSaveSteps">保存步骤配置</el-button>
         </template>
       </el-dialog>
     </div>
