@@ -60,11 +60,10 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// 认证路由（无需验证）
+// 认证路由（需先加载引用，供中间件使用 verifyToken）
 const authRoutes = require('./routes/auth');
-app.use('/api/auth', authRoutes);
 
-// API 认证中间件
+// API 认证中间件（必须在路由注册前执行，确保 req.user 先设置）
 app.use('/api', (req, res, next) => {
   if (req.path === '/auth/login' || req.path === '/auth/verify') return next();
   const token = req.headers['x-auth-token'] || req.query.token || '';
@@ -75,6 +74,9 @@ app.use('/api', (req, res, next) => {
   }
   res.status(401).json({ success: false, error: '未登录' });
 });
+
+// 认证路由（注册在中间件之后，确保 update-cost-pin 等路由能拿到 req.user）
+app.use('/api/auth', authRoutes);
 
 // 写入权限中间件
 function checkPerm(req, res, next) {
