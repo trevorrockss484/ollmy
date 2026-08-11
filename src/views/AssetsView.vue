@@ -1651,12 +1651,6 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
 .lightbox-enter-active, .lightbox-leave-active { transition:opacity .2s; }
 .lightbox-enter-from, .lightbox-leave-to { opacity:0; }
 
-/* ===== 弹窗统一样式：固定高度，防止溢出 ===== */
-.asset-dialog :deep(.el-dialog) { display:flex; flex-direction:column; max-height:88vh; }
-.asset-dialog :deep(.el-dialog__header) { flex-shrink:0; }
-.asset-dialog :deep(.el-dialog__body) { flex:1; overflow-y:auto; min-height:0; padding:16px 20px; }
-.asset-dialog :deep(.el-dialog__footer) { flex-shrink:0; }
-
 /* 上传弹窗 */
 .drop-zone { border:2px dashed #d1d5db; border-radius:14px; padding:32px 20px; text-align:center; transition:all 0.2s; background:#f9fafb; }
 .drop-zone:hover, .drop-zone.dragover { border-color:#6366f1; background:#eef2ff; }
@@ -1887,4 +1881,25 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
 .script-edit-body ::-webkit-scrollbar-thumb:hover { background:#9ca3af; }
 /* Firefox 细滚动条 */
 * { scrollbar-width:thin; scrollbar-color:#d1d5db transparent; }
+
+/* ===== 弹窗固定高度，防止溢出（全局样式，dialog 被 teleport 到 body） ===== */
+.asset-dialog {
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: 86vh !important;
+}
+.asset-dialog > .el-dialog__header {
+  flex-shrink: 0;
+  padding: 20px 24px 16px;
+}
+.asset-dialog > .el-dialog__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 0 24px;
+}
+.asset-dialog > .el-dialog__footer {
+  flex-shrink: 0;
+  padding: 16px 24px 20px;
+}
 </style>
