@@ -179,7 +179,7 @@
       </teleport>
 
       <!-- 上传弹窗 -->
-      <el-dialog v-model="uploadOpen" title="上传资产" width="620px" destroy-on-close>
+      <el-dialog v-model="uploadOpen" title="上传资产" width="620px" top="4vh" class="asset-dialog" destroy-on-close>
         <div class="drop-zone" :class="{ dragover: dragOver }"
           @dragover.prevent="dragOver = true" @dragleave="dragOver = false" @drop.prevent="onDrop">
           <div class="drop-icon"><el-icon :size="40"><Upload /></el-icon></div>
@@ -226,7 +226,7 @@
       </el-dialog>
 
       <!-- 编辑弹窗 -->
-      <el-dialog v-model="editOpen" title="编辑资产" width="520px" destroy-on-close>
+      <el-dialog v-model="editOpen" title="编辑资产" width="520px" top="4vh" class="asset-dialog" destroy-on-close>
         <el-form label-width="80px" size="default">
           <el-form-item label="名称"><el-input v-model="editForm.name" size="large" /></el-form-item>
           <el-form-item label="类型">
@@ -269,7 +269,7 @@
       </div>
 
       <!-- 新增剧集弹窗（可附加上传文件） -->
-      <el-dialog v-model="showAddDialog" title="新增剧集" width="560px" destroy-on-close
+      <el-dialog v-model="showAddDialog" title="新增剧集" width="560px" top="4vh" class="asset-dialog" destroy-on-close
         @opened="onShowDialogOpened" @closed="onShowDialogClosed">
         <el-input v-model="newShowName" placeholder="输入剧集名称，如：庆余年、甄嬛传"
           @keyup.enter="addShow" ref="showNameInput" :disabled="showAdding" size="large" />
@@ -336,7 +336,7 @@
       </el-dialog>
 
       <!-- 删除确认弹窗 -->
-      <el-dialog v-model="showDeleteDialog" title="删除剧集" width="420px" destroy-on-close>
+      <el-dialog v-model="showDeleteDialog" title="删除剧集" width="420px" top="4vh" class="asset-dialog" destroy-on-close>
         <p style="color:#6b7280;font-size:14px;">确定要删除 <b style="color:#1f2937;">{{ deletingShow }}</b> 吗？</p>
         <p style="color:#9ca3af;font-size:12px;">该剧的剧本和分镜将被永久删除，无法恢复</p>
         <template #footer>
@@ -543,7 +543,7 @@
       </div>
 
       <!-- 提示词编辑弹窗 -->
-      <el-dialog v-model="pmtDialogOpen" :title="pmtIsEditing ? '编辑模板' : '新增模板'" width="720px" destroy-on-close>
+      <el-dialog v-model="pmtDialogOpen" :title="pmtIsEditing ? '编辑模板' : '新增模板'" width="720px" top="4vh" class="asset-dialog" destroy-on-close>
         <el-form label-width="80px" size="default">
           <el-form-item label="标题">
             <el-input v-model="pmtForm.title" placeholder="输入模板名称..." size="large" />
@@ -557,7 +557,7 @@
             <el-input v-model="pmtForm.tagsStr" placeholder="逗号分隔" size="large" />
           </el-form-item>
           <el-form-item label="内容">
-            <el-input v-model="pmtForm.content" type="textarea" :autosize="{ minRows: 14, maxRows: 30 }" placeholder="粘贴提示词内容..." />
+            <el-input v-model="pmtForm.content" type="textarea" :autosize="{ minRows: 8, maxRows: 16 }" placeholder="粘贴提示词内容..." />
           </el-form-item>
         </el-form>
         <template #footer>
@@ -570,7 +570,7 @@
       </el-dialog>
 
       <!-- 步骤管理弹窗 -->
-      <el-dialog v-model="pmtStepDialog" title="管理流程步骤" width="560px" destroy-on-close>
+      <el-dialog v-model="pmtStepDialog" title="管理流程步骤" width="560px" top="4vh" class="asset-dialog" destroy-on-close>
         <p style="color:#6b7280;font-size:13px;margin:0 0 16px;">自定义步骤名称、颜色和顺序。提示词中引用的步骤将自动更新。</p>
         <div class="step-manage-list">
           <div v-for="(st, i) in pmtStepsDraft" :key="i"
@@ -604,7 +604,7 @@
 
     <!-- ==================== 全局搜索 Cmd+K ==================== -->
     <teleport to="body">
-      <el-dialog v-model="globalSearchOpen" title="全局搜索" width="560px" destroy-on-close draggable
+      <el-dialog v-model="globalSearchOpen" title="全局搜索" width="560px" top="4vh" class="asset-dialog" destroy-on-close draggable
         @opened="onGlobalSearchOpened" @closed="globalSearchQ = ''">
         <el-input v-model="globalSearchQ" placeholder="输入关键词搜索所有AI资产、剧本、提示词..."
           size="large" ref="globalSearchInput" clearable @input="onGlobalSearchInput">
@@ -1650,6 +1650,12 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
 .lightbox-arrow--right { right:16px; }
 .lightbox-enter-active, .lightbox-leave-active { transition:opacity .2s; }
 .lightbox-enter-from, .lightbox-leave-to { opacity:0; }
+
+/* ===== 弹窗统一样式：固定高度，防止溢出 ===== */
+.asset-dialog :deep(.el-dialog) { display:flex; flex-direction:column; max-height:88vh; }
+.asset-dialog :deep(.el-dialog__header) { flex-shrink:0; }
+.asset-dialog :deep(.el-dialog__body) { flex:1; overflow-y:auto; min-height:0; padding:16px 20px; }
+.asset-dialog :deep(.el-dialog__footer) { flex-shrink:0; }
 
 /* 上传弹窗 */
 .drop-zone { border:2px dashed #d1d5db; border-radius:14px; padding:32px 20px; text-align:center; transition:all 0.2s; background:#f9fafb; }
