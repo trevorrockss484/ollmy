@@ -557,7 +557,7 @@
             <el-input v-model="pmtForm.tagsStr" placeholder="逗号分隔" size="large" />
           </el-form-item>
           <el-form-item label="内容">
-            <el-input v-model="pmtForm.content" type="textarea" :autosize="{ minRows: 8, maxRows: 16 }" placeholder="粘贴提示词内容..." />
+            <el-input v-model="pmtForm.content" type="textarea" :rows="10" placeholder="粘贴提示词内容..." />
           </el-form-item>
         </el-form>
         <template #footer>
