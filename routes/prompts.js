@@ -2,6 +2,13 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 
+function requireAdmin(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, error: '需要管理员权限' });
+  }
+  next();
+}
+
 // 获取全部提示词（模版共用，所有用户可见全部）
 router.get('/', (req, res) => {
   try {
@@ -12,8 +19,8 @@ router.get('/', (req, res) => {
   }
 });
 
-// 排序（必须在 /:id 前）
-router.put('/reorder/batch', (req, res) => {
+// 排序（必须在 /:id 前，仅管理员）
+router.put('/reorder/batch', requireAdmin, (req, res) => {
   try {
     const { ids } = req.body;
     if (!Array.isArray(ids)) return res.status(400).json({ success: false, error: 'ids is required' });
@@ -34,8 +41,8 @@ router.get('/steps/config', (req, res) => {
   }
 });
 
-// 保存步骤配置（必须在 /:id 前）
-router.put('/steps/config', (req, res) => {
+// 保存步骤配置（必须在 /:id 前，仅管理员）
+router.put('/steps/config', requireAdmin, (req, res) => {
   try {
     const { steps } = req.body;
     if (!Array.isArray(steps)) return res.status(400).json({ success: false, error: 'steps is required' });
@@ -69,8 +76,8 @@ router.post('/', (req, res) => {
   }
 });
 
-// 编辑
-router.put('/:id', (req, res) => {
+// 编辑（仅管理员）
+router.put('/:id', requireAdmin, (req, res) => {
   try {
     const p = db.updatePrompt(req.params.id, req.body);
     if (!p) return res.status(404).json({ success: false, error: '提示词不存在' });
@@ -81,8 +88,8 @@ router.put('/:id', (req, res) => {
   }
 });
 
-// 删除
-router.delete('/:id', (req, res) => {
+// 删除（仅管理员）
+router.delete('/:id', requireAdmin, (req, res) => {
   try {
     const p = db.getPrompt(req.params.id);
     db.deletePrompt(req.params.id);
