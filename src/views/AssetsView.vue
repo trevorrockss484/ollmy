@@ -557,7 +557,7 @@
             <el-input v-model="pmtForm.tagsStr" placeholder="逗号分隔" size="large" />
           </el-form-item>
           <el-form-item label="内容">
-            <el-input v-model="pmtForm.content" type="textarea" :rows="10" placeholder="粘贴提示词内容..." />
+            <el-input v-model="pmtForm.content" type="textarea" :rows="6" placeholder="粘贴提示词内容..." />
           </el-form-item>
         </el-form>
         <template #footer>
@@ -1898,6 +1898,12 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
   overflow-y: auto;
   min-height: 0;
   padding: 0 24px;
+}
+.asset-dialog > .el-dialog__body .el-form-item {
+  margin-bottom: 14px;
+}
+.asset-dialog > .el-dialog__body .el-form-item:last-child {
+  margin-bottom: 0;
 }
 .asset-dialog > .el-dialog__footer {
   flex-shrink: 0;
