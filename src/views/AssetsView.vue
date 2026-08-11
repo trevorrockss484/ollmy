@@ -179,7 +179,7 @@
       </teleport>
 
       <!-- 上传弹窗 -->
-      <el-dialog v-model="uploadOpen" title="上传资产" width="620px" top="4vh" class="asset-dialog" destroy-on-close>
+      <el-dialog v-model="uploadOpen" title="上传资产" width="620px" class="asset-dialog" destroy-on-close>
         <div class="drop-zone" :class="{ dragover: dragOver }"
           @dragover.prevent="dragOver = true" @dragleave="dragOver = false" @drop.prevent="onDrop">
           <div class="drop-icon"><el-icon :size="40"><Upload /></el-icon></div>
@@ -226,7 +226,7 @@
       </el-dialog>
 
       <!-- 编辑弹窗 -->
-      <el-dialog v-model="editOpen" title="编辑资产" width="520px" top="4vh" class="asset-dialog" destroy-on-close>
+      <el-dialog v-model="editOpen" title="编辑资产" width="520px" class="asset-dialog" destroy-on-close>
         <el-form label-width="80px" size="default">
           <el-form-item label="名称"><el-input v-model="editForm.name" size="large" /></el-form-item>
           <el-form-item label="类型">
@@ -269,7 +269,7 @@
       </div>
 
       <!-- 新增剧集弹窗（可附加上传文件） -->
-      <el-dialog v-model="showAddDialog" title="新增剧集" width="560px" top="4vh" class="asset-dialog" destroy-on-close
+      <el-dialog v-model="showAddDialog" title="新增剧集" width="560px" class="asset-dialog" destroy-on-close
         @opened="onShowDialogOpened" @closed="onShowDialogClosed">
         <el-input v-model="newShowName" placeholder="输入剧集名称，如：庆余年、甄嬛传"
           @keyup.enter="addShow" ref="showNameInput" :disabled="showAdding" size="large" />
@@ -336,7 +336,7 @@
       </el-dialog>
 
       <!-- 删除确认弹窗 -->
-      <el-dialog v-model="showDeleteDialog" title="删除剧集" width="420px" top="4vh" class="asset-dialog" destroy-on-close>
+      <el-dialog v-model="showDeleteDialog" title="删除剧集" width="420px" class="asset-dialog" destroy-on-close>
         <p style="color:#6b7280;font-size:14px;">确定要删除 <b style="color:#1f2937;">{{ deletingShow }}</b> 吗？</p>
         <p style="color:#9ca3af;font-size:12px;">该剧的剧本和分镜将被永久删除，无法恢复</p>
         <template #footer>
@@ -543,7 +543,7 @@
       </div>
 
       <!-- 提示词编辑弹窗 -->
-      <el-dialog v-model="pmtDialogOpen" :title="pmtIsEditing ? '编辑模板' : '新增模板'" width="720px" top="4vh" class="asset-dialog" destroy-on-close>
+      <el-dialog v-model="pmtDialogOpen" :title="pmtIsEditing ? '编辑模板' : '新增模板'" width="860px" class="asset-dialog" destroy-on-close>
         <el-form label-width="80px" size="default">
           <el-form-item label="标题">
             <el-input v-model="pmtForm.title" placeholder="输入模板名称..." size="large" />
@@ -570,7 +570,7 @@
       </el-dialog>
 
       <!-- 步骤管理弹窗 -->
-      <el-dialog v-model="pmtStepDialog" title="管理流程步骤" width="560px" top="4vh" class="asset-dialog" destroy-on-close>
+      <el-dialog v-model="pmtStepDialog" title="管理流程步骤" width="560px" class="asset-dialog" destroy-on-close>
         <p style="color:#6b7280;font-size:13px;margin:0 0 16px;">自定义步骤名称、颜色和顺序。提示词中引用的步骤将自动更新。</p>
         <div class="step-manage-list">
           <div v-for="(st, i) in pmtStepsDraft" :key="i"
@@ -604,7 +604,7 @@
 
     <!-- ==================== 全局搜索 Cmd+K ==================== -->
     <teleport to="body">
-      <el-dialog v-model="globalSearchOpen" title="全局搜索" width="560px" top="4vh" class="asset-dialog" destroy-on-close draggable
+      <el-dialog v-model="globalSearchOpen" title="全局搜索" width="560px" class="asset-dialog" destroy-on-close draggable
         @opened="onGlobalSearchOpened" @closed="globalSearchQ = ''">
         <el-input v-model="globalSearchQ" placeholder="输入关键词搜索所有AI资产、剧本、提示词..."
           size="large" ref="globalSearchInput" clearable @input="onGlobalSearchInput">
@@ -1882,9 +1882,9 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
 /* Firefox 细滚动条 */
 * { scrollbar-width:thin; scrollbar-color:#d1d5db transparent; }
 
-/* ===== 弹窗防溢出：仅弹窗整体设上限，内容区滚动由各组件自行处理 ===== */
+/* ===== 弹窗：限高、不溢出 ===== */
 .asset-dialog {
-  max-height: 86vh !important;
+  max-height: 90vh !important;
   overflow: hidden !important;
 }
 .asset-dialog > .el-dialog__body {
