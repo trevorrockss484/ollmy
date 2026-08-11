@@ -2,12 +2,10 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 
-// 获取全部提示词
+// 获取全部提示词（模版共用，所有用户可见全部）
 router.get('/', (req, res) => {
   try {
-    const isAdmin = req.user && req.user.role === 'admin'
-    const userId = isAdmin ? null : (req.user ? req.user.username : null)
-    const list = db.getPrompts(userId);
+    const list = db.getPrompts(null);
     res.json({ success: true, data: list });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
