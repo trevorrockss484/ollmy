@@ -34,7 +34,7 @@
             <span class="cs-hd-date">{{ dailyLabel }}</span>
           </header>
           <div class="cs-daily-grid">
-            <label class="cs-ditem"><span class="cs-dnum" style="--c:#6366f1">1</span><span class="cs-dlabel">新客户</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.newCustomers" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE)" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#6366f1">1</span><span class="cs-dlabel">新客户</span><span class="cs-dinput-wrap"><input type="number" :value="form.newCustomers" min="0" placeholder="自动" class="cs-dinput-raw cs-dinput-raw--auto" disabled title="由「国家客资」自动计算" /></span></label>
             <label class="cs-ditem"><span class="cs-dnum" style="--c:#8b5cf6">2</span><span class="cs-dlabel">有回复</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.repliedCustomers" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE)" /></span></label>
             <label class="cs-ditem"><span class="cs-dnum" style="--c:#06b6d4">3</span><span class="cs-dlabel">已登记</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.registeredCustomers" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE)" /></span></label>
             <label class="cs-ditem"><span class="cs-dnum" style="--c:#10b981">4</span><span class="cs-dlabel">拉群+图</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.groupedWithPlan" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE)" /></span></label>
@@ -278,7 +278,7 @@ async function loadData() {
     const r = res.data[0]; existingId.value = r.id
     form.newCustomers = r.newCustomers; form.repliedCustomers = r.repliedCustomers; form.registeredCustomers = r.registeredCustomers
     form.groupedWithPlan = r.groupedWithPlan; form.visitingCustomers = r.visitingCustomers; form.closedDeals = r.closedDeals
-    restoreSalesMap(r.salesAssignments); restoreCountryMap(r.countryBreakdown, true /* skipTotal: don't overwrite persisted newCustomers */)
+    restoreSalesMap(r.salesAssignments); restoreCountryMap(r.countryBreakdown, !(r.countryBreakdown && r.countryBreakdown.length) /* 有客资则强制同步新客户总数，无客资(老数据)保留手填值 */)
   } else { existingId.value = null; Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys([]) }) }
   const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value); if (mRes.success) Object.assign(monthly, mRes.data)
   // 历史仅加载当月数据
@@ -416,6 +416,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-dinput-raw{width:100%;height:42px;border:2px solid #e5e7eb;border-radius:10px;background:#fafbfc;text-align:center;font-size:18px;font-weight:700;color:var(--c-text);outline:none;transition:all .15s;font-family:inherit;padding:0 8px;}
 .cs-dinput-raw:hover{border-color:#c7d2fe;}
 .cs-dinput-raw:focus{border-color:var(--c-accent);background:var(--surface-input);box-shadow:0 0 0 3px color-mix(in srgb,var(--c-accent) 15%,transparent);}
+.cs-dinput-raw--auto{background:#f1f3f9;color:var(--c-soft);cursor:not-allowed;border-style:dashed;}
 
 /* Sales */
 .cs-sales-hd{display:flex;align-items:center;gap:10px;margin-bottom:8px;}

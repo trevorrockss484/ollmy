@@ -15,7 +15,7 @@
         </button>
         <button v-if="authStore.canAccessTab('scripts')" class="tab-btn" :class="{ active: tab === 'library' }" @click="switchTab('library')">
           <el-icon :size="16"><Film /></el-icon> 剧本与分镜
-          <span class="tab-n">{{ showScripts.length }}</span>
+          <span class="tab-n">{{ showList.length }}</span>
         </button>
         <button v-if="authStore.canAccessTab('assets')" class="tab-btn" :class="{ active: tab === 'assets' }" @click="switchTab('assets')">
           <el-icon :size="16"><PictureFilled /></el-icon> AI资产
@@ -35,12 +35,20 @@
           <span class="tb-count">{{ assets.length }} 项</span>
         </div>
         <div class="toolbar-center">
-          <div class="assets-pills">
-            <button v-for="t in typeTabs" :key="t.key" class="assets-pill" :class="{ active: activeType === t.key }" @click="activeType = t.key">
-              <span class="pill-dot" :style="{ background: t.color || '#6366f1' }"></span>
-              {{ t.label }}
-              <span class="pill-n">{{ countByType(t.key) }}</span>
-            </button>
+          <div class="assets-filter-shows">
+            <el-select v-model="filterShowName" placeholder="全部剧" clearable size="small" style="width:140px;" @change="onFilterShowChange">
+              <el-option v-for="show in showList" :key="show" :label="show" :value="show" />
+            </el-select>
+            <el-select v-model="filterEpisode" placeholder="全部集" clearable size="small" style="width:110px;" :disabled="!filterShowName">
+              <el-option v-for="ep in episodesOfShow(filterShowName)" :key="ep" :label="'第' + ep + '集'" :value="ep" />
+            </el-select>
+            <div class="assets-pills">
+              <button v-for="t in typeTabs" :key="t.key" class="assets-pill" :class="{ active: activeType === t.key }" @click="activeType = t.key">
+                <span class="pill-dot" :style="{ background: t.color || '#6366f1' }"></span>
+                {{ t.label }}
+                <span class="pill-n">{{ countByType(t.key) }}</span>
+              </button>
+            </div>
           </div>
         </div>
         <div class="toolbar-right">
@@ -82,10 +90,16 @@
         <p class="empty-text">{{ assets.length ? '无匹配结果' : '暂无资产，点击"上传资产"开始' }}</p>
       </div>
 
-      <!-- 资产卡片网格 -->
-      <div v-else class="asset-grid">
-        <div v-for="a in filteredList" :key="a.id"
-          :class="['asset-card', { selected: selectedIds.has(a.id) }]"
+      <!-- 资产卡片分组 -->
+      <div v-else class="asset-groups">
+        <section v-for="g in assetGroups" :key="g.key" class="asset-group">
+          <div class="asset-group-hd">
+            <span class="asset-group-title"><el-icon :size="16"><component :is="g.icon" /></el-icon> {{ g.label }}</span>
+            <span class="asset-group-n">{{ g.items.length }} {{ g.unit || '项' }}</span>
+          </div>
+          <div :class="['asset-grid', 'asset-grid--' + g.key]">
+        <div v-for="a in g.items" :key="a.id"
+          :class="['asset-card', { selected: selectedIds.has(a.id), 'is-audio': isAudio(a) }]"
           @click.ctrl="toggleSelect(a.id)"
           @click.meta="toggleSelect(a.id)">
           <!-- 选择框 -->
@@ -103,9 +117,9 @@
             </template>
             <!-- 音频 -->
             <template v-else-if="isAudio(a)">
-              <div class="card-audio-placeholder" :style="{ background: typeColor(a.type) }">
-                <el-icon :size="36"><Microphone /></el-icon>
-                <span class="card-audio-label">配音</span>
+              <div class="card-audio-placeholder" :style="{ '--c': typeColor(a.type) }">
+                <el-icon :size="32"><Microphone /></el-icon>
+                <span class="card-audio-label">{{ typeLabelShort(a.type) }}</span>
               </div>
             </template>
             <!-- 图片 -->
@@ -116,12 +130,14 @@
           </div>
           <!-- 信息区 -->
           <div class="card-info">
-            <div class="card-name" :title="a.name">{{ a.name }}</div>
+            <div class="card-name" :title="a.type === 'character' && a.outfit ? a.outfit : a.name">{{ a.type === 'character' && a.outfit ? a.outfit : a.name }}</div>
+            <div v-if="a.type === 'character' && a.characterName" class="card-char-name" :title="a.characterName">{{ a.characterName }}</div>
             <div class="card-tags-row">
               <span v-if="a.tags && a.tags.length" class="card-tags">
                 <span v-for="t in a.tags.slice(0, 3)" :key="t" class="card-tag" @click.stop="searchText = t">{{ t }}</span>
               </span>
-              <span class="card-size">{{ formatSize(a.fileSize) }}</span>
+              <span v-if="isAudio(a) && audioDurations[a.id]" class="card-size">{{ fmtDuration(audioDurations[a.id]) }}</span>
+              <span v-else class="card-size">{{ formatSize(a.fileSize) }}</span>
             </div>
             <span v-if="authStore.isAdmin() && a.userId && a.userId !== 'admin'" class="card-owner-tag" :title="'创建者: ' + a.userId">{{ a.userId }}</span>
           </div>
@@ -135,6 +151,8 @@
             <button v-if="authStore.canDelete(PAGE)" class="card-btn card-btn-del" title="删除" @click.stop="doDelete(a)"><el-icon :size="16"><Delete /></el-icon></button>
           </div>
         </div>
+          </div>
+        </section>
       </div>
 
       <!-- 资产 Lightbox -->
@@ -142,17 +160,17 @@
         <transition name="lightbox">
           <div v-if="previewAsset" class="lightbox-overlay" @click="closePreview">
             <!-- 左右切换箭头 -->
-            <button v-if="filteredList.length > 1" class="lightbox-arrow lightbox-arrow--left"
+            <button v-if="previewList.length > 1" class="lightbox-arrow lightbox-arrow--left"
               @click.stop="navigateAsset(-1)" title="上一个 (←)">
               <el-icon :size="28"><ArrowLeft /></el-icon>
             </button>
-            <button v-if="filteredList.length > 1" class="lightbox-arrow lightbox-arrow--right"
+            <button v-if="previewList.length > 1" class="lightbox-arrow lightbox-arrow--right"
               @click.stop="navigateAsset(1)" title="下一个 (→)">
               <el-icon :size="28"><ArrowRight /></el-icon>
             </button>
             <div class="lightbox-toolbar" @click.stop>
               <span class="lb-name">{{ previewAsset.name }}</span>
-              <span class="lb-meta">{{ previewAsset.idx !== undefined ? (previewAsset.idx + 1) + ' / ' + filteredList.length + ' · ' : '' }}{{ typeLabel(previewAsset.type) }} · {{ formatSize(previewAsset.fileSize) }}</span>
+              <span class="lb-meta">{{ previewAsset.idx !== undefined ? (previewAsset.idx + 1) + ' / ' + previewList.length + ' · ' : '' }}{{ typeLabel(previewAsset.type) }} · {{ formatSize(previewAsset.fileSize) }}</span>
               <div style="flex:1;" />
               <a :href="authUrl(api.assets.downloadUrl(previewAsset.id))">
                 <el-button size="small" type="primary"><el-icon :size="14"><Download /></el-icon> 下载{{ isVideo(previewAsset) ? '视频' : isAudio(previewAsset) ? '音频' : '原图' }}</el-button>
@@ -216,6 +234,24 @@
           <el-form-item label="标签">
             <el-input v-model="uploadForm.tagsStr" placeholder="逗号分隔，如: 男主, 欧美" size="large" />
           </el-form-item>
+          <el-form-item v-if="uploadForm.type === 'character'" label="人物服装">
+            <div class="asset-link-select">
+              <el-select v-model="uploadForm.characterName" placeholder="人物名（可搜索/新建）" size="large" style="flex:1;" filterable allow-create default-first-option>
+                <el-option v-for="cn in characterNames" :key="cn" :label="cn" :value="cn" />
+              </el-select>
+              <el-input v-model="uploadForm.outfit" placeholder="服装名，如：日常装" size="large" style="flex:1;" />
+            </div>
+          </el-form-item>
+          <el-form-item label="所属剧集">
+            <div class="asset-link-select">
+              <el-select v-model="uploadForm.showName" placeholder="选择剧（可选）" clearable size="large" style="flex:1;" @change="onUploadShowChange">
+                <el-option v-for="show in showList" :key="show" :label="show" :value="show" />
+              </el-select>
+              <el-select v-model="uploadForm.episode" placeholder="选择集" clearable size="large" style="width:120px;" :disabled="!uploadForm.showName">
+                <el-option v-for="ep in episodesOfShow(uploadForm.showName)" :key="ep" :label="'第' + ep + '集'" :value="ep" />
+              </el-select>
+            </div>
+          </el-form-item>
         </el-form>
         <template #footer>
           <el-button @click="uploadOpen = false">取消</el-button>
@@ -235,6 +271,24 @@
             </el-select>
           </el-form-item>
           <el-form-item label="标签"><el-input v-model="editForm.tagsStr" placeholder="逗号分隔" size="large" /></el-form-item>
+          <el-form-item v-if="editForm.type === 'character'" label="人物服装">
+            <div class="asset-link-select">
+              <el-select v-model="editForm.characterName" placeholder="人物名（可搜索/新建）" size="large" style="flex:1;" filterable allow-create default-first-option>
+                <el-option v-for="cn in characterNames" :key="cn" :label="cn" :value="cn" />
+              </el-select>
+              <el-input v-model="editForm.outfit" placeholder="服装名，如：日常装" size="large" style="flex:1;" />
+            </div>
+          </el-form-item>
+          <el-form-item label="所属剧集">
+            <div class="asset-link-select">
+              <el-select v-model="editForm.showName" placeholder="选择剧（可选）" clearable size="large" style="flex:1;" @change="onEditShowChange">
+                <el-option v-for="show in showList" :key="show" :label="show" :value="show" />
+              </el-select>
+              <el-select v-model="editForm.episode" placeholder="选择集" clearable size="large" style="width:120px;" :disabled="!editForm.showName">
+                <el-option v-for="ep in episodesOfShow(editForm.showName)" :key="ep" :label="'第' + ep + '集'" :value="ep" />
+              </el-select>
+            </div>
+          </el-form-item>
         </el-form>
         <template #footer>
           <el-button @click="editOpen = false">取消</el-button>
@@ -248,19 +302,28 @@
       <!-- 剧集选择栏 -->
       <div class="scripts-toolbar">
         <div class="scripts-shows-bar">
-          <div v-for="show in showList" :key="show" class="show-pill"
-            :class="{ active: activeShow === show }"
-            :title="showEditTimes[show] ? '最后编辑：' + showEditTimes[show] : '暂无编辑记录'"
-            @click="selectShow(show)">
-            <el-icon :size="14"><VideoCamera /></el-icon>
-            <span>{{ show }}</span>
-            <span v-if="authStore.canDelete(PAGE)" class="show-pill-del" @click.stop="confirmDeleteShow(show)"><el-icon :size="12"><Close /></el-icon></span>
-          </div>
-          <span v-if="authStore.canAdd(PAGE)" class="show-pill show-pill--add" @click="openCreateShowDialog">
+          <el-select :model-value="activeShow" class="show-select" placeholder="选择剧集" filterable @change="selectShow">
+            <el-option v-for="show in showList" :key="show" :value="show" :label="show">
+              <div class="show-option">
+                <span class="show-option-cn">{{ show }}</span>
+                <span v-if="showEnName(show)" class="show-option-en">{{ showEnName(show) }}</span>
+              </div>
+            </el-option>
+          </el-select>
+          <el-button v-if="authStore.canAdd(PAGE)" class="show-add-btn" @click="openCreateShowDialog">
             <el-icon :size="16"><Plus /></el-icon> 新增剧集
-          </span>
+          </el-button>
+          <el-button v-if="authStore.canEdit(PAGE) && activeShow" class="show-ghost-btn" @click="openRenameShowDialog">
+            <el-icon :size="14"><Edit /></el-icon> 编辑剧名
+          </el-button>
+          <el-button v-if="authStore.canDelete(PAGE) && activeShow" class="show-ghost-btn show-ghost-btn--danger" @click="confirmDeleteShow(activeShow)">
+            <el-icon :size="14"><Delete /></el-icon> 删除剧集
+          </el-button>
         </div>
         <div class="scripts-toolbar-right">
+          <el-button v-if="activeShow" class="show-ghost-btn" @click="showOverviewDialog = true">
+            <el-icon :size="14"><List /></el-icon> 全集总览
+          </el-button>
           <span class="scripts-save-status" v-if="saveStatus">
             <span class="save-dot" :class="{ saved: saveStatus === 'saved', saving: saveStatus === 'saving' }"></span>
             {{ saveStatus === 'saving' ? '保存中...' : '已保存' }}
@@ -271,12 +334,20 @@
       <!-- 新增剧集弹窗（可附加上传文件） -->
       <el-dialog v-model="showAddDialog" title="新增剧集" width="560px" class="asset-dialog" destroy-on-close
         @opened="onShowDialogOpened" @closed="onShowDialogClosed">
-        <el-input v-model="newShowName" placeholder="输入剧集名称，如：庆余年、甄嬛传"
-          @keyup.enter="addShow" ref="showNameInput" :disabled="showAdding" size="large" />
+        <div class="show-name-fields">
+          <el-input v-model="newShowName" placeholder="中文剧名，如：庆余年"
+            @keyup.enter="addShow" ref="showNameInput" :disabled="showAdding" size="large" />
+          <el-input v-model="newShowNameEn" placeholder="英文剧名（可选），如：Joy of Life"
+            @keyup.enter="addShow" :disabled="showAdding" size="large" />
+        </div>
         <div style="margin-top:14px;">
           <el-button size="small" link @click="showFileDrop = !showFileDrop" style="padding:0;font-size:12px;">
             <el-icon :size="14"><Plus /></el-icon> {{ showFileDrop ? '取消上传文件' : '附加上传 .doc / .docx / .txt 文件' }}
           </el-button>
+        </div>
+        <div v-if="showFileDrop" class="show-split-switch">
+          <el-switch v-model="splitEpisodesMode" />
+          <span>整部剧自动分集（按「第N集」标题拆分）</span>
         </div>
         <template v-if="showFileDrop">
           <div class="upload-two-cols">
@@ -335,10 +406,62 @@
         </template>
       </el-dialog>
 
+      <!-- 编辑剧名弹窗 -->
+      <el-dialog v-model="showRenameDialog" title="编辑剧名" width="480px" class="asset-dialog" destroy-on-close>
+        <div class="show-name-fields">
+          <el-input v-model="renameShowName" placeholder="中文剧名" size="large" />
+          <el-input v-model="renameShowNameEn" placeholder="英文剧名（可选）" size="large" />
+        </div>
+        <template #footer>
+          <el-button @click="showRenameDialog = false">取消</el-button>
+          <el-button v-if="authStore.canEdit(PAGE)" type="primary" @click="renameShow">保存</el-button>
+        </template>
+      </el-dialog>
+
+      <!-- 全集总览弹窗（拼接预览） -->
+      <el-dialog v-model="showOverviewDialog" :title="'全集总览 · ' + activeShow" width="88%" align-center class="asset-dialog asset-dialog--overview" destroy-on-close>
+        <div class="overview-toolbar">
+          <div class="overview-tabs">
+            <button class="overview-tab" :class="{ active: overviewType === 'script' }" @click="overviewType = 'script'">
+              <el-icon :size="14"><Document /></el-icon> 剧本全文 ({{ episodeList.length }} 集)
+            </button>
+            <button class="overview-tab" :class="{ active: overviewType === 'storyboard' }" @click="overviewType = 'storyboard'">
+              <el-icon :size="14"><PictureFilled /></el-icon> 分镜全文 ({{ episodeList.length }} 集)
+            </button>
+          </div>
+          <div class="overview-actions">
+            <el-button size="small" round @click="copyOverview">
+              <el-icon :size="13"><DocumentCopy /></el-icon> 复制全文
+            </el-button>
+            <el-button size="small" round @click="downloadOverview">
+              <el-icon :size="13"><Download /></el-icon> 下载
+            </el-button>
+          </div>
+        </div>
+        <div class="overview-progress">
+          <div class="overview-progress-info">
+            <span class="overview-progress-label">完成进度</span>
+            <span class="overview-progress-count">{{ doneEpisodeCount }}/{{ episodeList.length }} 集已完成</span>
+          </div>
+          <div class="overview-progress-bar">
+            <div class="overview-progress-fill" :style="{ width: progressPercent + '%' }"></div>
+          </div>
+        </div>
+        <div class="overview-body" v-html="renderedOverview || fallbackPreviewHtml"></div>
+      </el-dialog>
+
       <!-- 删除确认弹窗 -->
       <el-dialog v-model="showDeleteDialog" title="删除剧集" width="420px" class="asset-dialog" destroy-on-close>
         <p style="color:#6b7280;font-size:14px;">确定要删除 <b style="color:#1f2937;">{{ deletingShow }}</b> 吗？</p>
         <p style="color:#9ca3af;font-size:12px;">该剧的剧本和分镜将被永久删除，无法恢复</p>
+        <p v-if="deletingAssetsCount > 0" style="color:#b45309;font-size:13px;margin:8px 0 0;">
+          <el-icon :size="14"><Warning /></el-icon>
+          该剧关联了 <b>{{ deletingAssetsCount }}</b> 个资产。
+          <el-radio-group v-model="deleteAssetsMode" size="small" style="margin-left:6px;">
+            <el-radio :value="'keep'">保留为未归属</el-radio>
+            <el-radio :value="'delete'">一并删除</el-radio>
+          </el-radio-group>
+        </p>
         <template #footer>
           <el-button @click="showDeleteDialog = false">取消</el-button>
           <el-button v-if="authStore.canDelete(PAGE)" type="danger" @click="deleteShow(deletingShow)">
@@ -351,21 +474,52 @@
       <div v-if="!activeShow" class="empty-state" style="padding:80px 20px;">
         <div class="empty-icon"><el-icon :size="56"><Film /></el-icon></div>
         <p class="empty-text">选择或新增一部剧集开始</p>
-        <el-button type="primary" round @click="showAddDialog = true" style="margin-top:12px;">
+        <el-button type="primary" round @click="openCreateShowDialog" style="margin-top:12px;">
           <el-icon :size="16"><Plus /></el-icon> 新增剧集
         </el-button>
       </div>
 
-      <!-- 双栏编辑区 -->
-      <div v-else class="scripts-edit-panels">
+      <!-- 集列表 + 编辑区 -->
+      <div v-else class="scripts-layout">
+        <!-- 左：集列表 -->
+        <aside class="episode-panel">
+          <div class="episode-panel-hd">
+            <span class="episode-panel-title"><el-icon :size="15"><VideoCamera /></el-icon> 集数</span>
+            <span class="episode-panel-progress">{{ episodeList.filter(e => e.done).length }}/{{ episodeList.length }} 完成</span>
+          </div>
+          <div class="episode-list">
+            <div v-for="ep in episodeList" :key="ep.episode" class="episode-item" :class="{ active: activeEpisode === ep.episode, done: ep.done }" @click="selectEpisode(ep.episode)">
+              <span class="episode-check" :class="{ checked: ep.done }" @click.stop="toggleEpisodeDone(ep.episode)">
+                <el-icon v-if="ep.done" :size="13"><Check /></el-icon>
+              </span>
+              <span class="episode-label">第 {{ ep.episode }} 集</span>
+              <span v-if="authStore.canDelete(PAGE)" class="episode-del" @click.stop="deleteEpisode(ep.episode)" title="删除此集">
+                <el-icon :size="12"><Close /></el-icon>
+              </span>
+            </div>
+            <div v-if="!episodeList.length" class="episode-empty">暂无集，点下方添加</div>
+          </div>
+          <el-button v-if="authStore.canAdd(PAGE)" class="episode-add-btn" @click="addEpisode">
+            <el-icon :size="14"><Plus /></el-icon> 添加一集
+          </el-button>
+        </aside>
+
+        <!-- 右：剧本 + 分镜双栏 -->
+        <div class="scripts-edit-panels">
         <!-- 左：剧本 -->
         <div class="script-panel">
           <div class="panel-header">
             <div class="panel-title">
               <el-icon :size="18"><Document /></el-icon> 剧本
               <span class="panel-word-count">{{ scriptStats }}</span>
+              <span class="episode-done-badge" :class="{ done: currentDone }" :title="currentDone ? '点击标记为未完成' : '点击标记为已完成'" @click="toggleEpisodeDone(activeEpisode)">
+                {{ currentDone ? '✅ 已完成' : '⬜ 未完成' }}
+              </span>
             </div>
             <div class="panel-actions">
+              <el-button size="small" round @click="copyPanel('script')">
+                <el-icon :size="13"><DocumentCopy /></el-icon> 复制
+              </el-button>
               <el-button size="small" round @click="scriptPreview = !scriptPreview">
                 <el-icon :size="13"><View /></el-icon> {{ scriptPreview ? '编辑' : '预览' }}
               </el-button>
@@ -398,6 +552,9 @@
               <span class="panel-word-count">{{ storyboardStats }}</span>
             </div>
             <div class="panel-actions">
+              <el-button size="small" round @click="copyPanel('storyboard')">
+                <el-icon :size="13"><DocumentCopy /></el-icon> 复制
+              </el-button>
               <el-button size="small" round @click="storyboardPreview = !storyboardPreview">
                 <el-icon :size="13"><View /></el-icon> {{ storyboardPreview ? '编辑' : '预览' }}
               </el-button>
@@ -421,6 +578,29 @@
             @scroll="onPreviewScroll('storyboard', $event)"></div>
           </div>
         </div>
+        </div>
+      </div>
+
+      <!-- 本集关联资产 -->
+      <div class="episode-assets">
+        <div class="episode-assets-hd">
+          <span class="episode-assets-title"><el-icon :size="15"><PictureFilled /></el-icon> 本集资产</span>
+          <span class="episode-assets-count">{{ episodeAssets.length }} 项</span>
+        </div>
+        <div v-if="episodeAssets.length" class="episode-assets-grid">
+          <div v-for="a in episodeAssets" :key="a.id" class="episode-asset-thumb" :title="a.name" @click="previewFromEpisode(a)">
+            <template v-if="isVideo(a)">
+              <video :src="assetUrl(a)" class="thumb-media" preload="metadata" />
+              <span class="thumb-play"><el-icon :size="14"><VideoPlay /></el-icon></span>
+            </template>
+            <template v-else-if="isAudio(a)">
+              <span class="thumb-audio"><el-icon :size="16"><Microphone /></el-icon></span>
+            </template>
+            <img v-else :src="assetUrl(a)" class="thumb-media" loading="lazy" referrerpolicy="no-referrer" />
+            <span class="thumb-badge" :style="{ background: typeColor(a.type) }">{{ typeLabelShort(a.type) }}</span>
+          </div>
+        </div>
+        <div v-else class="episode-assets-empty">本集暂无资产，可到「AI资产」上传并关联到本集</div>
       </div>
 
     </div>
@@ -666,12 +846,9 @@ async function switchTab(newTab) {
       ElMessage.success('已保存')
     } catch { return }
   }
-  if (tab.value === 'library') { saveScrollPositions(); localStorage.setItem('script_activeShow', activeShow.value || '') }
+  if (tab.value === 'library') { localStorage.setItem('script_activeShow', activeShow.value || '') }
   closePreview()
   tab.value = newTab
-  if (newTab === 'library' && activeShow.value) {
-    nextTick(() => { nextTick(() => { setTimeout(() => { restoreScrollPositions() }, 300) }) })
-  }
 }
 watch(tab, () => {}) // 保留 watch 占位，实际逻辑已在 switchTab
 
@@ -694,8 +871,9 @@ function doGlobalSearch() {
   const results = []
   // AI资产
   for (const a of assets.value) {
-    if ((a.name || '').toLowerCase().includes(q) || (a.tags || []).some(t => t.toLowerCase().includes(q))) {
-      results.push({ id: 'asset_' + a.id, _source: '资产', _color: '#a78bfa', _label: a.name, _detail: typeLabel(a.type) + ' · ' + formatSize(a.fileSize), _tab: 'assets', _assetId: a.id })
+    if ((a.name || '').toLowerCase().includes(q) || (a.tags || []).some(t => t.toLowerCase().includes(q)) || (a.characterName || '').toLowerCase().includes(q) || (a.outfit || '').toLowerCase().includes(q) || (a.showName || '').toLowerCase().includes(q)) {
+      const extra = a.characterName ? ' · ' + a.characterName : ''
+      results.push({ id: 'asset_' + a.id, _source: '资产', _color: '#a78bfa', _label: a.name, _detail: typeLabel(a.type) + ' · ' + formatSize(a.fileSize) + extra, _tab: 'assets', _assetId: a.id })
     }
   }
   // 剧本与分镜 - 按内容搜
@@ -738,6 +916,14 @@ const assetTypes = [
   { value: 'scene', label: '场景', color: '#22d3ee' },
   { value: 'prop', label: '道具', color: '#fb923c' },
 ]
+// 类型 → 允许的媒体类型（强制匹配）
+const TYPE_MEDIA = {
+  character: ['image'],
+  voice: ['audio'],
+  video: ['video'],
+  scene: ['image'],
+  prop: ['image'],
+}
 const typeTabs = [
   { key: '', label: '全部', color: '#6366f1' },
   { key: 'character', label: '人物', color: '#a78bfa' },
@@ -752,11 +938,12 @@ const TYPE_ORDER = { character: 0, voice: 1, video: 2, scene: 3, prop: 4 }
 function typeColor(type) { return assetTypes.find(t => t.value === type)?.color || '#6366f1' }
 function isVideo(a) { return a.mediaType === 'video' }
 function isAudio(a) { return a.mediaType === 'audio' }
-function isImage(a) { return !a.mediaType || a.mediaType === 'image' }
 function mediaIcon(a) { return isVideo(a) ? 'VideoCamera' : isAudio(a) ? 'Microphone' : null }
 
 const assets = ref([])
 const activeType = ref('')
+const filterShowName = ref('')
+const filterEpisode = ref(null)
 const searchText = ref('')
 const sortBy = ref('date-desc')
 const selectedIds = ref(new Set())
@@ -781,17 +968,24 @@ function removeFile(i) {
   if (previewCache.has(f)) { URL.revokeObjectURL(previewCache.get(f)); previewCache.delete(f) }
   uploadFiles.value.splice(i, 1)
 }
-const uploadForm = reactive({ name: '', type: 'character', tagsStr: '' })
-const editForm = reactive({ name: '', type: 'character', tagsStr: '' })
+const uploadForm = reactive({ name: '', type: 'character', tagsStr: '', showName: '', episode: null, characterName: '', outfit: '' })
+const editForm = reactive({ name: '', type: 'character', tagsStr: '', showName: '', episode: null, characterName: '', outfit: '' })
 const editingId = ref(null)
 
-const filteredList = computed(() => {
+// 无 activeType 的过滤列表：剧集过滤 + 搜索，用于 pill 计数
+const scopeList = computed(() => {
   let list = assets.value
-  if (activeType.value) list = list.filter(a => a.type === activeType.value)
+  if (filterShowName.value) list = list.filter(a => a.showName === filterShowName.value)
+  if (filterShowName.value && filterEpisode.value != null) list = list.filter(a => a.episode === filterEpisode.value)
   if (searchText.value) {
     const kw = searchText.value.toLowerCase()
-    list = list.filter(a => (a.name || '').toLowerCase().includes(kw) || (a.tags || []).some(t => t.toLowerCase().includes(kw)))
+    list = list.filter(a => (a.name || '').toLowerCase().includes(kw) || (a.tags || []).some(t => t.toLowerCase().includes(kw)) || (a.characterName || '').toLowerCase().includes(kw) || (a.outfit || '').toLowerCase().includes(kw) || (a.showName || '').toLowerCase().includes(kw))
   }
+  return list
+})
+const filteredList = computed(() => {
+  let list = scopeList.value
+  if (activeType.value) list = list.filter(a => a.type === activeType.value)
   // 排序
   list = [...list].sort((a, b) => {
     switch (sortBy.value) {
@@ -806,8 +1000,47 @@ const filteredList = computed(() => {
   })
   return list
 })
-function countByType(key) { return key ? assets.value.filter(a => a.type === key).length : assets.value.length }
+function mediaTypeOf(a) { return isVideo(a) ? 'video' : isAudio(a) ? 'audio' : 'image' }
+const assetGroups = computed(() => {
+  // 选中具体业务类型：单组展示（标题用该类型名）
+  if (activeType.value) {
+    const typeInfo = assetTypes.find(t => t.value === activeType.value)
+    const label = typeInfo ? typeInfo.label : activeType.value
+    const icon = typeInfo ? typeInfo.label === '人物' ? 'User' : typeInfo.label === '配音' ? 'Microphone' : typeInfo.label === '视频' ? 'VideoPlay' : 'Picture' : 'Picture'
+    // 人物类型再按人物名细分组
+    if (activeType.value === 'character') {
+      const map = {}
+      for (const a of filteredList.value) {
+        const key = a.characterName || '未命名人物'
+        if (!map[key]) map[key] = []
+        map[key].push(a)
+      }
+      return Object.entries(map).map(([name, items]) => ({ key: 'char-' + name, label: name, icon: 'User', unit: '套服装', items }))
+        .sort((a, b) => a.label === '未命名人物' ? 1 : b.label === '未命名人物' ? -1 : a.label.localeCompare(b.label, 'zh'))
+    }
+    return [{ key: activeType.value, label, icon, unit: '项', items: filteredList.value }]
+  }
+  // 全部：按媒体类型分组
+  const defs = [
+    { key: 'image', label: '图片', icon: 'Picture', unit: '项' },
+    { key: 'video', label: '视频', icon: 'VideoPlay', unit: '项' },
+    { key: 'audio', label: '音频', icon: 'Microphone', unit: '项' },
+  ]
+  return defs.map(d => ({ ...d, items: filteredList.value.filter(a => mediaTypeOf(a) === d.key) })).filter(g => g.items.length)
+})
+function countByType(key) { return key ? scopeList.value.filter(a => a.type === key).length : scopeList.value.length }
 function assetUrl(a) { return api.assets.getUrl(a.fileName) }
+
+// 某剧的集号列表（从剧本记录派生）
+function episodesOfShow(show) {
+  if (!show) return []
+  return [...new Set(showScripts.value.filter(s => s.showName === show).map(s => episodeOf(s)))].sort((a, b) => a - b)
+}
+// 历史人物名（去重，供自动补全）
+const characterNames = computed(() => [...new Set(assets.value.filter(a => a.characterName).map(a => a.characterName.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh')))
+function onUploadShowChange() { if (!uploadForm.showName) uploadForm.episode = null }
+function onEditShowChange() { if (!editForm.showName) editForm.episode = null }
+function onFilterShowChange() { if (!filterShowName.value) filterEpisode.value = null }
 
 function toggleSelect(id) {
   const s = selectedIds.value
@@ -856,7 +1089,7 @@ async function batchDelete() {
   else ElMessage.error('删除失败')
 }
 
-function openUpload() { uploadForm.name = ''; uploadForm.type = 'character'; uploadForm.tagsStr = ''; previewCache.forEach(url => URL.revokeObjectURL(url)); previewCache.clear(); uploadFiles.value = []; seenFiles.clear(); uploadOpen.value = true }
+function openUpload() { uploadForm.name = ''; uploadForm.type = 'character'; uploadForm.tagsStr = ''; uploadForm.showName = ''; uploadForm.episode = null; uploadForm.characterName = ''; uploadForm.outfit = ''; previewCache.forEach(url => URL.revokeObjectURL(url)); previewCache.clear(); uploadFiles.value = []; seenFiles.clear(); uploadOpen.value = true }
 function triggerFileInput() { fileInput.value?.click() }
 function addFiles(files) { for (const f of files) { const key = f.name + '|' + f.size + '|' + f.lastModified; if (!seenFiles.has(key)) { seenFiles.add(key); uploadFiles.value.push(f) } }; autoDetectUploadType() }
 function onDrop(e) { dragOver.value = false; addFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/') || f.type.startsWith('audio/'))) }
@@ -872,10 +1105,26 @@ function autoDetectUploadType() {
 }
 
 async function doUpload() {
-  if (!uploadFiles.value.length) return; uploading.value = true
+  if (!uploadFiles.value.length) return
+  // 类型与文件媒体类型强制匹配校验
+  const allowed = TYPE_MEDIA[uploadForm.type]
+  if (allowed) {
+    const bad = uploadFiles.value.filter(f => {
+      const mt = f.type.startsWith('video/') ? 'video' : f.type.startsWith('audio/') ? 'audio' : 'image'
+      return !allowed.includes(mt)
+    })
+    if (bad.length) {
+      const typeName = typeLabel(uploadForm.type)
+      ElMessage.error(`「${typeName}」类型只能上传${allowed.map(m => ({image:'图片',video:'视频',audio:'音频'}[m])).join('/')}，${bad.length} 个文件不匹配`)
+      return
+    }
+  }
+  uploading.value = true
   try {
     const fd = new FormData(); fd.append('name', uploadForm.name); fd.append('type', uploadForm.type)
     fd.append('tags', JSON.stringify(uploadForm.tagsStr.split(',').map(t => t.trim()).filter(Boolean)))
+    if (uploadForm.showName) { fd.append('showName', uploadForm.showName); fd.append('episode', uploadForm.episode ?? '') }
+    if (uploadForm.type === 'character') { fd.append('characterName', uploadForm.characterName); fd.append('outfit', uploadForm.outfit) }
     for (const f of uploadFiles.value) fd.append('files', f)
     const token = localStorage.getItem('pan_token') || ''
     const res = await fetch('/api/assets/upload', { method: 'POST', headers: { 'X-Auth-Token': token }, body: fd })
@@ -886,21 +1135,32 @@ async function doUpload() {
   uploading.value = false
 }
 
+// lightbox 导航列表：默认用资产 tab 的过滤结果；从本集资产打开时用本集资产
+const previewSourceList = ref(null)
+const previewList = computed(() => previewSourceList.value || filteredList.value)
+
 function preview(a) {
+  previewSourceList.value = null
   const idx = filteredList.value.findIndex(item => item.id === a.id)
   previewAsset.value = { ...a, idx }
 }
-function closePreview() { previewAsset.value = null }
+function previewFromEpisode(a) {
+  // 直接在本页预览本集资产，不切 tab；左右切换在本集资产间进行
+  previewSourceList.value = episodeAssets.value
+  const idx = episodeAssets.value.findIndex(item => item.id === a.id)
+  previewAsset.value = { ...a, idx }
+}
+function closePreview() { previewAsset.value = null; previewSourceList.value = null }
 function navigateAsset(dir) {
   if (!previewAsset.value) return
-  const list = filteredList.value; if (!list.length) return
+  const list = previewList.value; if (!list.length) return
   let idx = list.findIndex(a => a.id === previewAsset.value.id)
   if (idx < 0) { idx = 0 } else { idx += dir; if (idx < 0) idx = list.length - 1; if (idx >= list.length) idx = 0 }
   previewAsset.value = { ...list[idx], idx }
 }
-function openEdit(a) { editingId.value = a.id; editForm.name = a.name || ''; editForm.type = a.type || 'character'; editForm.tagsStr = (a.tags || []).join(', '); editOpen.value = true }
+function openEdit(a) { editingId.value = a.id; editForm.name = a.name || ''; editForm.type = a.type || 'character'; editForm.tagsStr = (a.tags || []).join(', '); editForm.showName = a.showName || ''; editForm.episode = a.episode || null; editForm.characterName = a.characterName || ''; editForm.outfit = a.outfit || ''; editOpen.value = true }
 async function doUpdate() {
-  const res = await api.assets.update(editingId.value, { name: editForm.name, type: editForm.type, tags: editForm.tagsStr.split(',').map(t => t.trim()).filter(Boolean) })
+  const res = await api.assets.update(editingId.value, { name: editForm.name, type: editForm.type, tags: editForm.tagsStr.split(',').map(t => t.trim()).filter(Boolean), showName: editForm.showName || '', episode: editForm.episode || null, characterName: editForm.characterName || '', outfit: editForm.outfit || '' })
   if (res.success) { ElMessage.success('已更新'); editOpen.value = false; if (previewAsset.value?.id === editingId.value) previewAsset.value = { ...previewAsset.value, ...res.data }; loadAssets() }
   else ElMessage.error('更新失败')
 }
@@ -929,11 +1189,44 @@ function onKeyDown(e) {
     if (previewAsset.value) { navigateAsset(e.key === 'ArrowLeft' ? -1 : 1) }
   }
 }
-async function loadAssets() { const res = await api.assets.list(); if (res.success) assets.value = res.data }
+async function loadAssets() {
+  const res = await api.assets.list()
+  if (res.success) {
+    assets.value = res.data
+    // 解析音频时长（懒加载 metadata）
+    res.data.filter(isAudio).forEach(a => ensureAudioDuration(a))
+  }
+}
+
+// 音频时长：用 Audio 元素读 metadata，缓存在内存
+const audioDurations = reactive({})
+const audioDurationLoading = reactive({})
+function ensureAudioDuration(a) {
+  if (audioDurations[a.id] != null || audioDurationLoading[a.id]) return
+  audioDurationLoading[a.id] = true
+  const audio = new Audio()
+  audio.preload = 'metadata'
+  audio.src = assetUrl(a)
+  audio.onloadedmetadata = () => {
+    if (isFinite(audio.duration)) audioDurations[a.id] = audio.duration
+    audioDurationLoading[a.id] = false
+    audio.src = ''
+  }
+  audio.onerror = () => { audioDurationLoading[a.id] = false }
+}
+function fmtDuration(sec) {
+  if (sec == null || !isFinite(sec)) return ''
+  const m = Math.floor(sec / 60)
+  const s = Math.round(sec % 60)
+  return m + ':' + String(s).padStart(2, '0')
+}
 
 // ===== 剧本与分镜 =====
 const showScripts = ref([])
 const activeShow = ref('')
+const activeEpisode = ref(1)
+const showOverviewDialog = ref(false)
+const overviewType = ref('script')
 const showList = computed(() => [...new Set(showScripts.value.map(s => s.showName).filter(Boolean))])
 const saveStatus = ref('')
 let saveTimer = null
@@ -942,9 +1235,16 @@ const showAddDialog = ref(false)
 const showAdding = ref(false)
 const showDeleteDialog = ref(false)
 const deletingShow = ref('')
+const deleteAssetsMode = ref('keep')
+const showRenameDialog = ref(false)
+const renamingShow = ref('')
+const renameShowName = ref('')
+const renameShowNameEn = ref('')
 const newShowName = ref('')
+const newShowNameEn = ref('')
 const showNameInput = ref(null)
 const showFileDrop = ref(false)
+const splitEpisodesMode = ref(false)
 const newShowFiles = reactive({ script: null, storyboard: null })
 const uploadSlotTarget = ref('script')
 const fileDropInput = ref(null)
@@ -956,13 +1256,60 @@ const storyboardTextareaRef = ref(null)
 // 本地草稿（用于textarea v-model，避免computed set问题）
 const scriptDraft = ref('')
 const storyboardDraft = ref('')
-const showEditTimes = reactive({})  // { showName: 'HH:mm:ss' }
 let pendingSaveDirty = false   // 标记是否有未保存的编辑
-let scriptScrollRestored = false
-let storyboardScrollRestored = false
 
-const scriptRecord = computed(() => showScripts.value.find(s => s.showName === activeShow.value && s.type === 'script'))
-const storyboardRecord = computed(() => showScripts.value.find(s => s.showName === activeShow.value && s.type === 'storyboard'))
+function episodeOf(s) { return (s && s.episode) ? s.episode : 1 }
+const scriptRecord = computed(() => showScripts.value.find(s => s.showName === activeShow.value && s.type === 'script' && episodeOf(s) === activeEpisode.value))
+const storyboardRecord = computed(() => showScripts.value.find(s => s.showName === activeShow.value && s.type === 'storyboard' && episodeOf(s) === activeEpisode.value))
+function showEnName(show) { return showScripts.value.find(s => s.showName === show)?.showNameEn || '' }
+const episodeList = computed(() => {
+  const scripts = showScripts.value.filter(s => s.showName === activeShow.value && s.type === 'script')
+  return scripts.map(s => ({ episode: episodeOf(s), done: !!s.done })).sort((a, b) => a.episode - b.episode)
+})
+const maxEpisode = computed(() => episodeList.value.length ? Math.max(...episodeList.value.map(e => e.episode)) : 0)
+const currentDone = computed(() => {
+  const rec = showScripts.value.find(s => s.showName === activeShow.value && s.type === 'script' && episodeOf(s) === activeEpisode.value)
+  return !!rec?.done
+})
+const episodeAssets = computed(() => assets.value.filter(a => a.showName === activeShow.value && a.episode === activeEpisode.value))
+// 拼接整部剧所有集（按集号升序）。done 统一从 script 记录读取（状态唯一来源）
+function joinedContent(type, withStatus) {
+  const eps = [...new Set(showScripts.value.filter(s => s.showName === activeShow.value).map(s => episodeOf(s)))].sort((a, b) => a - b)
+  return eps.map(ep => {
+    const rec = showScripts.value.find(s => s.showName === activeShow.value && s.type === type && episodeOf(s) === ep)
+    const scriptRec = showScripts.value.find(s => s.showName === activeShow.value && s.type === 'script' && episodeOf(s) === ep)
+    const done = !!scriptRec?.done
+    if (withStatus) {
+      return '## ' + (done ? '✅' : '⬜') + ' 第' + ep + '集' + (done ? '（已完成）' : '（未完成）') + '\n\n' + (rec?.content || '')
+    }
+    return '## 第' + ep + '集\n\n' + (rec?.content || '')
+  }).join('\n\n')
+}
+const doneEpisodeCount = computed(() => episodeList.value.filter(e => e.done).length)
+const progressPercent = computed(() => episodeList.value.length ? Math.round(doneEpisodeCount.value / episodeList.value.length * 100) : 0)
+const overviewText = computed(() => joinedContent(overviewType.value, true))
+const plainOverviewText = computed(() => joinedContent(overviewType.value, false))
+const renderedOverview = computed(() => overviewText.value ? md.render(overviewText.value) : '')
+async function copyOverview() {
+  if (!plainOverviewText.value) { ElMessage.warning('暂无内容'); return }
+  try { await navigator.clipboard.writeText(plainOverviewText.value); ElMessage.success('已复制') }
+  catch {
+    const ta = document.createElement('textarea'); ta.value = plainOverviewText.value
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta)
+    ElMessage.success('已复制')
+  }
+}
+function downloadOverview() {
+  if (!plainOverviewText.value) { ElMessage.warning('暂无内容'); return }
+  const label = overviewType.value === 'script' ? '剧本' : '分镜'
+  const blob = new Blob([plainOverviewText.value], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = (activeShow.value || 'show') + '_全集' + label + '.md'
+  document.body.appendChild(a); a.click(); document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  ElMessage.success('已下载')
+}
 const scriptStats = computed(() => {
   const t = scriptDraft.value || ''; const lines = t.split('\n').length
   return t.length + ' 字 · ' + lines + ' 行'
@@ -987,21 +1334,31 @@ const renderedScript = computed(() => scriptDraft.value ? md.render(scriptDraft.
 const renderedStoryboard = computed(() => storyboardDraft.value ? md.render(storyboardDraft.value) : '')
 const fallbackPreviewHtml = '<span style="color:#9ca3af">(空内容)</span>'
 
+function loadDrafts() {
+  scriptDraft.value = scriptRecord.value?.content || ''
+  storyboardDraft.value = storyboardRecord.value?.content || ''
+  pendingSaveDirty = false
+  saveStatus.value = ''
+  scriptPreview.value = false; storyboardPreview.value = false
+}
+
 function selectShow(name) {
   flushPendingSave()        // 切剧集前先保存当前草稿
-  saveScrollPositions()
   activeShow.value = name
+  activeEpisode.value = episodeList.value[0]?.episode || 1
   localStorage.setItem('script_activeShow', name)
-  saveStatus.value = ''
-  pendingSaveDirty = false
-  scriptPreview.value = false; storyboardPreview.value = false
-  scriptScrollRestored = false; storyboardScrollRestored = false
-  nextTick(() => {
-    scriptDraft.value = scriptRecord.value?.content || ''
-    storyboardDraft.value = storyboardRecord.value?.content || ''
-    nextTick(() => { setTimeout(() => { restoreScrollPositions() }, 200) })
-  })
+  localStorage.setItem('script_activeEpisode', activeEpisode.value)
+  nextTick(() => { loadDrafts() })
 }
+
+function selectEpisode(ep) {
+  if (ep === activeEpisode.value) return
+  flushPendingSave()
+  activeEpisode.value = ep
+  localStorage.setItem('script_activeEpisode', ep)
+  nextTick(() => { loadDrafts() })
+}
+
 
 function onShowDialogOpened() { nextTick(() => { showNameInput.value?.focus() }); showFileDrop.value = false; newShowFiles.script = null; newShowFiles.storyboard = null }
 function onShowDialogClosed() { newShowFiles.script = null; newShowFiles.storyboard = null }
@@ -1009,41 +1366,75 @@ function onShowDialogClosed() { newShowFiles.script = null; newShowFiles.storybo
 async function addShow() {
   const name = newShowName.value.trim()
   if (!name || showAdding.value) return
-  if (showList.value.includes(name) && !hasAnyFile.value) {
+  if (showList.value.includes(name)) {
     ElMessage.warning(`「${name}」已存在，已自动切换`)
-    showAddDialog.value = false; newShowName.value = ''; selectShow(name); return
+    showAddDialog.value = false; newShowName.value = ''; newShowNameEn.value = ''; selectShow(name); return
   }
   showAdding.value = true
+  const nameEn = newShowNameEn.value.trim()
   const scriptFile = newShowFiles.script
   const storyFile = newShowFiles.storyboard
   try {
-    if (!showList.value.includes(name)) {
-      await api.scripts.add({ showName: name, type: 'script', title: '剧本', content: '' })
-      await api.scripts.add({ showName: name, type: 'storyboard', title: '分镜', content: '' })
+    if (splitEpisodesMode.value && (scriptFile || storyFile)) {
+      // 整部剧分集模式：文件各自按集拆分
+      let scriptCount = 0, storyCount = 0
+      if (scriptFile) scriptCount = await uploadShowFile(name, nameEn, 'script', scriptFile)
+      if (storyFile) storyCount = await uploadShowFile(name, nameEn, 'storyboard', storyFile)
+      await loadShowScripts()
+      newShowName.value = ''
+      newShowNameEn.value = ''
+      activeShow.value = name
+      activeEpisode.value = 1
+      localStorage.setItem('script_activeShow', name)
+      localStorage.setItem('script_activeEpisode', 1)
+      scriptDraft.value = scriptRecord.value?.content || ''
+      storyboardDraft.value = storyboardRecord.value?.content || ''
+      showAddDialog.value = false
+      const total = Math.max(scriptCount, storyCount)
+      ElMessage.success(`「${name}」创建成功，共 ${total} 集`)
+    } else {
+      // 单集模式
+      await api.scripts.add({ showName: name, showNameEn: nameEn, type: 'script', episode: 1, done: false, title: '剧本', content: '' })
+      await api.scripts.add({ showName: name, showNameEn: nameEn, type: 'storyboard', episode: 1, title: '分镜', content: '' })
+      await loadShowScripts()
+      if (scriptFile) {
+        const rec = showScripts.value.find(s => s.showName === name && s.type === 'script' && episodeOf(s) === 1)
+        if (rec) await uploadScriptFileContent(rec.id, scriptFile)
+      }
+      if (storyFile) {
+        const rec = showScripts.value.find(s => s.showName === name && s.type === 'storyboard' && episodeOf(s) === 1)
+        if (rec) await uploadScriptFileContent(rec.id, storyFile)
+      }
+      // 重新加载以获取提取后的内容
+      await loadShowScripts()
+      newShowName.value = ''
+      newShowNameEn.value = ''
+      activeShow.value = name
+      activeEpisode.value = 1
+      localStorage.setItem('script_activeShow', name)
+      localStorage.setItem('script_activeEpisode', 1)
+      scriptDraft.value = scriptRecord.value?.content || ''
+      storyboardDraft.value = storyboardRecord.value?.content || ''
+      showAddDialog.value = false
+      const count = (scriptFile ? 1 : 0) + (storyFile ? 1 : 0)
+      ElMessage.success(`「${name}」创建成功` + (count ? `，已提取 ${count} 个文件` : ''))
     }
-    await loadShowScripts()
-    if (scriptFile) {
-      const rec = showScripts.value.find(s => s.showName === name && s.type === 'script')
-      if (rec) await uploadScriptFileContent(rec.id, scriptFile)
-    }
-    if (storyFile) {
-      const rec = showScripts.value.find(s => s.showName === name && s.type === 'storyboard')
-      if (rec) await uploadScriptFileContent(rec.id, storyFile)
-    }
-    // 重新加载以获取提取后的内容
-    await loadShowScripts()
-    newShowName.value = ''
-    // 先设 activeShow 再关弹窗，避免 onShowDialogClosed 干扰
-    activeShow.value = name
-    localStorage.setItem('script_activeShow', name)
-    scriptDraft.value = scriptRecord.value?.content || ''
-    storyboardDraft.value = storyboardRecord.value?.content || ''
-    showAddDialog.value = false
-    const count = (scriptFile ? 1 : 0) + (storyFile ? 1 : 0)
-    ElMessage.success(`「${name}」创建成功` + (count ? `，已提取 ${count} 个文件` : ''))
   } finally {
     showAdding.value = false
   }
+}
+
+async function uploadShowFile(showName, showNameEn, type, file) {
+  const fd = new FormData()
+  fd.append('file', file)
+  fd.append('showName', showName)
+  fd.append('showNameEn', showNameEn || '')
+  fd.append('type', type)
+  const token = localStorage.getItem('pan_token') || ''
+  const res = await fetch('/api/scripts/upload-show', { method: 'POST', headers: { 'X-Auth-Token': token }, body: fd })
+  const data = await res.json()
+  if (!data.success) { ElMessage.error(data.error || '上传失败'); return 0 }
+  return data.data.count || 0
 }
 
 async function uploadScriptFileContent(recordId, file) {
@@ -1063,33 +1454,91 @@ function onSlotFileChange(e) { const f = e.target.files?.[0]; e.target.value = '
 function openCreateShowDialog() {
   showFileDrop.value = false
   newShowFiles.script = null; newShowFiles.storyboard = null
+  newShowName.value = ''; newShowNameEn.value = ''
   showAddDialog.value = true
 }
 
-function confirmDeleteShow(name) { deletingShow.value = name; showDeleteDialog.value = true }
+const deletingAssetsCount = computed(() => assets.value.filter(a => a.showName === deletingShow.value).length)
+function confirmDeleteShow(name) { deletingShow.value = name; deleteAssetsMode.value = 'keep'; showDeleteDialog.value = true }
 
 async function deleteShow(name) {
   const items = showScripts.value.filter(s => s.showName === name)
   for (const item of items) await api.scripts.delete(item.id)
-  if (activeShow.value === name) { activeShow.value = ''; scriptDraft.value = ''; storyboardDraft.value = ''; localStorage.removeItem('script_activeShow') }
-  clearScrollPos(name)
+  // 处理关联资产
+  const relatedAssets = assets.value.filter(a => a.showName === name)
+  if (deleteAssetsMode.value === 'delete') {
+    for (const a of relatedAssets) await api.assets.delete(a.id)
+  } else {
+    for (const a of relatedAssets) await api.assets.update(a.id, { ...a, showName: '', episode: null })
+  }
+  if (activeShow.value === name) { activeShow.value = ''; scriptDraft.value = ''; storyboardDraft.value = ''; localStorage.removeItem('script_activeShow'); localStorage.removeItem('script_activeEpisode') }
   showDeleteDialog.value = false
   await loadShowScripts()
+  await loadAssets()
 }
 
-// 滚动位置记忆
-function scrollKey(show, type) { return 'script_scroll_' + show + '_' + type }
-function clearScrollPos(show) {
-  localStorage.removeItem(scrollKey(show, 'script'))
-  localStorage.removeItem(scrollKey(show, 'storyboard'))
+async function addEpisode() {
+  if (!activeShow.value) return
+  const nextEp = maxEpisode.value + 1
+  const en = showEnName(activeShow.value)
+  await api.scripts.add({ showName: activeShow.value, showNameEn: en, type: 'script', episode: nextEp, done: false, title: '剧本', content: '' })
+  await api.scripts.add({ showName: activeShow.value, showNameEn: en, type: 'storyboard', episode: nextEp, title: '分镜', content: '' })
+  await loadShowScripts()
+  selectEpisode(nextEp)
+  ElMessage.success('已添加第 ' + nextEp + ' 集')
 }
+
+async function toggleEpisodeDone(ep) {
+  const rec = showScripts.value.find(s => s.showName === activeShow.value && s.type === 'script' && episodeOf(s) === ep)
+  if (!rec) return
+  const newDone = !rec.done
+  const idx = showScripts.value.findIndex(s => s.id === rec.id)
+  if (idx >= 0) showScripts.value[idx] = { ...rec, done: newDone }
+  await api.scripts.update(rec.id, { ...rec, done: newDone })
+}
+
+async function deleteEpisode(ep) {
+  const items = showScripts.value.filter(s => s.showName === activeShow.value && episodeOf(s) === ep)
+  if (!items.length) return
+  try { await ElMessageBox.confirm(`确定删除第 ${ep} 集？其剧本和分镜将永久删除。`, '删除集', { type: 'warning', confirmButtonText: '删除' }) } catch { return }
+  for (const item of items) await api.scripts.delete(item.id)
+  await loadShowScripts()
+  if (activeEpisode.value === ep) {
+    activeEpisode.value = episodeList.value[0]?.episode || 1
+    nextTick(() => { loadDrafts() })
+  }
+}
+
+function openRenameShowDialog() {
+  if (!activeShow.value) return
+  renamingShow.value = activeShow.value
+  renameShowName.value = activeShow.value
+  renameShowNameEn.value = showEnName(activeShow.value)
+  showRenameDialog.value = true
+}
+
+async function renameShow() {
+  const oldName = renamingShow.value
+  const newName = renameShowName.value.trim()
+  if (!newName) { ElMessage.warning('请输入中文剧名'); return }
+  if (newName !== oldName && showList.value.includes(newName)) { ElMessage.warning('该剧名已存在'); return }
+  const en = renameShowNameEn.value.trim()
+  const items = showScripts.value.filter(s => s.showName === oldName)
+  for (const item of items) {
+    await api.scripts.update(item.id, { ...item, showName: newName, showNameEn: en })
+  }
+  if (activeShow.value === oldName) activeShow.value = newName
+  localStorage.setItem('script_activeShow', newName)
+  showRenameDialog.value = false
+  await loadShowScripts()
+  ElMessage.success('剧名已更新')
+}
+
 function onScriptScroll(type, e) {
   syncLineNumScroll(e.target)
-  try { localStorage.setItem(scrollKey(activeShow.value, type), JSON.stringify({ top: e.target.scrollTop, ts: Date.now() })) } catch {}
 }
 function onPreviewScroll(type, e) {
   syncLineNumScroll(e.target)
-  try { localStorage.setItem(scrollKey(activeShow.value, type), JSON.stringify({ top: e.target.scrollTop, ts: Date.now() })) } catch {}
 }
 function syncLineNumScroll(el) {
   const wrap = el.parentElement
@@ -1097,30 +1546,6 @@ function syncLineNumScroll(el) {
     const nums = wrap.querySelector('.script-line-nums')
     if (nums) nums.scrollTop = el.scrollTop
   }
-}
-function saveScrollPositions() {
-  try {
-    const scriptEl = scriptTextareaRef.value; const storyEl = storyboardTextareaRef.value
-    const show = activeShow.value; if (!show) return
-    if (scriptEl && scriptEl.scrollTop > 0) localStorage.setItem(scrollKey(show, 'script'), JSON.stringify({ top: scriptEl.scrollTop, ts: Date.now() }))
-    if (storyEl && storyEl.scrollTop > 0) localStorage.setItem(scrollKey(show, 'storyboard'), JSON.stringify({ top: storyEl.scrollTop, ts: Date.now() }))
-  } catch {}
-}
-function restoreScrollPositions(maxRetry = 5) {
-  const show = activeShow.value; if (!show) return
-  try {
-    const sData = JSON.parse(localStorage.getItem(scrollKey(show, 'script')) || '{}')
-    const bData = JSON.parse(localStorage.getItem(scrollKey(show, 'storyboard')) || '{}')
-    const scriptEl = scriptTextareaRef.value; const storyEl = storyboardTextareaRef.value
-
-    if ((sData.top > 0 && !scriptEl) || (bData.top > 0 && !storyEl)) {
-      // DOM 还没渲染完毕，重试
-      if (maxRetry > 0) { setTimeout(() => { restoreScrollPositions(maxRetry - 1) }, 100) }
-      return
-    }
-    if (scriptEl && sData.top > 0) { scriptEl.scrollTop = sData.top }
-    if (storyEl && bData.top > 0) { storyEl.scrollTop = bData.top }
-  } catch {}
 }
 
 // 下载
@@ -1131,10 +1556,21 @@ function downloadScript(type) {
   const blob = new Blob([content || ''], { type: 'text/plain;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url; a.download = (activeShow.value || 'script') + '_' + (type === 'script' ? '剧本' : '分镜') + '.txt'
+  a.href = url; a.download = (activeShow.value || 'script') + '_第' + activeEpisode.value + '集_' + (type === 'script' ? '剧本' : '分镜') + '.txt'
   document.body.appendChild(a); a.click(); document.body.removeChild(a)
   URL.revokeObjectURL(url)
   ElMessage.success('已下载')
+}
+
+async function copyPanel(type) {
+  const content = type === 'script' ? scriptDraft.value : storyboardDraft.value
+  if (!content) { ElMessage.warning(type === 'script' ? '剧本内容为空' : '分镜内容为空'); return }
+  try { await navigator.clipboard.writeText(content); ElMessage.success('已复制') }
+  catch {
+    const ta = document.createElement('textarea'); ta.value = content
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta)
+    ElMessage.success('已复制')
+  }
 }
 
 function onScriptEdit(type, val) {
@@ -1151,7 +1587,6 @@ function onScriptEdit(type, val) {
     await api.scripts.update(record.id, { ...record, content: val })
     if (seq === autoSaveSeq) {
       saveStatus.value = 'saved'; pendingSaveDirty = false
-      showEditTimes[activeShow.value] = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
     }
   }, 1500)
 }
@@ -1171,7 +1606,6 @@ async function flushPendingSave() {
     await api.scripts.update(storyRec.id, { ...storyRec, content: storyboardDraft.value })
   }
   saveStatus.value = 'saved'
-  showEditTimes[activeShow.value] = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 
 async function loadShowScripts() {
@@ -1184,14 +1618,17 @@ async function loadShowScripts() {
     } else if (!activeShow.value || !showList.value.includes(activeShow.value)) {
       activeShow.value = showList.value[0] || ''
     }
-    // 恢复内容和滚动位置
+    // 恢复上次的集号，否则回退第1集
+    const savedEpisode = parseInt(localStorage.getItem('script_activeEpisode'))
+    if (savedEpisode && episodeList.value.find(e => e.episode === savedEpisode)) {
+      activeEpisode.value = savedEpisode
+    } else if (!episodeList.value.find(e => e.episode === activeEpisode.value)) {
+      activeEpisode.value = episodeList.value[0]?.episode || 1
+    }
+    // 恢复内容
     if (activeShow.value) {
       await nextTick()
-      scriptDraft.value = scriptRecord.value?.content || ''
-      storyboardDraft.value = storyboardRecord.value?.content || ''
-      pendingSaveDirty = false
-      await nextTick()
-      setTimeout(() => { restoreScrollPositions() }, 250)
+      loadDrafts()
     }
   }
 }
@@ -1422,9 +1859,9 @@ async function loadPromptSteps() {
   }
 }
 
-function onBeforeUnload() { flushPendingSave(); saveScrollPositions(); localStorage.setItem('script_activeShow', activeShow.value || '') }
+function onBeforeUnload() { flushPendingSave(); localStorage.setItem('script_activeShow', activeShow.value || ''); localStorage.setItem('script_activeEpisode', activeEpisode.value || '') }
 onMounted(() => { loadAssets(); loadShowScripts(); loadPromptSteps().then(() => loadPrompts()); document.addEventListener("keydown", onKeyDown); window.addEventListener("beforeunload", onBeforeUnload) })
-onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeShow', activeShow.value || ''); document.removeEventListener("keydown", onKeyDown); window.removeEventListener("beforeunload", onBeforeUnload) })
+onUnmounted(() => { localStorage.setItem('script_activeShow', activeShow.value || ''); localStorage.setItem('script_activeEpisode', activeEpisode.value || ''); document.removeEventListener("keydown", onKeyDown); window.removeEventListener("beforeunload", onBeforeUnload) })
 </script>
 
 <style scoped>
@@ -1462,30 +1899,18 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
   display:flex; align-items:center; justify-content:space-between;
   margin-bottom:16px; gap:12px; flex-wrap:wrap; flex-shrink:0;
 }
-.scripts-shows-bar { display:flex; gap:8px; flex-wrap:wrap; flex:1; }
-.show-pill {
-  display:inline-flex; align-items:center; gap:6px;
-  padding:8px 16px; border-radius:10px;
-  border:1.5px solid var(--border-default); background:var(--surface-card);
-  font-size:13px; font-weight:600; color:#374151;
-  cursor:pointer; transition:all .15s; user-select:none;
-}
-.show-pill:hover { border-color:#6366f1; background:#f5f3ff; color:#6366f1; }
-.show-pill.active { background:#6366f1; border-color:#6366f1; color:#fff; }
-.show-pill.active .show-pill-del { opacity:.6; }
-.show-pill.active .show-pill-del:hover { opacity:1; background:rgba(255,255,255,.2); }
-.show-pill--add {
-  border-style:dashed; color:#6366f1; font-weight:600;
-  background:linear-gradient(135deg, #f5f3ff, #eef2ff);
-}
-.show-pill--add:hover { color:#fff; border-color:#6366f1; background:#6366f1; }
-.show-pill-del {
-  display:inline-flex; align-items:center; justify-content:center;
-  width:18px; height:18px; border-radius:50%; margin-left:2px;
-  opacity:0; transition:all .12s;
-}
-.show-pill:hover .show-pill-del { opacity:.4; }
-.show-pill-del:hover { opacity:1 !important; background:#fee2e2; color:#ef4444 !important; }
+.scripts-shows-bar { display:flex; gap:8px; flex-wrap:wrap; flex:1; align-items:center; }
+.show-select { width: 260px; }
+.show-select :deep(.el-select__placeholder) { color: #9ca3af; }
+.show-option { display:flex; align-items:baseline; gap:8px; overflow:hidden; }
+.show-option-cn { font-weight:600; color:#1f2937; white-space:nowrap; }
+.show-option-en { font-size:11px; color:#9ca3af; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.show-add-btn { display:inline-flex; align-items:center; gap:6px; font-weight:700; border-radius:10px; padding:9px 16px; }
+.show-ghost-btn { display:inline-flex; align-items:center; gap:5px; font-weight:600; border-radius:10px; border:1.5px solid var(--border-default); color:#6b7280; background:var(--surface-card); }
+.show-ghost-btn:hover { border-color:#6366f1; color:#6366f1; background:#f5f3ff; }
+.show-ghost-btn--danger:hover { border-color:#ef4444; color:#ef4444; background:#fef2f2; }
+.show-name-fields { display:flex; flex-direction:column; gap:12px; }
+.show-split-switch { display:flex; align-items:center; gap:8px; margin-top:12px; font-size:12px; color:#6b7280; }
 
 .scripts-toolbar-right { display:flex; align-items:center; gap:12px; flex-shrink:0; }
 .scripts-save-status {
@@ -1495,6 +1920,96 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
 .save-dot { width:7px; height:7px; border-radius:50%; background:#d1d5db; }
 .save-dot.saving { background:#f59e0b; animation:pulse 1s infinite; }
 .save-dot.saved { background:#10b981; }
+
+.scripts-layout { display:flex; gap:16px; flex:1; min-height:0; }
+.episode-panel {
+  width:180px; flex-shrink:0; background:var(--surface-card); border:1px solid var(--border-default); border-radius:14px;
+  display:flex; flex-direction:column; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,.04); min-height:0;
+}
+.episode-panel-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-shrink:0; }
+.episode-panel-title { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:#374151; }
+.episode-panel-progress { font-size:11px; font-weight:600; color:#9ca3af; }
+.episode-list { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:4px; min-height:0; }
+.episode-item {
+  display:flex; align-items:center; gap:8px; padding:9px 10px; border-radius:9px;
+  cursor:pointer; transition:all .12s; font-size:13px; font-weight:600; color:#6b7280;
+  border:1px solid transparent; user-select:none;
+}
+.episode-item:hover { background:#f9fafb; }
+.episode-item.active { background:#eef2ff; border-color:#c7d2fe; color:#4338ca; font-weight:700; }
+.episode-item.done .episode-label { color:#9ca3af; text-decoration:line-through; }
+.episode-check {
+  width:20px; height:20px; border-radius:6px; border:2px solid #d1d5db; background:#fff;
+  display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+  color:#fff; transition:all .12s; cursor:pointer;
+}
+.episode-check:hover { border-color:#6366f1; }
+.episode-check.checked { background:#10b981; border-color:#10b981; }
+.episode-label { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.episode-del {
+  display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px;
+  border-radius:5px; color:#d1d5db; opacity:.45; transition:all .12s; flex-shrink:0;
+}
+.episode-item:hover .episode-del { opacity:1; }
+.episode-del:hover { background:#fee2e2; color:#ef4444; }
+.episode-empty { font-size:12px; color:#9ca3af; text-align:center; padding:16px 0; }
+.episode-add-btn {
+  margin-top:10px; width:100%; border:1.5px dashed #c7d2fe; color:#6366f1; background:#f5f3ff;
+  font-weight:600; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+}
+.episode-add-btn:hover { background:#eef2ff; border-color:#6366f1; }
+
+/* 全集总览（拼接预览） */
+.asset-dialog--overview { max-height: 92vh !important; }
+.overview-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap; flex-shrink:0; }
+.overview-tabs { display:flex; gap:6px; }
+.overview-tab {
+  display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:10px;
+  border:1.5px solid #e5e7eb; background:#fff; font-size:13px; font-weight:600; color:#6b7280;
+  cursor:pointer; transition:all .15s;
+}
+.overview-tab:hover { border-color:#a5b4fc; color:#6366f1; }
+.overview-tab.active { background:#eef2ff; border-color:#6366f1; color:#4338ca; }
+.overview-actions { display:flex; gap:6px; }
+.overview-progress { margin-bottom:14px; padding:12px 14px; background:#f9fafb; border-radius:10px; border:1px solid #e5e7eb; flex-shrink:0; }
+.overview-progress-info { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.overview-progress-label { font-size:12px; font-weight:600; color:#6b7280; }
+.overview-progress-count { font-size:12px; font-weight:700; color:#10b981; }
+.overview-progress-bar { height:8px; border-radius:4px; background:#e5e7eb; overflow:hidden; }
+.overview-progress-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,#10b981,#34d399); transition:width .3s; }
+.overview-body {
+  border:1px solid #e5e7eb; border-radius:12px; padding:20px 24px; background:#fff;
+  max-height:calc(92vh - 200px); overflow-y:auto; font-size:14px; line-height:1.8; color:#1f2937;
+  font-family:'PingFang SC','Microsoft YaHei',sans-serif; word-wrap:break-word;
+}
+.overview-body :deep(h2) { font-size:17px; font-weight:800; color:#111827; margin:18px 0 8px; padding-bottom:6px; border-bottom:1px solid #f3f4f6; }
+.overview-body :deep(h2:first-child) { margin-top:0; }
+.overview-body :deep(p) { margin:0 0 8px; }
+.overview-body :deep(ul), .overview-body :deep(ol) { padding-left:1.5em; margin:4px 0 8px; }
+.overview-body :deep(li) { margin:2px 0; }
+.overview-body :deep(strong) { font-weight:700; color:#1f2937; }
+.overview-body :deep(h1) { font-size:20px; font-weight:800; margin:0 0 12px; }
+.overview-body :deep(h3) { font-size:15px; font-weight:700; margin:12px 0 6px; }
+.overview-body :deep(hr) { border:none; border-top:1px solid #e5e7eb; margin:14px 0; }
+
+.episode-assets {
+  background:var(--surface-card); border:1px solid var(--border-default); border-radius:14px;
+  padding:16px 18px; margin-top:14px; flex-shrink:0;
+}
+.episode-assets-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.episode-assets-title { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:#374151; }
+.episode-assets-count { font-size:11px; font-weight:600; color:#9ca3af; }
+.episode-assets-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(88px, 1fr)); gap:10px; }
+.episode-asset-thumb {
+  position:relative; aspect-ratio:1; border-radius:10px; overflow:hidden;
+  border:1px solid #e5e7eb; background:#f3f4f6; cursor:pointer; transition:all .15s;
+}
+.episode-asset-thumb:hover { border-color:#c7d2fe; box-shadow:0 4px 12px rgba(0,0,0,.08); transform:translateY(-2px); }
+.thumb-media { width:100%; height:100%; object-fit:cover; display:block; }
+.thumb-audio { width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#10b981; background:color-mix(in srgb,#10b981 12%,#fff); }
+.thumb-play { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; background:rgba(0,0,0,.25); }
+.thumb-badge { position:absolute; bottom:4px; right:4px; font-size:9px; font-weight:700; color:#fff; padding:1px 5px; border-radius:4px; }
+.episode-assets-empty { font-size:12px; color:#9ca3af; text-align:center; padding:18px 0; border:1px dashed #e5e7eb; border-radius:10px; }
 
 .scripts-edit-panels { display:grid; grid-template-columns:1fr 1fr; gap:16px; flex:1; min-height:0; }
 .script-panel {
@@ -1511,6 +2026,13 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
   display:flex; align-items:center; gap:8px;
 }
 .panel-word-count { font-size:11px; font-weight:500; color:#9ca3af; margin-left:2px; }
+.episode-done-badge {
+  display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px;
+  font-size:11px; font-weight:700; margin-left:6px; cursor:pointer; user-select:none;
+  background:#f3f4f6; color:#6b7280; border:1px solid #e5e7eb; transition:all .15s;
+}
+.episode-done-badge:hover { border-color:#c7d2fe; }
+.episode-done-badge.done { background:#ecfdf3; color:#0e6245; border-color:#bbf7d0; }
 .panel-actions { display:flex; gap:6px; }
 
 .script-edit-body {
@@ -1551,6 +2073,7 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
 .tb-btn-primary:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(99,102,241,.25); }
 .tb-count { font-size:14px; font-weight:700; color:#6366f1; padding:5px 12px; border-radius:8px; background:#eef2ff; white-space:nowrap; }
 
+.assets-filter-shows { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
 .assets-pills { display:flex; gap:4px; flex-wrap:wrap; }
 .assets-pill { display:inline-flex; align-items:center; gap:5px; padding:7px 15px; border-radius:22px; border:1.5px solid var(--border-default); background:var(--surface-card); font-size:13px; font-weight:600; color:var(--text-secondary); cursor:pointer; transition:all 0.15s; }
 .assets-pill:hover { border-color:#a5b4fc; color:#6366f1; }
@@ -1579,7 +2102,13 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
 .empty-text { color:#9ca3af; font-size:14px; }
 
 /* ===== AI资产卡片 ===== */
-.asset-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(270px, 1fr)); gap:20px; }
+.asset-groups { display:flex; flex-direction:column; gap:22px; }
+.asset-group { display:flex; flex-direction:column; gap:12px; }
+.asset-group-hd { display:flex; align-items:center; gap:8px; }
+.asset-group-title { display:inline-flex; align-items:center; gap:6px; font-size:14px; font-weight:800; color:#1f2937; letter-spacing:-.2px; }
+.asset-group-title .el-icon { color:#6366f1; }
+.asset-group-n { font-size:12px; font-weight:600; color:#9ca3af; }
+.asset-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:14px; }
 .asset-card {
   position:relative; background:var(--surface-card); border:1.5px solid var(--border-default); border-radius:16px;
   overflow:hidden; transition:all 0.2s; box-shadow:0 1px 3px rgba(0,0,0,.04);
@@ -1600,13 +2129,14 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
 .asset-card:hover .card-img { transform:scale(1.06); }
 .card-type-badge { position:absolute; top:10px; right:10px; padding:4px 10px; border-radius:8px; font-size:11px; font-weight:700; color:#fff; letter-spacing:.5px; box-shadow:0 2px 6px rgba(0,0,0,.15); }
 
-.card-info { padding:14px 16px 8px; }
-.card-name { font-size:15px; font-weight:700; color:#1f2937; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.3; }
-.card-tags-row { display:flex; align-items:center; justify-content:space-between; margin-top:6px; min-height:20px; }
-.card-tags { display:flex; gap:4px; flex-wrap:wrap; }
-.card-tag { font-size:10px; padding:2px 7px; border-radius:4px; background:#eef2ff; color:#6366f1; font-weight:600; cursor:pointer; }
+.card-info { padding:10px 12px 6px; }
+.card-name { font-size:13px; font-weight:700; color:#1f2937; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.3; }
+.card-char-name { font-size:11px; font-weight:600; color:#6366f1; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.card-tags-row { display:flex; align-items:center; justify-content:space-between; margin-top:4px; min-height:18px; }
+.card-tags { display:flex; gap:3px; flex-wrap:wrap; }
+.card-tag { font-size:9px; padding:1px 6px; border-radius:4px; background:#eef2ff; color:#6366f1; font-weight:600; cursor:pointer; }
 .card-tag:hover { background:#dbeafe; }
-.card-size { font-size:11px; color:#9ca3af; white-space:nowrap; }
+.card-size { font-size:10px; color:#9ca3af; white-space:nowrap; }
 .card-owner-tag {
   display: inline-block; margin-top: 4px; padding: 1px 8px;
   border-radius: 4px; font-size: 10px; font-weight: 700;
@@ -1614,8 +2144,8 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-.card-footer { display:flex; gap:4px; padding:8px 16px 14px; border-top:1px solid #f3f4f6; }
-.card-btn { width:34px; height:34px; border-radius:8px; border:1px solid var(--border-default); background:var(--surface-card); color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+.card-footer { display:flex; gap:3px; padding:6px 12px 12px; border-top:1px solid #f3f4f6; }
+.card-btn { width:30px; height:30px; border-radius:8px; border:1px solid var(--border-default); background:var(--surface-card); color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
 .card-btn:hover { background:#f3f4f6; color:#6366f1; border-color:#c7d2fe; }
 .card-btn-dl { text-decoration:none; }
 .card-btn-del:hover { background:#fef2f2; color:#ef4444; border-color:#fecaca; }
@@ -1623,8 +2153,11 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
 /* 卡片视频/音频覆盖层 */
 .card-play-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.3); pointer-events:none; color:#fff; }
 .card-play-overlay .el-icon { filter:drop-shadow(0 2px 6px rgba(0,0,0,.4)); }
-.card-audio-placeholder { width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:#fff; }
-.card-audio-label { font-size:14px; font-weight:700; letter-spacing:1px; }
+.card-audio-placeholder {
+  width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:#fff;
+  background:linear-gradient(160deg, color-mix(in srgb, var(--c, #10b981) 78%, #fff), var(--c, #10b981));
+}
+.card-audio-label { font-size:11px; font-weight:700; letter-spacing:.5px; }
 
 /* Lightbox */
 .lightbox-overlay { position:fixed; inset:0; z-index:10001; background:rgba(0,0,0,.9); display:flex; flex-direction:column; overflow:hidden; }
@@ -1658,6 +2191,7 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
 .drop-text { font-size:14px; color:#6b7280; margin:0 0 8px; }
 .drop-hint { font-size:11px; color:#b0b0b0; margin:8px 0 0; }
 .file-list { margin-top:12px; max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+.asset-link-select { display:flex; gap:8px; width:100%; }
 .file-item { display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:8px; background:#f9fafb; font-size:13px; }
 .file-thumb { width:40px; height:40px; border-radius:6px; object-fit:cover; }
 .file-info { flex:1; min-width:0; }
@@ -1892,5 +2426,43 @@ onUnmounted(() => { saveScrollPositions(); localStorage.setItem('script_activeSh
 }
 .asset-dialog > .el-dialog__footer {
   padding: 16px 24px 20px;
+}
+
+/* ===== 下拉框统一美化 ===== */
+.el-select .el-select__wrapper {
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px #e5e7eb inset;
+  background: #fafbfc;
+  transition: box-shadow .15s, background .15s;
+}
+.el-select .el-select__wrapper:hover {
+  box-shadow: 0 0 0 1px #c7d2fe inset;
+  background: #fff;
+}
+.el-select .el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px #6366f1 inset, 0 0 0 3px rgba(99,102,241,.1);
+  background: #fff;
+}
+.el-select .el-select__placeholder { color: #9ca3af; }
+.el-select .el-select__selected-item { color: #1f2937; font-weight: 600; }
+.el-popper.el-select__popper {
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.12);
+  border: 1px solid #e5e7eb;
+}
+.el-popper.el-select__popper .el-select-dropdown__item {
+  border-radius: 8px;
+  margin: 2px 6px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.el-popper.el-select__popper .el-select-dropdown__item.is-hovering {
+  background: #eef2ff;
+  color: #4338ca;
+}
+.el-popper.el-select__popper .el-select-dropdown__item.is-selected {
+  background: #6366f1;
+  color: #fff;
+  font-weight: 600;
 }
 </style>

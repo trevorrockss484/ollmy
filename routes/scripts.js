@@ -34,6 +34,44 @@ const upload = multer({
   }
 });
 
+// 中文数字转阿拉伯（支持 一~九十九 / 一百 / 一百二十 等常见写法）
+function chineseNumToInt(s) {
+  if (/^\d+$/.test(s)) return parseInt(s, 10)
+  const map = { '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 }
+  if (s === '十') return 10
+  if (/^十(\d)$/.test(s)) return 10 + map[RegExp.$1]
+  if (/^(\d)十$/.test(s)) return map[RegExp.$1] * 10
+  if (/^(\d)十(\d)$/.test(s)) return map[RegExp.$1] * 10 + map[RegExp.$2]
+  let total = 0
+  for (const ch of s) { if (map[ch] !== undefined) total = total * 10 + map[ch] }
+  return total || 1
+}
+
+// 按「第N集 / 第一集 / 第N章 / Episode N」行首标题拆分成集
+// 无集标记或仅 1 个标记时，整文件作为第 1 集
+function splitEpisodes(text) {
+  const re = /^[ \t]*(第\s*([0-9一二三四五六七八九十百千]+)\s*[集章回]|(?:Episode|EP)\s*(\d+))/gim
+  const starts = []
+  let m
+  while ((m = re.exec(text)) !== null) {
+    const num = m[2] !== undefined ? chineseNumToInt(m[2]) : parseInt(m[4], 10)
+    starts.push({ index: m.index, num })
+  }
+  if (starts.length <= 1) {
+    return [{ episode: 1, content: text.trim() }]
+  }
+  const eps = []
+  for (let i = 0; i < starts.length; i++) {
+    const start = starts[i].index
+    const end = i + 1 < starts.length ? starts[i + 1].index : text.length
+    let content = text.slice(start, end).trim()
+    // 第一集标题前若有内容（书名/序言），并入第一集
+    if (i === 0 && start > 0) content = text.slice(0, start).trim() + '\n\n' + content
+    eps.push({ episode: starts[i].num, content })
+  }
+  return eps
+}
+
 // 列表
 router.get('/', (req, res) => {
   try {
@@ -137,6 +175,45 @@ router.get('/:id/file', (req, res) => {
     res.download(fp, item.uploadedFile.originalName || 'document');
   } catch (e) {
     res.status(500).json({ success: false, error: '下载失败' });
+  }
+});
+
+// 整部剧上传：自动按集拆分，为每集建记录
+router.post('/upload-show', upload.single('file'), async (req, res) => {
+  try {
+    const { showName, showNameEn, type } = req.body
+    if (!showName) return res.status(400).json({ success: false, error: '缺少剧名' })
+    const file = req.file
+    if (!file) return res.status(400).json({ success: false, error: '请选择文件' })
+
+    const ext = path.extname(file.originalname).toLowerCase()
+    let content = ''
+    if (ext === '.docx') {
+      try { const r = await mammoth.extractRawText({ path: file.path }); content = (r && r.value) ? r.value : '' } catch { content = '' }
+    } else if (ext === '.txt') {
+      content = fs.readFileSync(file.path, 'utf-8')
+    } else if (ext === '.pdf') {
+      content = '【PDF文件已上传，请手动编辑或下载查看】\n' + file.filename
+    }
+
+    const typeVal = type === 'storyboard' ? 'storyboard' : 'script'
+    const eps = splitEpisodes(content)
+    const userId = req.user ? req.user.username : 'admin'
+    const created = eps.map(ep => db.addShowScript({
+      showName,
+      showNameEn: showNameEn || '',
+      type: typeVal,
+      episode: ep.episode,
+      done: false,
+      title: typeVal === 'script' ? '剧本' : '分镜',
+      content: ep.content,
+      uploadedFile: { fileName: file.filename, originalName: file.originalname, fileSize: file.size },
+      userId
+    }))
+    db.logOperation('scripts.uploadShow', { showName, type: typeVal, count: created.length }, req.user)
+    res.json({ success: true, data: { count: created.length, episodes: eps.map(e => e.episode) } })
+  } catch (e) {
+    res.status(500).json({ success: false, error: '上传失败: ' + e.message })
   }
 });
 

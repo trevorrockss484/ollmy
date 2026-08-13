@@ -568,9 +568,9 @@ const promptsDb = makeCrud('prompts', { title: '', step: '未分类', sortOrder:
   }
 );
 
-const assetsDb = makeCrud('assets', { name: '', type: 'character', fileName: '', originalName: '', fileSize: 0, tags: [], mediaType: 'image' });
+const assetsDb = makeCrud('assets', { name: '', type: 'character', fileName: '', originalName: '', fileSize: 0, tags: [], mediaType: 'image', showName: '', episode: null, characterName: '', outfit: '' });
 const libraryDb = makeCrud('library', { name: '', fileName: '', originalName: '', fileSize: 0, tags: [], readingProgress: 0, status: null });
-const showScriptsDb = makeCrud('showScripts', { showName: '', type: 'script', title: '', content: '', tags: [], uploadedFile: null });
+const showScriptsDb = makeCrud('showScripts', { showName: '', showNameEn: '', type: 'script', episode: 1, done: false, title: '', content: '', tags: [], uploadedFile: null });
 const compressedDb = makeCrud('compressed', { originalName: '', compressedName: '', originalSize: 0, compressedSize: 0, width: 0, height: 0, format: 'webp', quality: 80, name: '', category: '' });
 
 function getPrompts(userId) {

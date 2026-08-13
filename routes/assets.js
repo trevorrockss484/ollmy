@@ -67,6 +67,24 @@ router.post('/upload', upload.array('files', 20), (req, res) => {
     }
     const name = req.body.name || '';
     const type = req.body.type || 'character';
+    const TYPE_MEDIA = {
+      character: ['image'],
+      voice: ['audio'],
+      video: ['video'],
+      scene: ['image'],
+      prop: ['image'],
+    };
+    const allowed = TYPE_MEDIA[type];
+    if (allowed) {
+      const bad = req.files.filter(f => !allowed.includes(getMediaType(f.originalname)));
+      if (bad.length) {
+        return res.status(400).json({ success: false, error: `「${type}」类型不支持上传 ${bad.map(f => f.originalname).join(', ')}` });
+      }
+    }
+    const showName = req.body.showName || '';
+    const episode = req.body.episode ? parseInt(req.body.episode, 10) : null;
+    const characterName = req.body.characterName || '';
+    const outfit = req.body.outfit || '';
     let tags = [];
     try { tags = JSON.parse(req.body.tags || '[]'); } catch { tags = []; }
 
@@ -86,6 +104,10 @@ router.post('/upload', upload.array('files', 20), (req, res) => {
         mediaType: getMediaType(file.originalname),
         gridOverlay: type === 'character',
         tags,
+        showName,
+        episode,
+        characterName,
+        outfit,
         userId: req.user ? req.user.username : 'admin'
       });
       assets.push(asset);
