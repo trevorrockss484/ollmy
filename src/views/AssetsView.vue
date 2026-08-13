@@ -1229,8 +1229,7 @@ const showOverviewDialog = ref(false)
 const overviewType = ref('script')
 const showList = computed(() => [...new Set(showScripts.value.map(s => s.showName).filter(Boolean))])
 const saveStatus = ref('')
-let saveTimer = null
-let autoSaveSeq = 0
+const saveTimers = { script: null, storyboard: null }
 const showAddDialog = ref(false)
 const showAdding = ref(false)
 const showDeleteDialog = ref(false)
@@ -1380,6 +1379,15 @@ async function addShow() {
       let scriptCount = 0, storyCount = 0
       if (scriptFile) scriptCount = await uploadShowFile(name, nameEn, 'script', scriptFile)
       if (storyFile) storyCount = await uploadShowFile(name, nameEn, 'storyboard', storyFile)
+      await loadShowScripts()
+      // 补齐配对记录：每一集都要有剧本+分镜（否则编辑分镜时无记录可存）
+      const eps = [...new Set(showScripts.value.filter(s => s.showName === name).map(s => episodeOf(s)))].sort((a, b) => a - b)
+      for (const ep of eps) {
+        const hasScript = showScripts.value.some(s => s.showName === name && s.type === 'script' && episodeOf(s) === ep)
+        const hasStory = showScripts.value.some(s => s.showName === name && s.type === 'storyboard' && episodeOf(s) === ep)
+        if (!hasScript) await api.scripts.add({ showName: name, showNameEn: nameEn, type: 'script', episode: ep, done: false, title: '剧本', content: '' })
+        if (!hasStory) await api.scripts.add({ showName: name, showNameEn: nameEn, type: 'storyboard', episode: ep, title: '分镜', content: '' })
+      }
       await loadShowScripts()
       newShowName.value = ''
       newShowNameEn.value = ''
@@ -1573,29 +1581,38 @@ async function copyPanel(type) {
   }
 }
 
-function onScriptEdit(type, val) {
-  const record = type === 'script' ? scriptRecord.value : storyboardRecord.value
-  if (!record) return
+async function onScriptEdit(type, val) {
+  let record = type === 'script' ? scriptRecord.value : storyboardRecord.value
+  // 兜底：该集缺少对应记录时，自动创建空记录再保存（修复历史孤儿数据）
+  if (!record) {
+    const title = type === 'script' ? '剧本' : '分镜'
+    const res = await api.scripts.add({ showName: activeShow.value, showNameEn: showEnName(activeShow.value), type, episode: activeEpisode.value, done: false, title, content: '' })
+    if (!res.success) return
+    // 直接 push 新记录，避免 loadShowScripts 重置 draft 丢失当前输入
+    showScripts.value.push(res.data)
+    record = res.data
+  }
   pendingSaveDirty = true
   saveStatus.value = 'saving'
-  if (saveTimer) clearTimeout(saveTimer)
-  const seq = ++autoSaveSeq
+  if (saveTimers[type]) clearTimeout(saveTimers[type])
   // 乐观更新本地内存
   const idx = showScripts.value.findIndex(s => s.id === record.id)
   if (idx >= 0) showScripts.value[idx] = { ...record, content: val }
-  saveTimer = setTimeout(async () => {
+  saveTimers[type] = setTimeout(async () => {
+    saveTimers[type] = null
     await api.scripts.update(record.id, { ...record, content: val })
-    if (seq === autoSaveSeq) {
-      saveStatus.value = 'saved'; pendingSaveDirty = false
+    if (!saveTimers.script && !saveTimers.storyboard) {
+      saveStatus.value = 'saved'
+      pendingSaveDirty = false
     }
   }, 1500)
 }
 
 // 立即刷新待保存的草稿（切换剧集/关闭页面前调用）
 async function flushPendingSave() {
-  if (!saveTimer || !pendingSaveDirty) return
-  clearTimeout(saveTimer)
-  saveTimer = null
+  if (!pendingSaveDirty && !saveTimers.script && !saveTimers.storyboard) return
+  if (saveTimers.script) { clearTimeout(saveTimers.script); saveTimers.script = null }
+  if (saveTimers.storyboard) { clearTimeout(saveTimers.storyboard); saveTimers.storyboard = null }
   pendingSaveDirty = false
   const scriptRec = scriptRecord.value
   const storyRec = storyboardRecord.value
