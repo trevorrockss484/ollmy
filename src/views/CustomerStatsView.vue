@@ -50,7 +50,7 @@
               <el-input v-model="countryFilterText" placeholder="搜索国家或电话号，如 36" size="small" clearable class="cs-country-search" />
               <div class="cs-sales-body">
                 <div class="cs-sales-tree">
-                  <el-tree ref="countryTreeRef" :data="countryTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children', disabled: () => !authStore.canEdit(PAGE) || isAll }" default-expand-all @check="onCountryTreeCheck" :default-expanded-keys="[]" :filter-node-method="countryFilterNode" />
+                  <el-tree ref="countryTreeRef" :data="countryTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children', disabled: () => !authStore.canEdit(PAGE) || isAll }" @check="onCountryTreeCheck" :default-expanded-keys="[]" :filter-node-method="countryFilterNode" />
                 </div>
                 <div class="cs-sales-chips" v-if="selectedCountries.length">
                   <div v-for="ct in selectedCountries" :key="ct.country" class="cs-chip-row">
@@ -85,28 +85,6 @@
                 <div v-else class="cs-sales-none">勾选销售</div>
               </div>
             </div>
-          </div>
-        </section>
-
-        <!-- 月度汇总 -->
-        <section class="cs-card cs-card--monthly">
-          <header class="cs-card-hd"><span class="cs-hd-dot cs-hd-dot--accent"></span> {{ isAll ? '全部账号月度汇总' : '月度汇总' }} <span class="cs-hd-sub">{{ monthLabel }} · {{ monthly.records }}天</span></header>
-          <div class="cs-mo-grid">
-            <div class="cs-mo-cell"><b>{{ monthly.newCustomers }}</b><span>总询盘</span></div>
-            <div class="cs-mo-cell"><b>{{ monthly.repliedCustomers }}</b><span>有回复</span></div>
-            <div class="cs-mo-cell"><b>{{ monthly.registeredCustomers }}</b><span>已登记</span></div>
-            <div class="cs-mo-cell"><b>{{ monthly.groupedWithPlan }}</b><span>拉群+图</span></div>
-            <div class="cs-mo-cell"><b>{{ monthly.visitingCustomers }}</b><span>来访</span></div>
-            <div class="cs-mo-cell"><b>{{ monthly.closedDeals }}</b><span>成交</span></div>
-          </div>
-          <div class="cs-mo-sales" v-if="monthly.countryBreakdown.length" style="margin-bottom:6px;">
-            <span class="cs-mo-sales-label">国家</span>
-            <span v-for="cb in monthly.countryBreakdown.slice(0, 8)" :key="cb.country" class="cs-mo-sales-item">{{ cb.country }} <b>{{ cb.count }}</b>个</span>
-            <span v-if="monthly.countryBreakdown.length > 8" class="cs-mo-sales-item">+{{ monthly.countryBreakdown.length - 8 }}</span>
-          </div>
-          <div class="cs-mo-sales" v-if="monthly.salesAssignments.length">
-            <span class="cs-mo-sales-label">分配</span>
-            <span v-for="sa in monthly.salesAssignments" :key="sa.name" class="cs-mo-sales-item">{{ sa.name }} <b>{{ sa.count }}</b>个</span>
           </div>
         </section>
 
@@ -331,7 +309,7 @@ async function loadData() {
     form.groupedWithPlan = r.groupedWithPlan; form.visitingCustomers = r.visitingCustomers; form.closedDeals = r.closedDeals
     restoreSalesMap(r.salesAssignments); restoreCountryMap(r.countryBreakdown, !(r.countryBreakdown && r.countryBreakdown.length) /* 有客资则强制同步新客户总数，无客资(老数据)保留手填值 */)
   } else { existingId.value = null; Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys([]) }) }
-  const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value, d); if (mRes.success) Object.assign(monthly, mRes.data)
+  const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value, d); if (mRes.success) Object.assign(monthly, mRes.data); else resetMonthly()
   // 历史仅加载当月数据
   const hQ = { startDate: d.substring(0, 7) + '-01', endDate: d.substring(0, 7) + '-31' }
   if (!isAllMode) hQ.accountId = accountId.value
@@ -385,12 +363,16 @@ const previewText = computed(() => {
 })
 async function copyPreview() { if (!previewText.value) { ElMessage.warning('请先填写数据'); return }; try { await navigator.clipboard.writeText(previewText.value); ElMessage.success('已复制') } catch { const ta = document.createElement('textarea'); ta.value = previewText.value; ta.style.position = 'fixed'; ta.style.left = '-9999px'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy') } catch {}; document.body.removeChild(ta) } }
 
-async function refreshMonthly() { const d = formDate.value; if (!d) return; const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value, d); if (mRes.success) Object.assign(monthly, mRes.data) }
+function resetMonthly() { Object.assign(monthly, { newCustomers: 0, repliedCustomers: 0, registeredCustomers: 0, groupedWithPlan: 0, visitingCustomers: 0, closedDeals: 0, salesAssignments: [], countryBreakdown: [], records: 0, perAccount: [] }) }
+async function refreshMonthly() { const d = formDate.value; if (!d) return; const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value, d); if (mRes.success) Object.assign(monthly, mRes.data); else resetMonthly() }
 
-function doParsePaste() {
+async function doParsePaste() {
   parseResults.value = []; const raw = pasteInput.value.trim(); if (!raw) { ElMessage.warning('请先粘贴内容'); return }
   const text = raw.replace(/\r\n/g, '\n').replace(/：/g, ':')
-  const dm = text.match(/(\d+)月(\d+)日/); if (dm) { const y = formDate.value.split('-')[0]; formDate.value = y + '-' + dm[1].padStart(2, '0') + '-' + dm[2].padStart(2, '0'); parseResults.value.push('日期: ' + dm[1] + '月' + dm[2] + '日') }
+  const dm = text.match(/(\d+)月(\d+)日/)
+  let dateChanged = false
+  if (dm) { const y = formDate.value.split('-')[0]; const newDate = y + '-' + dm[1].padStart(2, '0') + '-' + dm[2].padStart(2, '0'); if (newDate !== formDate.value) { formDate.value = newDate; dateChanged = true } parseResults.value.push('日期: ' + dm[1] + '月' + dm[2] + '日') }
+  if (dateChanged) await loadData()
   const daySection = text.split(/⭐月度数据|月度数据/)[0] || text
   const m1 = daySection.match(/本日新客户[:\s]*(\d+)/); if (m1) { form.newCustomers = parseInt(m1[1]) || 0; parseResults.value.push('新客户: ' + m1[1]) }
   const m2 = daySection.match(/有回复的客户[:\s]*(\d+)/); if (m2) { form.repliedCustomers = parseInt(m2[1]) || 0; parseResults.value.push('有回复: ' + m2[1]) }
@@ -402,7 +384,8 @@ function doParsePaste() {
   if (saLine && saLine[1] && saLine[1].trim() !== '无') { const saRe = /([^\s,，、\d]+?)(\d+)个/g; let sm; while ((sm = saRe.exec(saLine[1])) !== null) { salesMap[sm[1]] = parseInt(sm[2]); parseResults.value.push('销售: ' + sm[1] + sm[2] + '个') } }
   pasteVisible.value = false; pasteInput.value = ''
   parseResults.value.length ? ElMessage.success('识别 ' + parseResults.value.length + ' 个字段') : ElMessage.warning('未识别到数据')
-  nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys(Object.keys(salesMap)) }); refreshMonthly()
+  nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys(Object.keys(salesMap)) })
+  if (!dateChanged) refreshMonthly()
 }
 
 
@@ -539,21 +522,6 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-pa-cell span{font-size:10px;font-weight:600;color:var(--c-muted);}
 @media(max-width:960px){.cs-pa-grid{grid-template-columns:1fr;}}
 
-/* Monthly */
-.cs-mo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;}
-.cs-mo-cell{
-  background:#f9fafb;border-radius:var(--rs);padding:14px 10px;
-  display:flex;flex-direction:column;align-items:center;gap:2px;
-  border:1px solid transparent;transition:all .15s;
-}
-.cs-mo-cell:hover{border-color:var(--border-strong);background:var(--surface-hover);box-shadow:var(--shadow-sm);}
-.cs-mo-cell b{font-size:28px;font-weight:800;color:var(--c-accent);line-height:1.1;}
-.cs-mo-cell span{font-size:11px;font-weight:600;color:var(--c-muted);letter-spacing:.3px;}
-.cs-mo-sales{display:flex;flex-wrap:wrap;align-items:center;gap:5px;}
-.cs-mo-sales-label{font-size:11px;color:var(--c-muted);font-weight:600;}
-.cs-mo-sales-item{display:inline-flex;align-items:baseline;gap:2px;font-size:12px;font-weight:500;color:var(--c-soft);background:#f3f4f6;padding:2px 8px;border-radius:5px;}
-.cs-mo-sales-item b{font-weight:700;color:var(--c-accent);}
-
 /* Preview */
 .cs-card--preview{border-color:var(--c-accent-light);}
 .cs-preview-text{white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.9;color:var(--c-soft);overflow-y:auto;font-family:inherit;margin:0;}
@@ -575,5 +543,5 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 
 .cs-empty{text-align:center;padding:32px 24px;color:var(--c-muted);font-size:13px;display:flex;flex-direction:column;align-items:center;gap:8px;}
 
-@media(max-width:960px){.cs-main{flex-direction:column;}.cs-right{width:100%;position:static;align-self:auto;}.cs-daily-grid{grid-template-columns:1fr;}.cs-mo-grid{grid-template-columns:1fr 1fr;}.cs-ht-row{grid-template-columns:60px repeat(6,1fr) 100px;font-size:12px;padding:10px 8px;}}
+@media(max-width:960px){.cs-main{flex-direction:column;}.cs-right{width:100%;position:static;align-self:auto;}.cs-daily-grid{grid-template-columns:1fr;}.cs-ht-row{grid-template-columns:60px repeat(6,1fr) 100px;font-size:12px;padding:10px 8px;}}
 </style>
