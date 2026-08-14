@@ -54,7 +54,7 @@
                 </div>
                 <div class="cs-sales-chips" v-if="selectedCountries.length">
                   <div v-for="ct in selectedCountries" :key="ct.country" class="cs-chip-row">
-                    <el-tag size="small" effect="dark" type="success" :closable="authStore.canEdit(PAGE)" @close="removeCountryRow(ct.country)">{{ ct.country }}</el-tag>
+                    <el-tag size="small" effect="dark" type="success" :closable="authStore.canEdit(PAGE) && !isAll" @close="removeCountryRow(ct.country)">{{ ct.country }}</el-tag>
                     <span class="cs-stepper">
                       <button :disabled="!authStore.canEdit(PAGE) || isAll" class="cs-step-btn" @click="countryMap[ct.country] = Math.max(1, (countryMap[ct.country]||1) - 1); syncCountryTotal()">−</button>
                       <span class="cs-step-val">{{ countryMap[ct.country] || 0 }}</span>
@@ -74,7 +74,7 @@
                 </div>
                 <div class="cs-sales-chips" v-if="selectedSales.length">
                   <div v-for="sa in selectedSales" :key="sa.name" class="cs-chip-row">
-                    <el-tag size="small" effect="dark" :closable="authStore.canEdit(PAGE)" @close="removeSalesRow(sa.name)">{{ sa.name }}</el-tag>
+                    <el-tag size="small" effect="dark" :closable="authStore.canEdit(PAGE) && !isAll" @close="removeSalesRow(sa.name)">{{ sa.name }}</el-tag>
                     <span class="cs-stepper">
                       <button :disabled="!authStore.canEdit(PAGE) || isAll" class="cs-step-btn" @click="salesMap[sa.name] = Math.max(1, (salesMap[sa.name]||1) - 1)">−</button>
                       <span class="cs-step-val">{{ salesMap[sa.name] || 0 }}</span>
@@ -315,12 +315,17 @@ async function loadData() {
     existingId.value = null
     for (const k of Object.keys(salesMap)) delete salesMap[k]
     for (const k of Object.keys(countryMap)) delete countryMap[k]
-    nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys([]) })
     if (res.success && res.data.length) {
       const sum = k => res.data.reduce((s, r) => s + (r[k] || 0), 0)
       form.newCustomers = sum('newCustomers'); form.repliedCustomers = sum('repliedCustomers'); form.registeredCustomers = sum('registeredCustomers')
       form.groupedWithPlan = sum('groupedWithPlan'); form.visitingCustomers = sum('visitingCustomers'); form.closedDeals = sum('closedDeals')
+      // 聚合各账号今日国家客资与分配销售（只读展示）
+      for (const r of res.data) {
+        for (const cb of (Array.isArray(r.countryBreakdown) ? r.countryBreakdown : [])) { if (cb.country) countryMap[cb.country] = (countryMap[cb.country] || 0) + (cb.count || 0) }
+        for (const sa of (Array.isArray(r.salesAssignments) ? r.salesAssignments : [])) { if (sa.name) salesMap[sa.name] = (salesMap[sa.name] || 0) + (sa.count || 0) }
+      }
     } else { Object.assign(form, defaultForm()) }
+    nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys(Object.keys(salesMap)); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys(Object.keys(countryMap)) })
   } else if (res.success && res.data.length) {
     const r = res.data[0]; existingId.value = r.id
     form.newCustomers = r.newCustomers; form.repliedCustomers = r.repliedCustomers; form.registeredCustomers = r.registeredCustomers
