@@ -101,7 +101,13 @@ export const api = {
     list: (params) => request('/customer-stats?' + new URLSearchParams(params)),
     save: (data) => request('/customer-stats', { method: 'POST', body: JSON.stringify(data) }),
     delete: (id) => request('/customer-stats/' + id, { method: 'DELETE' }),
-    monthly: (month, accountId) => request('/customer-stats/monthly/' + month + (accountId ? '?accountId=' + accountId : '')),
+    monthly: (month, accountId, endDate) => {
+      const q = new URLSearchParams()
+      if (accountId) q.set('accountId', accountId)
+      if (endDate) q.set('endDate', endDate)
+      const qs = q.toString()
+      return request('/customer-stats/monthly/' + month + (qs ? '?' + qs : ''))
+    },
   },
   users: {
     list: () => request('/users'),

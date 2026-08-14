@@ -331,7 +331,7 @@ async function loadData() {
     form.groupedWithPlan = r.groupedWithPlan; form.visitingCustomers = r.visitingCustomers; form.closedDeals = r.closedDeals
     restoreSalesMap(r.salesAssignments); restoreCountryMap(r.countryBreakdown, !(r.countryBreakdown && r.countryBreakdown.length) /* 有客资则强制同步新客户总数，无客资(老数据)保留手填值 */)
   } else { existingId.value = null; Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys([]) }) }
-  const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value); if (mRes.success) Object.assign(monthly, mRes.data)
+  const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value, d); if (mRes.success) Object.assign(monthly, mRes.data)
   // 历史仅加载当月数据
   const hQ = { startDate: d.substring(0, 7) + '-01', endDate: d.substring(0, 7) + '-31' }
   if (!isAllMode) hQ.accountId = accountId.value
@@ -385,7 +385,7 @@ const previewText = computed(() => {
 })
 async function copyPreview() { if (!previewText.value) { ElMessage.warning('请先填写数据'); return }; try { await navigator.clipboard.writeText(previewText.value); ElMessage.success('已复制') } catch { const ta = document.createElement('textarea'); ta.value = previewText.value; ta.style.position = 'fixed'; ta.style.left = '-9999px'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy') } catch {}; document.body.removeChild(ta) } }
 
-async function refreshMonthly() { const d = formDate.value; if (!d) return; const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value); if (mRes.success) Object.assign(monthly, mRes.data) }
+async function refreshMonthly() { const d = formDate.value; if (!d) return; const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value, d); if (mRes.success) Object.assign(monthly, mRes.data) }
 
 function doParsePaste() {
   parseResults.value = []; const raw = pasteInput.value.trim(); if (!raw) { ElMessage.warning('请先粘贴内容'); return }

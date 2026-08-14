@@ -694,12 +694,13 @@ function upsertCustomerStat(record) {
   return customerStatsDb.add(record)
 }
 
-// 月度汇总
-function getCustomerStatsMonthly(month, accountId) {
+// 月度汇总（month 到 endDate 的累计，endDate 缺省为整月）
+function getCustomerStatsMonthly(month, accountId, endDate) {
   const list = customerStatsDb.list().filter(r => {
     if (!r.date) return false
     const m = r.date.substring(0, 7)
     if (m !== month) return false
+    if (endDate && r.date > endDate) return false
     if (accountId && accountId !== 'all' && r.accountId !== accountId) return false
     return true
   })

@@ -16,8 +16,8 @@ router.get('/', (req, res) => {
 // 月度汇总
 router.get('/monthly/:month', (req, res) => {
   try {
-    const { accountId } = req.query;
-    const summary = db.getCustomerStatsMonthly(req.params.month, accountId);
+    const { accountId, endDate } = req.query;
+    const summary = db.getCustomerStatsMonthly(req.params.month, accountId, endDate);
     res.json({ success: true, data: summary });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
