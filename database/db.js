@@ -700,9 +700,22 @@ function getCustomerStatsMonthly(month, accountId) {
     if (!r.date) return false
     const m = r.date.substring(0, 7)
     if (m !== month) return false
-    if (accountId && r.accountId !== accountId) return false
+    if (accountId && accountId !== 'all' && r.accountId !== accountId) return false
     return true
   })
+  // 按账号分组月度（全部账号模式）
+  const perAccount = (() => {
+    if (accountId !== 'all') return []
+    const agg = {}
+    for (const r of list) {
+      const key = r.accountId || ''
+      if (!agg[key]) agg[key] = { accountId: r.accountId, accountName: r.accountName || '', newCustomers: 0, repliedCustomers: 0, registeredCustomers: 0, groupedWithPlan: 0, visitingCustomers: 0, closedDeals: 0 }
+      const a = agg[key]
+      a.newCustomers += (r.newCustomers || 0); a.repliedCustomers += (r.repliedCustomers || 0); a.registeredCustomers += (r.registeredCustomers || 0)
+      a.groupedWithPlan += (r.groupedWithPlan || 0); a.visitingCustomers += (r.visitingCustomers || 0); a.closedDeals += (r.closedDeals || 0)
+    }
+    return Object.values(agg)
+  })()
   return {
     month,
     newCustomers: list.reduce((s, r) => s + (r.newCustomers || 0), 0),
@@ -733,7 +746,8 @@ function getCustomerStatsMonthly(month, accountId) {
       }
       return Object.entries(agg).map(([country, count]) => ({ country, count })).sort((a, b) => b.count - a.count)
     })(),
-    records: list.length
+    records: list.length,
+    perAccount
   }
 }
 

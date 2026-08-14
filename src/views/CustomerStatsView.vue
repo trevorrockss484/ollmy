@@ -6,20 +6,22 @@
         <el-date-picker v-model="formDate" type="date" value-format="YYYY-MM-DD" size="default" @change="onDateChange" class="cs-date-pick" />
         <el-select v-model="accountId" size="default" placeholder="选择广告账号" @change="onAccountChange" class="cs-account-sel">
           <el-option v-for="a in accounts" :key="a.id" :label="a.name" :value="a.id" />
+          <el-option label="全部账号" value="all" />
         </el-select>
-        <span v-if="existingId" class="cs-badge cs-badge--ok">已有记录</span>
+        <span v-if="isAll" class="cs-badge cs-badge--ok">全部账号汇总</span>
+        <span v-else-if="existingId" class="cs-badge cs-badge--ok">已有记录</span>
         <span v-else class="cs-badge cs-badge--new">新日期</span>
       </div>
       <div class="cs-top-right">
-        <el-button v-if="authStore.canEdit(PAGE)" @click="salesManageVisible = true" class="cs-ghost-btn"><el-icon :size="14"><User /></el-icon> 销售名单</el-button>
+        <el-button v-if="authStore.canEdit(PAGE) && !isAll" @click="salesManageVisible = true" class="cs-ghost-btn"><el-icon :size="14"><User /></el-icon> 销售名单</el-button>
       </div>
     </div>
 
     <div class="cs-toolbar">
-      <el-button v-if="authStore.canEdit(PAGE)" type="primary" @click="saveData"><el-icon :size="15"><Check /></el-icon> 保存</el-button>
-      <el-button v-if="authStore.canEdit(PAGE)" @click="pasteVisible = true"><el-icon :size="15"><Files /></el-icon> 粘贴识别</el-button>
+      <el-button v-if="authStore.canEdit(PAGE) && !isAll" type="primary" @click="saveData"><el-icon :size="15"><Check /></el-icon> 保存</el-button>
+      <el-button v-if="authStore.canEdit(PAGE) && !isAll" @click="pasteVisible = true"><el-icon :size="15"><Files /></el-icon> 粘贴识别</el-button>
       <el-button @click="copyPreview"><el-icon :size="15"><DocumentCopy /></el-icon> 一键复制</el-button>
-      <el-button v-if="authStore.canEdit(PAGE)" @click="clearForm" class="cs-clear-btn"><el-icon :size="15"><Delete /></el-icon> 清空</el-button>
+      <el-button v-if="authStore.canEdit(PAGE) && !isAll" @click="clearForm" class="cs-clear-btn"><el-icon :size="15"><Delete /></el-icon> 清空</el-button>
       <transition name="cs-fade">
         <span v-if="saveMsg" class="cs-save-msg" :class="{ ok: saveOk, fail: !saveOk }">{{ saveMsg }}</span>
       </transition>
@@ -35,27 +37,28 @@
           </header>
           <div class="cs-daily-grid">
             <label class="cs-ditem"><span class="cs-dnum" style="--c:#6366f1">1</span><span class="cs-dlabel">新客户</span><span class="cs-dinput-wrap"><input type="number" :value="form.newCustomers" min="0" placeholder="自动" class="cs-dinput-raw cs-dinput-raw--auto" disabled title="由「国家客资」自动计算" /></span></label>
-            <label class="cs-ditem"><span class="cs-dnum" style="--c:#8b5cf6">2</span><span class="cs-dlabel">有回复</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.repliedCustomers" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE)" /></span></label>
-            <label class="cs-ditem"><span class="cs-dnum" style="--c:#06b6d4">3</span><span class="cs-dlabel">已登记</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.registeredCustomers" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE)" /></span></label>
-            <label class="cs-ditem"><span class="cs-dnum" style="--c:#10b981">4</span><span class="cs-dlabel">拉群+图</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.groupedWithPlan" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE)" /></span></label>
-            <label class="cs-ditem"><span class="cs-dnum" style="--c:#f59e0b">5</span><span class="cs-dlabel">来访</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.visitingCustomers" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE)" /></span></label>
-            <label class="cs-ditem"><span class="cs-dnum" style="--c:#ef4444">6</span><span class="cs-dlabel">成交</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.closedDeals" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE)" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#8b5cf6">2</span><span class="cs-dlabel">有回复</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.repliedCustomers" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE) || isAll" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#06b6d4">3</span><span class="cs-dlabel">已登记</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.registeredCustomers" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE) || isAll" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#10b981">4</span><span class="cs-dlabel">拉群+图</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.groupedWithPlan" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE) || isAll" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#f59e0b">5</span><span class="cs-dlabel">来访</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.visitingCustomers" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE) || isAll" /></span></label>
+            <label class="cs-ditem"><span class="cs-dnum" style="--c:#ef4444">6</span><span class="cs-dlabel">成交</span><span class="cs-dinput-wrap"><input type="number" v-model.number="form.closedDeals" min="0" placeholder="0" class="cs-dinput-raw" :disabled="!authStore.canEdit(PAGE) || isAll" /></span></label>
           </div>
 
           <div class="cs-bottom-row">
             <div class="cs-sales cs-sales--half">
               <div class="cs-sales-hd"><span class="cs-dnum" style="--c:#a78bfa">7</span><span class="cs-dlabel">国家客资</span><span class="cs-sales-cnt" v-if="selectedCountries.length">{{ totalCountryCount }}个</span></div>
+              <el-input v-model="countryFilterText" placeholder="搜索国家或电话号，如 36" size="small" clearable class="cs-country-search" />
               <div class="cs-sales-body">
                 <div class="cs-sales-tree">
-                  <el-tree ref="countryTreeRef" :data="countryTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onCountryTreeCheck" :default-expanded-keys="[]" :disabled="!authStore.canEdit(PAGE)" />
+                  <el-tree ref="countryTreeRef" :data="countryTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onCountryTreeCheck" :default-expanded-keys="[]" :disabled="!authStore.canEdit(PAGE) || isAll" :filter-node-method="countryFilterNode" />
                 </div>
                 <div class="cs-sales-chips" v-if="selectedCountries.length">
                   <div v-for="ct in selectedCountries" :key="ct.country" class="cs-chip-row">
                     <el-tag size="small" effect="dark" type="success" :closable="authStore.canEdit(PAGE)" @close="removeCountryRow(ct.country)">{{ ct.country }}</el-tag>
                     <span class="cs-stepper">
-                      <button :disabled="!authStore.canEdit(PAGE)" class="cs-step-btn" @click="countryMap[ct.country] = Math.max(1, (countryMap[ct.country]||1) - 1); syncCountryTotal()">−</button>
+                      <button :disabled="!authStore.canEdit(PAGE) || isAll" class="cs-step-btn" @click="countryMap[ct.country] = Math.max(1, (countryMap[ct.country]||1) - 1); syncCountryTotal()">−</button>
                       <span class="cs-step-val">{{ countryMap[ct.country] || 0 }}</span>
-                      <button :disabled="!authStore.canEdit(PAGE)" class="cs-step-btn cs-step-btn--plus" @click="countryMap[ct.country] = (countryMap[ct.country]||0) + 1; syncCountryTotal()">+</button>
+                      <button :disabled="!authStore.canEdit(PAGE) || isAll" class="cs-step-btn cs-step-btn--plus" @click="countryMap[ct.country] = (countryMap[ct.country]||0) + 1; syncCountryTotal()">+</button>
                     </span>
                   </div>
                 </div>
@@ -67,15 +70,15 @@
               <div class="cs-sales-hd"><span class="cs-dnum" style="--c:#f472b6">8</span><span class="cs-dlabel">分配销售</span><span class="cs-sales-cnt" v-if="selectedSales.length">{{ selectedSales.length }}人</span></div>
               <div class="cs-sales-body">
                 <div class="cs-sales-tree">
-                  <el-tree ref="salesTreeRef" :data="salesTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onSalesTreeCheck" :disabled="!authStore.canEdit(PAGE)" />
+                  <el-tree ref="salesTreeRef" :data="salesTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onSalesTreeCheck" :disabled="!authStore.canEdit(PAGE) || isAll" />
                 </div>
                 <div class="cs-sales-chips" v-if="selectedSales.length">
                   <div v-for="sa in selectedSales" :key="sa.name" class="cs-chip-row">
                     <el-tag size="small" effect="dark" :closable="authStore.canEdit(PAGE)" @close="removeSalesRow(sa.name)">{{ sa.name }}</el-tag>
                     <span class="cs-stepper">
-                      <button :disabled="!authStore.canEdit(PAGE)" class="cs-step-btn" @click="salesMap[sa.name] = Math.max(1, (salesMap[sa.name]||1) - 1)">−</button>
+                      <button :disabled="!authStore.canEdit(PAGE) || isAll" class="cs-step-btn" @click="salesMap[sa.name] = Math.max(1, (salesMap[sa.name]||1) - 1)">−</button>
                       <span class="cs-step-val">{{ salesMap[sa.name] || 0 }}</span>
-                      <button :disabled="!authStore.canEdit(PAGE)" class="cs-step-btn cs-step-btn--plus" @click="salesMap[sa.name] = (salesMap[sa.name]||0) + 1">+</button>
+                      <button :disabled="!authStore.canEdit(PAGE) || isAll" class="cs-step-btn cs-step-btn--plus" @click="salesMap[sa.name] = (salesMap[sa.name]||0) + 1">+</button>
                     </span>
                   </div>
                 </div>
@@ -104,6 +107,24 @@
           <div class="cs-mo-sales" v-if="monthly.salesAssignments.length">
             <span class="cs-mo-sales-label">分配</span>
             <span v-for="sa in monthly.salesAssignments" :key="sa.name" class="cs-mo-sales-item">{{ sa.name }} <b>{{ sa.count }}</b>个</span>
+          </div>
+        </section>
+
+        <!-- 各账号月度汇总（全部账号模式） -->
+        <section class="cs-card cs-card--peracc" v-if="isAll && monthly.perAccount && monthly.perAccount.length">
+          <header class="cs-card-hd"><span class="cs-hd-dot cs-hd-dot--sec"></span> 各账号月度 <span class="cs-hd-sub">{{ monthLabel }} · 共{{ monthly.perAccount.length }}个账号</span></header>
+          <div class="cs-pa-grid">
+            <div v-for="pa in monthly.perAccount" :key="pa.accountId" class="cs-pa-card">
+              <div class="cs-pa-name">{{ pa.accountName || pa.accountId }}</div>
+              <div class="cs-pa-cells">
+                <div class="cs-pa-cell"><b>{{ pa.newCustomers }}</b><span>总询盘</span></div>
+                <div class="cs-pa-cell"><b>{{ pa.repliedCustomers }}</b><span>有回复</span></div>
+                <div class="cs-pa-cell"><b>{{ pa.registeredCustomers }}</b><span>已登记</span></div>
+                <div class="cs-pa-cell"><b>{{ pa.groupedWithPlan }}</b><span>拉群+图</span></div>
+                <div class="cs-pa-cell"><b>{{ pa.visitingCustomers }}</b><span>来访</span></div>
+                <div class="cs-pa-cell"><b>{{ pa.closedDeals }}</b><span>成交</span></div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -170,6 +191,7 @@ const PAGE = '/customer-stats'
 
 const accounts = ref(ACCOUNTS)
 const accountId = ref(localStorage.getItem('cs_accountId') || accounts.value[0].id)
+const isAll = computed(() => accountId.value === 'all')
 const formDate = ref(todayStr())
 const existingId = ref(null)
 const saveMsg = ref('')
@@ -184,6 +206,7 @@ const pasteInput = ref('')
 const parseResults = ref([])
 const salesTreeRef = ref(null)
 const countryTreeRef = ref(null)
+const countryFilterText = ref('')
 
 // 国家数据（共享模块：src/data/countryTree.js）
 
@@ -199,7 +222,7 @@ const countryMap = reactive({})
 const monthly = reactive({
   newCustomers: 0, repliedCustomers: 0, registeredCustomers: 0,
   groupedWithPlan: 0, visitingCustomers: 0, closedDeals: 0,
-  salesAssignments: [], countryBreakdown: [], records: 0,
+  salesAssignments: [], countryBreakdown: [], records: 0, perAccount: [],
 })
 const history = ref([])
 
@@ -225,6 +248,15 @@ function onCountryTreeCheck(_n, checked) {
   for (const k of Object.keys(countryMap)) { if (!leafs.includes(k)) delete countryMap[k] }
   syncCountryTotal()
 }
+function countryFilterNode(value, data) {
+  if (!value) return true
+  const v = String(value).trim().toLowerCase()
+  if (!v) return true
+  if (data.children) return false
+  return String(data.label || '').toLowerCase().includes(v) || String(data.key || '').toLowerCase().includes(v)
+}
+function onCountryFilter() { countryTreeRef.value?.filter(countryFilterText.value) }
+watch(countryFilterText, () => onCountryFilter())
 const selectedSales = computed(() => Object.entries(salesMap).filter(([_, v]) => v > 0).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count))
 const selectedCountries = computed(() => Object.entries(countryMap).filter(([_, v]) => v > 0).map(([country, count]) => ({ country, count })))
 const totalCountryCount = computed(() => selectedCountries.value.reduce((s, c) => s + (c.count || 0), 0))
@@ -272,9 +304,23 @@ async function deleteSalesPerson(sp) { const res = await api.salesPersons.delete
 
 async function loadData() {
   const d = formDate.value; if (!d) return
+  const isAllMode = accountId.value === 'all'
   autoSaveSkip = true
-  const res = await api.customerStats.list({ startDate: d, endDate: d, accountId: accountId.value })
-  if (res.success && res.data.length) {
+  monthly.perAccount = []
+  const dayQ = { startDate: d, endDate: d }
+  if (!isAllMode) dayQ.accountId = accountId.value
+  const res = await api.customerStats.list(dayQ)
+  if (isAllMode) {
+    existingId.value = null
+    for (const k of Object.keys(salesMap)) delete salesMap[k]
+    for (const k of Object.keys(countryMap)) delete countryMap[k]
+    nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys([]) })
+    if (res.success && res.data.length) {
+      const sum = k => res.data.reduce((s, r) => s + (r[k] || 0), 0)
+      form.newCustomers = sum('newCustomers'); form.repliedCustomers = sum('repliedCustomers'); form.registeredCustomers = sum('registeredCustomers')
+      form.groupedWithPlan = sum('groupedWithPlan'); form.visitingCustomers = sum('visitingCustomers'); form.closedDeals = sum('closedDeals')
+    } else { Object.assign(form, defaultForm()) }
+  } else if (res.success && res.data.length) {
     const r = res.data[0]; existingId.value = r.id
     form.newCustomers = r.newCustomers; form.repliedCustomers = r.repliedCustomers; form.registeredCustomers = r.registeredCustomers
     form.groupedWithPlan = r.groupedWithPlan; form.visitingCustomers = r.visitingCustomers; form.closedDeals = r.closedDeals
@@ -282,7 +328,9 @@ async function loadData() {
   } else { existingId.value = null; Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys([]) }) }
   const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value); if (mRes.success) Object.assign(monthly, mRes.data)
   // 历史仅加载当月数据
-  const hRes = await api.customerStats.list({ accountId: accountId.value, startDate: d.substring(0, 7) + '-01', endDate: d.substring(0, 7) + '-31' }); if (hRes.success) history.value = hRes.data.sort((a, b) => b.date.localeCompare(a.date))
+  const hQ = { startDate: d.substring(0, 7) + '-01', endDate: d.substring(0, 7) + '-31' }
+  if (!isAllMode) hQ.accountId = accountId.value
+  const hRes = await api.customerStats.list(hQ); if (hRes.success) history.value = hRes.data.sort((a, b) => b.date.localeCompare(a.date))
   autoSaveSkip = false; saveMsg.value = ''
 }
 
@@ -291,6 +339,7 @@ function onDateChange() { if (skipAutoLoad) return; saveMsg.value = ''; loadData
 function onAccountChange() { localStorage.setItem('cs_accountId', accountId.value); loadData() }
 
 async function saveData(silent) {
+  if (accountId.value === 'all') return
   const d = formDate.value; if (!d) { if (!silent) ElMessage.warning('请选择日期'); return }
   const acc = accounts.value.find(a => a.id === accountId.value) || accounts.value[0]
   if (!silent) { saveMsg.value = '保存中...'; saveOk.value = true }
@@ -420,6 +469,7 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 
 /* Sales */
 .cs-sales-hd{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.cs-country-search{margin-bottom:8px;}
 .cs-sales-cnt{font-size:12px;font-weight:600;color:var(--c-accent);margin-left:auto;}
 .cs-bottom-row{display:flex;gap:16px;border-top:1px solid var(--c-accent-light);padding-top:14px;}
 .cs-sales--half{flex:1;min-width:0;border-top:none;padding-top:0;}
@@ -456,6 +506,16 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .cs-ht-date i{font-style:normal;font-size:11px;font-weight:500;color:var(--c-muted);}
 .cs-ht-v{font-size:16px;font-weight:700;color:var(--c-text);text-align:center;}
 .cs-ht-s{font-size:12px;color:var(--c-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* Per-account */
+.cs-pa-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.cs-pa-card{background:#f9fafb;border:1px solid var(--c-border);border-radius:var(--rs);padding:12px 14px;}
+.cs-pa-name{font-size:13px;font-weight:700;color:var(--c-text);margin-bottom:10px;}
+.cs-pa-cells{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.cs-pa-cell{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.cs-pa-cell b{font-size:20px;font-weight:800;color:var(--c-accent);line-height:1.1;}
+.cs-pa-cell span{font-size:10px;font-weight:600;color:var(--c-muted);}
+@media(max-width:960px){.cs-pa-grid{grid-template-columns:1fr;}}
 
 /* Monthly */
 .cs-mo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;}
