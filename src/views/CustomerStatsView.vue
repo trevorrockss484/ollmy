@@ -90,7 +90,7 @@
 
         <!-- 月度汇总 -->
         <section class="cs-card cs-card--monthly">
-          <header class="cs-card-hd"><span class="cs-hd-dot cs-hd-dot--accent"></span> 月度汇总 <span class="cs-hd-sub">{{ monthLabel }} · {{ monthly.records }}天</span></header>
+          <header class="cs-card-hd"><span class="cs-hd-dot cs-hd-dot--accent"></span> {{ isAll ? '全部账号月度汇总' : '月度汇总' }} <span class="cs-hd-sub">{{ monthLabel }} · {{ monthly.records }}天</span></header>
           <div class="cs-mo-grid">
             <div class="cs-mo-cell"><b>{{ monthly.newCustomers }}</b><span>总询盘</span></div>
             <div class="cs-mo-cell"><b>{{ monthly.repliedCustomers }}</b><span>有回复</span></div>
@@ -130,10 +130,10 @@
 
         <!-- 历史记录 -->
         <section class="cs-card cs-card--history">
-          <header class="cs-card-hd"><span class="cs-hd-dot cs-hd-dot--sec"></span> 历史记录 <span class="cs-hd-hint">点击可编辑</span></header>
+          <header class="cs-card-hd"><span class="cs-hd-dot cs-hd-dot--sec"></span> 历史记录 <span class="cs-hd-hint">{{ isAll ? '全部账号 · 只读' : '点击可编辑' }}</span></header>
           <div class="cs-ht" v-if="history.length">
-            <div class="cs-ht-row cs-ht-row--head"><span>日期</span><span>新客户</span><span>回复</span><span>登记</span><span>拉群+图</span><span>来访</span><span>成交</span><span class="cs-ht-s">分配销售</span></div>
-            <div v-for="r in history" :key="r.id" class="cs-ht-row" @click="authStore.canEdit(PAGE) && editRecord(r)" :style="!authStore.canEdit(PAGE) ? {cursor:'default',opacity:.8} : {}">
+            <div class="cs-ht-row cs-ht-row--head" :class="{ 'cs-ht-row--all': isAll }"><span>日期</span><span>新客户</span><span>回复</span><span>登记</span><span>拉群+图</span><span>来访</span><span>成交</span><span v-if="isAll" class="cs-ht-acc">账号</span><span class="cs-ht-s">分配销售</span></div>
+            <div v-for="r in history" :key="r.id" class="cs-ht-row" :class="{ 'cs-ht-row--all': isAll }" @click="!isAll && authStore.canEdit(PAGE) && editRecord(r)" :style="isAll || !authStore.canEdit(PAGE) ? {cursor:'default',opacity:.8} : {}">
               <span class="cs-ht-date">{{ shortDate(r.date) }}<i>{{ dayName(r.date) }}</i></span>
               <span class="cs-ht-v">{{ r.newCustomers || 0 }}</span>
               <span class="cs-ht-v">{{ r.repliedCustomers || 0 }}</span>
@@ -141,6 +141,7 @@
               <span class="cs-ht-v">{{ r.groupedWithPlan || 0 }}</span>
               <span class="cs-ht-v">{{ r.visitingCustomers || 0 }}</span>
               <span class="cs-ht-v">{{ r.closedDeals || 0 }}</span>
+              <span v-if="isAll" class="cs-ht-acc">{{ r.accountName || r.accountId }}</span>
               <span class="cs-ht-s">{{ formatSalesText(r.salesAssignments) || '—' }}</span>
             </div>
           </div>
@@ -497,6 +498,8 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 /* History */
 .cs-ht{border:1px solid var(--c-border);border-radius:var(--rs);overflow:hidden auto;}
 .cs-ht-row{display:grid;grid-template-columns:88px repeat(6,1fr) 150px;align-items:center;gap:6px;padding:13px 16px;border-bottom:1px solid #f3f4f6;font-size:14px;font-weight:600;color:var(--c-soft);}
+.cs-ht-row--all{grid-template-columns:88px repeat(6,1fr) 120px 150px;}
+.cs-ht-acc{font-size:12px;color:var(--c-soft);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cs-ht-row--head{background:#f9fafb;font-size:12px;color:var(--c-muted);padding:9px 16px;letter-spacing:.2px;font-weight:700;}
 .cs-ht-row:not(.cs-ht-row--head){cursor:pointer;transition:all .12s;}
 .cs-ht-row:nth-child(even):not(.cs-ht-row--head){background:#fcfcfd;}
