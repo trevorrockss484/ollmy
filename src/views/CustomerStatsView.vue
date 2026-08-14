@@ -50,7 +50,7 @@
               <el-input v-model="countryFilterText" placeholder="搜索国家或电话号，如 36" size="small" clearable class="cs-country-search" />
               <div class="cs-sales-body">
                 <div class="cs-sales-tree">
-                  <el-tree ref="countryTreeRef" :data="countryTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onCountryTreeCheck" :default-expanded-keys="[]" :disabled="!authStore.canEdit(PAGE) || isAll" :filter-node-method="countryFilterNode" />
+                  <el-tree ref="countryTreeRef" :data="countryTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children', disabled: () => !authStore.canEdit(PAGE) || isAll }" default-expand-all @check="onCountryTreeCheck" :default-expanded-keys="[]" :filter-node-method="countryFilterNode" />
                 </div>
                 <div class="cs-sales-chips" v-if="selectedCountries.length">
                   <div v-for="ct in selectedCountries" :key="ct.country" class="cs-chip-row">
@@ -70,7 +70,7 @@
               <div class="cs-sales-hd"><span class="cs-dnum" style="--c:#f472b6">8</span><span class="cs-dlabel">分配销售</span><span class="cs-sales-cnt" v-if="selectedSales.length">{{ selectedSales.length }}人</span></div>
               <div class="cs-sales-body">
                 <div class="cs-sales-tree">
-                  <el-tree ref="salesTreeRef" :data="salesTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children' }" default-expand-all @check="onSalesTreeCheck" :disabled="!authStore.canEdit(PAGE) || isAll" />
+                  <el-tree ref="salesTreeRef" :data="salesTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children', disabled: () => !authStore.canEdit(PAGE) || isAll }" default-expand-all @check="onSalesTreeCheck" />
                 </div>
                 <div class="cs-sales-chips" v-if="selectedSales.length">
                   <div v-for="sa in selectedSales" :key="sa.name" class="cs-chip-row">
@@ -130,10 +130,10 @@
 
         <!-- 历史记录 -->
         <section class="cs-card cs-card--history">
-          <header class="cs-card-hd"><span class="cs-hd-dot cs-hd-dot--sec"></span> 历史记录 <span class="cs-hd-hint">{{ isAll ? '全部账号 · 只读' : '点击可编辑' }}</span></header>
+          <header class="cs-card-hd"><span class="cs-hd-dot cs-hd-dot--sec"></span> 历史记录 <span class="cs-hd-hint">{{ isAll ? '全部账号每日合并 · 只读' : '点击可编辑' }}</span></header>
           <div class="cs-ht" v-if="history.length">
-            <div class="cs-ht-row cs-ht-row--head" :class="{ 'cs-ht-row--all': isAll }"><span>日期</span><span>新客户</span><span>回复</span><span>登记</span><span>拉群+图</span><span>来访</span><span>成交</span><span v-if="isAll" class="cs-ht-acc">账号</span><span class="cs-ht-s">分配销售</span></div>
-            <div v-for="r in history" :key="r.id" class="cs-ht-row" :class="{ 'cs-ht-row--all': isAll }" @click="!isAll && authStore.canEdit(PAGE) && editRecord(r)" :style="isAll || !authStore.canEdit(PAGE) ? {cursor:'default',opacity:.8} : {}">
+            <div class="cs-ht-row cs-ht-row--head"><span>日期</span><span>新客户</span><span>回复</span><span>登记</span><span>拉群+图</span><span>来访</span><span>成交</span><span class="cs-ht-s">分配销售</span></div>
+            <div v-for="r in history" :key="r.id" class="cs-ht-row" @click="!isAll && authStore.canEdit(PAGE) && editRecord(r)" :style="isAll || !authStore.canEdit(PAGE) ? {cursor:'default',opacity:.8} : {}">
               <span class="cs-ht-date">{{ shortDate(r.date) }}<i>{{ dayName(r.date) }}</i></span>
               <span class="cs-ht-v">{{ r.newCustomers || 0 }}</span>
               <span class="cs-ht-v">{{ r.repliedCustomers || 0 }}</span>
@@ -141,7 +141,6 @@
               <span class="cs-ht-v">{{ r.groupedWithPlan || 0 }}</span>
               <span class="cs-ht-v">{{ r.visitingCustomers || 0 }}</span>
               <span class="cs-ht-v">{{ r.closedDeals || 0 }}</span>
-              <span v-if="isAll" class="cs-ht-acc">{{ r.accountName || r.accountId }}</span>
               <span class="cs-ht-s">{{ formatSalesText(r.salesAssignments) || '—' }}</span>
             </div>
           </div>
@@ -336,7 +335,24 @@ async function loadData() {
   // 历史仅加载当月数据
   const hQ = { startDate: d.substring(0, 7) + '-01', endDate: d.substring(0, 7) + '-31' }
   if (!isAllMode) hQ.accountId = accountId.value
-  const hRes = await api.customerStats.list(hQ); if (hRes.success) history.value = hRes.data.sort((a, b) => b.date.localeCompare(a.date))
+  const hRes = await api.customerStats.list(hQ)
+  if (hRes.success) {
+    if (isAllMode) {
+      // 全部账号：按日期合并各账号总数
+      const byDate = {}
+      const add = (key, r) => {
+        if (!byDate[key]) byDate[key] = { id: 'all-' + key, date: key, newCustomers: 0, repliedCustomers: 0, registeredCustomers: 0, groupedWithPlan: 0, visitingCustomers: 0, closedDeals: 0, salesAssignments: {} }
+        const t = byDate[key]
+        t.newCustomers += (r.newCustomers || 0); t.repliedCustomers += (r.repliedCustomers || 0); t.registeredCustomers += (r.registeredCustomers || 0)
+        t.groupedWithPlan += (r.groupedWithPlan || 0); t.visitingCustomers += (r.visitingCustomers || 0); t.closedDeals += (r.closedDeals || 0)
+        for (const sa of (Array.isArray(r.salesAssignments) ? r.salesAssignments : [])) { if (sa.name) t.salesAssignments[sa.name] = (t.salesAssignments[sa.name] || 0) + (sa.count || 0) }
+      }
+      for (const r of hRes.data) add(r.date, r)
+      history.value = Object.values(byDate).map(t => ({ ...t, salesAssignments: Object.entries(t.salesAssignments).map(([name, count]) => ({ name, count })) })).sort((a, b) => b.date.localeCompare(a.date))
+    } else {
+      history.value = hRes.data.sort((a, b) => b.date.localeCompare(a.date))
+    }
+  }
   autoSaveSkip = false; saveMsg.value = ''
 }
 
@@ -503,8 +519,6 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 /* History */
 .cs-ht{border:1px solid var(--c-border);border-radius:var(--rs);overflow:hidden auto;}
 .cs-ht-row{display:grid;grid-template-columns:88px repeat(6,1fr) 150px;align-items:center;gap:6px;padding:13px 16px;border-bottom:1px solid #f3f4f6;font-size:14px;font-weight:600;color:var(--c-soft);}
-.cs-ht-row--all{grid-template-columns:88px repeat(6,1fr) 120px 150px;}
-.cs-ht-acc{font-size:12px;color:var(--c-soft);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cs-ht-row--head{background:#f9fafb;font-size:12px;color:var(--c-muted);padding:9px 16px;letter-spacing:.2px;font-weight:700;}
 .cs-ht-row:not(.cs-ht-row--head){cursor:pointer;transition:all .12s;}
 .cs-ht-row:nth-child(even):not(.cs-ht-row--head){background:#fcfcfd;}
