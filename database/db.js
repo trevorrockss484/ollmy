@@ -358,6 +358,7 @@ function _migrateDailyRecord(record) {
         countries: acc?.countries || {},
         summary: acc?.summary || '',
         optimize: acc?.optimize || '',
+        exchangeRate: acc?.exchangeRate ?? null,
         savedAt: acc?.savedAt || savedAt
       }
     }
@@ -373,6 +374,7 @@ function _migrateDailyRecord(record) {
       countries: base.countries || {},
       summary: base.summary || '',
       optimize: base.optimize || '',
+      exchangeRate: base.exchangeRate ?? null,
       savedAt
     }
   }
@@ -399,6 +401,7 @@ function pickAccountRecord(record, accountId) {
     countries: acc.countries || {},
     summary: acc.summary || '',
     optimize: acc.optimize || '',
+    exchangeRate: acc.exchangeRate ?? null,
     accountId: acc.accountId || id,
     accountName: acc.accountName || getAccountMeta(id).name,
     businessLine: acc.businessLine || '',
@@ -453,6 +456,7 @@ function saveDailyData(date, dailyRecord, options = {}) {
   const meta = getAccountMeta(accountId)
   const existing = _migrateDailyRecord(data.dailyData[date]) || { accounts: {}, savedAt: null }
   existing.accounts = existing.accounts || {}
+  const prevAcc = existing.accounts[accountId] || {}
   existing.accounts[accountId] = {
     accountId,
     accountName: dailyRecord.accountName || meta.name,
@@ -460,6 +464,7 @@ function saveDailyData(date, dailyRecord, options = {}) {
     countries: dailyRecord.countries || {},
     summary: dailyRecord.summary || '',
     optimize: dailyRecord.optimize || '',
+    exchangeRate: dailyRecord.exchangeRate != null ? dailyRecord.exchangeRate : (prevAcc.exchangeRate != null ? prevAcc.exchangeRate : null),
     savedAt: new Date().toISOString()
   }
 

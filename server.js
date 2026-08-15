@@ -53,7 +53,7 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 // ===== 所有 /api/ 路由统一设置JSON响应头（跳过非JSON端点） =====
 app.use('/api', (req, res, next) => {
   const path = req.path.toLowerCase();
-  if (path.includes('/download') || path.includes('/preview') || path.includes('/batch-download') || path.includes('/content')) {
+  if (path.includes('/download') || path.includes('/preview') || path.includes('/batch-download') || path.includes('/content') || path.includes('/events')) {
     return next();
   }
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -102,6 +102,7 @@ app.use('/api', checkPerm);
 // API 路由
 app.use('/api/config', require('./routes/config'));
 app.use('/api/daily', require('./routes/daily'));
+app.use('/api/events', require('./routes/events'));
 // reminders 路由需 db 层支持（暂未实现，禁用）
 // app.use('/api/reminders', require('./routes/reminders'));
 app.use('/api/vps', require('./routes/vps'));

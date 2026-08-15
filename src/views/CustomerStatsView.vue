@@ -167,6 +167,10 @@ import { ACCOUNTS } from '../data/accounts'
 const authStore = useAuthStore()
 const PAGE = '/customer-stats'
 
+// 每个页面实例唯一 ID（不持久化），实时更新时忽略自己发起的广播。
+// 不用 sessionStorage：复制标签页会继承 sessionStorage 导致互相忽略。
+const clientId = 'cs-' + Math.random().toString(36).slice(2) + '-' + Date.now()
+
 const accounts = ref(ACCOUNTS)
 const accountId = ref(localStorage.getItem('cs_accountId') || accounts.value[0].id)
 const isAll = computed(() => accountId.value === 'all')
@@ -344,7 +348,7 @@ async function saveData(silent) {
   const acc = accounts.value.find(a => a.id === accountId.value) || accounts.value[0]
   if (!silent) { saveMsg.value = '保存中...'; saveOk.value = true }
   try {
-    const payload = { date: d, accountId: accountId.value, accountName: acc.name, newCustomers: form.newCustomers || 0, repliedCustomers: form.repliedCustomers || 0, registeredCustomers: form.registeredCustomers || 0, groupedWithPlan: form.groupedWithPlan || 0, visitingCustomers: form.visitingCustomers || 0, closedDeals: form.closedDeals || 0, salesAssignments: selectedSales.value.filter(s => s.name), countryBreakdown: selectedCountries.value.filter(c => c.country) }
+    const payload = { date: d, accountId: accountId.value, accountName: acc.name, newCustomers: form.newCustomers || 0, repliedCustomers: form.repliedCustomers || 0, registeredCustomers: form.registeredCustomers || 0, groupedWithPlan: form.groupedWithPlan || 0, visitingCustomers: form.visitingCustomers || 0, closedDeals: form.closedDeals || 0, salesAssignments: selectedSales.value.filter(s => s.name), countryBreakdown: selectedCountries.value.filter(c => c.country), clientId }
     const res = await api.customerStats.save(payload)
     if (res.success) { existingId.value = res.data.id; saveMsg.value = silent ? '已自动保存' : '已保存'; saveOk.value = true; autoSaveSkip = true; await refreshMonthly(); autoSaveSkip = false } else { saveMsg.value = '❌ ' + (res.error || '未知错误'); saveOk.value = false }
     const currentMsg = saveMsg.value
@@ -416,8 +420,31 @@ watch(
   () => { triggerAutoSave() }
 )
 
-onMounted(async () => { await loadSalesPersons(); await loadData(); setTimeout(() => { autoSaveReady = true }, 800) })
-onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
+onMounted(async () => { await loadSalesPersons(); await loadData(); setTimeout(() => { autoSaveReady = true }, 800); startRealtime() })
+onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer); stopRealtime() })
+
+// ====== 实时更新 ======
+let eventSource = null
+function startRealtime() {
+  try {
+    const token = localStorage.getItem('pan_token') || ''
+    if (!token) return
+    eventSource = new EventSource('/api/events?token=' + encodeURIComponent(token))
+    eventSource.onmessage = (ev) => {
+      try {
+        const p = JSON.parse(ev.data)
+        if (p.type !== 'customer-stats-changed') return
+        if (p.clientId === clientId) return
+        if (autoSaveTimer) return // 本地有未保存修改，先让本地保存
+        // 刷新当前视图（数据/月度/历史）；日期/账号匹配由 loadData 自身处理
+        loadData()
+      } catch {}
+    }
+  } catch {}
+}
+function stopRealtime() {
+  if (eventSource) { try { eventSource.close() } catch {} ; eventSource = null }
+}
 </script>
 
 <style scoped>

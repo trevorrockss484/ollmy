@@ -9,6 +9,11 @@
           <el-select v-model="selectedAccountId" size="default" style="width:180px;" placeholder="选择广告账号" @change="onAccountChange">
             <el-option v-for="a in accounts" :key="a.id" :label="a.name" :value="a.id" />
           </el-select>
+          <div class="rate-box" title="输入今日汇率，填写美金后自动换算费用">
+            <span class="rate-label">汇率</span>
+            <el-input-number v-model="exchangeRate" :min="0" :precision="4" :controls="false" size="default" style="width:104px;" placeholder="今日汇率" :disabled="!authStore.canEdit(PAGE)" />
+            <el-button v-if="authStore.canEdit(PAGE)" size="default" text type="primary" @click="applyRateAll" :disabled="!exchangeRate">一键换算</el-button>
+          </div>
           <el-tag v-if="existingData" type="success" effect="dark" size="small" round>已有数据</el-tag>
           <el-tag v-else type="info" effect="plain" size="small" round>新日期</el-tag>
         </div>
@@ -164,7 +169,7 @@
                     <el-icon :size="10"><ArrowRight v-if="usdCollapsed" /><ArrowDown v-else /></el-icon>
                   </button>
                 </label>
-                <el-input-number v-model="countryData[c].usdBudget" :min="0" :precision="2" :controls="false" placeholder="$" class="cc-input-num cc-input-num--usd" :disabled="!authStore.canEdit(PAGE)" />
+                <el-input-number v-model="countryData[c].usdBudget" :min="0" :precision="2" :controls="false" placeholder="$" class="cc-input-num cc-input-num--usd" :disabled="!authStore.canEdit(PAGE)" @change="onUsdChange(c)" />
               </div>
               <div class="cc-input-item">
                 <label class="cc-input-label">客资</label>
@@ -268,6 +273,10 @@ import { ACCOUNTS } from '../data/accounts'
 const countryTreeData = sharedCountryTree
 
 const weekStore = useWeekStore()
+
+// 每个页面实例唯一 ID（不持久化），用于实时更新时忽略自己发起的广播。
+// 不用 sessionStorage：复制标签页会继承 sessionStorage，导致两个标签页 clientId 相同而互相忽略。
+const clientId = 'c-' + Math.random().toString(36).slice(2) + '-' + Date.now()
 
 // ====== 国家数据（使用共享模块 src/data/countryTree.js） ======
 const activeCountries = ref([])
@@ -420,6 +429,7 @@ const saveMsg = ref('')
 const saveOk = ref(true)
 const existingData = ref(false)
 const accounts = ref(ACCOUNTS)
+const exchangeRate = ref(null)
 const selectedAccountId = ref('lisa-office')
 const selectedAccount = computed(() => accounts.value.find(a => a.id === selectedAccountId.value) || accounts.value[0])
 
@@ -480,6 +490,14 @@ function resetFormData() {
   existingData.value = false
 }
 
+// 完全重置为周计划国家（用于切换账号无数据时，避免串到其他账号）
+function resetToWeekCountries() {
+  for (const k of Object.keys(countryData)) delete countryData[k]
+  activeCountries.value = [...(weekStore.currentWeek?.countries || [])]
+  for (const c of activeCountries.value) countryData[c] = defaultCountryFb()
+  expandedCountries.value = new Set()
+}
+
 function onAccountChange() {
   saveMsg.value = ''; autoSaveSkip = true
   resetFormData()
@@ -513,6 +531,27 @@ const n = v => v ?? 0
 function countryAvg(c) { const d = countryData[c]; if (!d) return 0; const b = n(d.budget), cu = n(d.newCustomer); return (b && cu) ? b / cu : 0 }
 function countryEffCost(c) { const d = countryData[c]; if (!d) return 0; const b = n(d.budget), g = n(d.grouped); return (b && g) ? b / g : 0 }
 
+// ====== 汇率换算 ======
+function onUsdChange(c) {
+  const r = exchangeRate.value
+  if (!r || r <= 0) return
+  const d = countryData[c]; if (!d) return
+  const usd = n(d.usdBudget)
+  if (usd > 0) d.budget = Math.round(usd * r * 100) / 100
+}
+
+function applyRateAll() {
+  const r = exchangeRate.value
+  if (!r || r <= 0) { ElMessage.warning('请先填写今日汇率'); return }
+  let count = 0
+  for (const c of activeCountries.value) {
+    const d = countryData[c]; if (!d) continue
+    const usd = n(d.usdBudget)
+    if (usd > 0) { d.budget = Math.round(usd * r * 100) / 100; count++ }
+  }
+  count ? ElMessage.success('已按汇率换算 ' + count + ' 个国家费用') : ElMessage.warning('无美金数据可换算')
+}
+
 const overallTotal = computed(() => {
   let budget = 0, usdBudget = 0, newCustomer = 0, grouped = 0
   const groupCountParts = []
@@ -542,6 +581,7 @@ async function loadExistingData(d) {
     const res = await api.daily.get(d, { accountId: selectedAccountId.value }); if (seq !== loadSeq) return
     existingData.value = !!(res.success && res.data)
     if (res.success && res.data && res.data.countries) {
+      exchangeRate.value = res.data.exchangeRate ?? null
       const savedCountries = Object.keys(res.data.countries)
       // 以已保存数据为准，替换初始的周计划国家列表
       activeCountries.value = [...savedCountries]
@@ -563,8 +603,12 @@ async function loadExistingData(d) {
           if (k in fb) countryData[c][k] = fb[k] ?? null
         })
       }
+    } else {
+      // 无保存数据 → 重置为周计划国家，避免串到其他账号的国家列表
+      exchangeRate.value = null
+      resetToWeekCountries()
     }
-  } catch(e) { existingData.value = false }
+  } catch(e) { existingData.value = false; exchangeRate.value = null; resetToWeekCountries() }
   autoSaveSkip = false; dataLoading.value = false
 }
 
@@ -684,7 +728,7 @@ async function saveData(silent) {
   }
   if (!silent) { saveMsg.value = '保存中...'; saveOk.value = true }
   try {
-    const res = await api.daily.save(date, { countries }, { accountId: selectedAccountId.value })
+    const res = await api.daily.save(date, { countries, exchangeRate: exchangeRate.value ?? null }, { accountId: selectedAccountId.value, clientId })
     if (res.success) { saveMsg.value = silent ? '已自动保存' : ' 已保存'; saveOk.value = true; existingData.value = true; const curMsg = saveMsg.value; setTimeout(() => { if (saveMsg.value === curMsg) saveMsg.value = '' }, 2500) }
     else { saveMsg.value = '❌ ' + (res.error||'未知错误'); saveOk.value = false }
   } catch(e) { saveMsg.value = '❌ ' + e.message; saveOk.value = false }
@@ -791,6 +835,7 @@ function triggerAutoSave() {
 watch(
   () => JSON.stringify({
     ac: activeCountries.value.join(','),
+    er: exchangeRate.value,
     cd: Object.fromEntries(
       Object.entries(countryData).map(([k, v]) => [k, {
         b: v.budget, u: v.usdBudget, c: v.newCustomer, g: v.grouped,
@@ -801,6 +846,29 @@ watch(
   () => { triggerAutoSave() },
   { deep: true }
 )
+
+let eventSource = null
+function startRealtime() {
+  try {
+    const token = localStorage.getItem('pan_token') || ''
+    if (!token) return
+    eventSource = new EventSource('/api/events?token=' + encodeURIComponent(token))
+    eventSource.onmessage = (ev) => {
+      try {
+        const p = JSON.parse(ev.data)
+        if (p.type !== 'daily-changed') return
+        if (p.clientId === clientId) return
+        if (p.date !== reportDate.value) return
+        if (p.accountId && p.accountId !== selectedAccountId.value) return
+        if (autoSaveTimer) return // 本地有未保存修改，等本地先保存
+        loadExistingData(reportDate.value)
+      } catch {}
+    }
+  } catch {}
+}
+function stopRealtime() {
+  if (eventSource) { try { eventSource.close() } catch {} ; eventSource = null }
+}
 
 onMounted(async () => {
   if (!weekStore.currentWeek) await weekStore.load()
@@ -814,9 +882,10 @@ onMounted(async () => {
     sessionStorage.removeItem('editDaily')
   }
   setTimeout(() => { autoSaveReady = true }, 1500)
+  startRealtime()
 })
 
-onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
+onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer); stopRealtime() })
 </script>
 
 <style scoped>
@@ -833,6 +902,17 @@ onUnmounted(() => { if (autoSaveTimer) clearTimeout(autoSaveTimer) })
 .top-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .top-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .top-left h2 { font-size: 20px; font-weight: 700; margin: 0; white-space: nowrap; }
+
+/* 汇率换算框 */
+.rate-box {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;
+  padding: 3px 6px 3px 10px;
+}
+.rate-label { font-size: 12px; font-weight: 700; color: #a16207; white-space: nowrap; }
+.rate-box :deep(.el-input__wrapper) { background: #fff; box-shadow: 0 0 0 1px #fde68a; }
+.rate-box :deep(.el-input__wrapper.is-focus) { box-shadow: 0 0 0 2px #f59e0b !important; }
+.rate-box :deep(.el-input__inner) { color: #a16207; font-weight: 700; }
 
 /* 国家芯片栏 — 独立一行，自动换行 */
 .country-chip-bar {

@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
+const bus = require('../database/events');
+
+function emitDailyChanged(date, accountId, clientId) {
+  bus.emit('daily-changed', { date, accountId: accountId || null, clientId: clientId || null });
+}
 
 // 查询日报（放前面，避免被 /:date 误匹配）
 router.get('/query/list', (req, res) => {
@@ -37,6 +42,7 @@ router.post('/:date', (req, res) => {
   try {
     const record = db.saveDailyData(req.params.date, req.body, { accountId: req.query.accountId });
     db.logOperation('daily.save', { date: req.params.date, accountId: req.query.accountId }, req.user);
+    emitDailyChanged(req.params.date, req.query.accountId, req.query.clientId);
     res.json({ success: true, data: record });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
@@ -48,6 +54,7 @@ router.delete('/:date', (req, res) => {
   try {
     db.deleteDailyData(req.params.date);
     db.logOperation('daily.delete', { date: req.params.date }, req.user);
+    emitDailyChanged(req.params.date, req.query.accountId, req.query.clientId);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, error: "服务器内部错误" });
