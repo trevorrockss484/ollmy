@@ -90,6 +90,7 @@
                         <el-button v-if="authStore.canEdit(PAGE) && !isAll" size="small" text type="danger" class="cs-cust-del" @click="removeCustomer(sa.name, c.id)"><el-icon :size="14"><Close /></el-icon></el-button>
                       </div>
                       <el-input v-model="c.name" placeholder="客户名，如 Yug Patel" size="small" class="cs-cust-text" :disabled="!authStore.canEdit(PAGE) || isAll" />
+                      <el-input v-model="c.detail" placeholder="客户详情，可填可不填" size="small" class="cs-cust-text" :disabled="!authStore.canEdit(PAGE) || isAll" />
                       <div v-if="c.name && c.country" class="cs-cust-groupname">
                         <el-icon :size="12"><Link /></el-icon>
                         <span class="cs-cust-groupname-text">{{ buildGroupName(c.name, c.country) }}</span>
@@ -333,7 +334,7 @@ function addCustomer(name) {
   // 默认选第一个仍有余额的国家
   const defCountry = registeredCountries.value.find(c => countryRemaining(c) > 0) || ''
   if (!defCountry) { ElMessage.warning('各国家客资已分配完，无法新增客户'); return }
-  salesMap[name].push({ id: ++custIdSeq, country: defCountry, name: '' })
+  salesMap[name].push({ id: ++custIdSeq, country: defCountry, name: '', detail: '' })
 }
 function onCustomerCountryChange(sa, c) {
   if (!c.country) return
@@ -361,11 +362,11 @@ function restoreSalesMap(arr) {
     for (const s of arr) {
       if (!s.name) continue
       if (Array.isArray(s.customers)) {
-        salesMap[s.name] = s.customers.map(c => ({ id: ++custIdSeq, country: c.country || '', name: c.name || c.text || '' }))
+        salesMap[s.name] = s.customers.map(c => ({ id: ++custIdSeq, country: c.country || '', name: c.name || c.text || '', detail: c.detail || '' }))
       } else {
         // 旧结构 { name, count }：生成 count 条空客户详情，待用户补全
         const n = s.count || 0
-        salesMap[s.name] = Array.from({ length: n }, () => ({ id: ++custIdSeq, country: '', name: '' }))
+        salesMap[s.name] = Array.from({ length: n }, () => ({ id: ++custIdSeq, country: '', name: '', detail: '' }))
       }
     }
   }
@@ -417,7 +418,7 @@ async function loadData() {
           if (!sa.name) continue
           if (!salesMap[sa.name]) salesMap[sa.name] = []
           const customers = Array.isArray(sa.customers) ? sa.customers : []
-          for (const c of customers) salesMap[sa.name].push({ id: ++custIdSeq, country: c.country || '', name: c.name || c.text || '' })
+          for (const c of customers) salesMap[sa.name].push({ id: ++custIdSeq, country: c.country || '', name: c.name || c.text || '', detail: c.detail || '' })
         }
       }
     } else { Object.assign(form, defaultForm()) }
@@ -463,7 +464,7 @@ async function saveData(silent) {
   const acc = accounts.value.find(a => a.id === accountId.value) || accounts.value[0]
   if (!silent) { saveMsg.value = '保存中...'; saveOk.value = true }
   try {
-    const payload = { date: d, accountId: accountId.value, accountName: acc.name, newCustomers: form.newCustomers || 0, repliedCustomers: form.repliedCustomers || 0, registeredCustomers: form.registeredCustomers || 0, groupedWithPlan: form.groupedWithPlan || 0, visitingCustomers: form.visitingCustomers || 0, closedDeals: form.closedDeals || 0, salesAssignments: Object.keys(salesMap).filter(n => (salesMap[n] || []).length > 0).map(n => ({ name: n, customers: (salesMap[n] || []).map(c => { const cname = (c.name || '').trim(); return { country: c.country || '', name: cname, text: cname ? buildGroupName(cname, c.country || '') : '' } }) })), countryBreakdown: selectedCountries.value.filter(c => c.country), clientId }
+    const payload = { date: d, accountId: accountId.value, accountName: acc.name, newCustomers: form.newCustomers || 0, repliedCustomers: form.repliedCustomers || 0, registeredCustomers: form.registeredCustomers || 0, groupedWithPlan: form.groupedWithPlan || 0, visitingCustomers: form.visitingCustomers || 0, closedDeals: form.closedDeals || 0, salesAssignments: Object.keys(salesMap).filter(n => (salesMap[n] || []).length > 0).map(n => ({ name: n, customers: (salesMap[n] || []).map(c => { const cname = (c.name || '').trim(); const gname = cname ? buildGroupName(cname, c.country || '') : ''; const detail = (c.detail || '').trim(); return { country: c.country || '', name: cname, detail, text: gname ? (gname + (detail ? '，' + detail : '')) : detail } }) })), countryBreakdown: selectedCountries.value.filter(c => c.country), clientId }
     const res = await api.customerStats.save(payload)
     if (res.success) { existingId.value = res.data.id; saveMsg.value = silent ? '已自动保存' : '已保存'; saveOk.value = true; autoSaveSkip = true; await refreshMonthly(); autoSaveSkip = false } else { saveMsg.value = '❌ ' + (res.error || '未知错误'); saveOk.value = false }
     const currentMsg = saveMsg.value
@@ -500,7 +501,7 @@ async function doParsePaste() {
   const m5 = daySection.match(/来访客户[:\s]*(\d+)/); if (m5) { form.visitingCustomers = parseInt(m5[1]) || 0; parseResults.value.push('来访: ' + m5[1]) }
   const m6 = daySection.match(/成交客户[:\s]*(\d+)/); if (m6) { form.closedDeals = parseInt(m6[1]) || 0; parseResults.value.push('成交: ' + m6[1]) }
   const saLine = daySection.match(/拉群客户分配销售[:\s]*([^\n]*)/)
-  if (saLine && saLine[1] && saLine[1].trim() !== '无') { const saRe = /([^\s,，、\d]+?)(\d+)个/g; let sm; while ((sm = saRe.exec(saLine[1])) !== null) { const n = parseInt(sm[2]); salesMap[sm[1]] = Array.from({ length: n }, () => ({ id: ++custIdSeq, country: '', name: '' })); parseResults.value.push('销售: ' + sm[1] + sm[2] + '个') } }
+  if (saLine && saLine[1] && saLine[1].trim() !== '无') { const saRe = /([^\s,，、\d]+?)(\d+)个/g; let sm; while ((sm = saRe.exec(saLine[1])) !== null) { const n = parseInt(sm[2]); salesMap[sm[1]] = Array.from({ length: n }, () => ({ id: ++custIdSeq, country: '', name: '', detail: '' })); parseResults.value.push('销售: ' + sm[1] + sm[2] + '个') } }
   pasteVisible.value = false; pasteInput.value = ''
   parseResults.value.length ? ElMessage.success('识别 ' + parseResults.value.length + ' 个字段') : ElMessage.warning('未识别到数据')
   nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys(Object.keys(salesMap)) })
@@ -529,7 +530,7 @@ watch(
   () => JSON.stringify({
     nc: form.newCustomers, rc: form.repliedCustomers, reg: form.registeredCustomers,
     gp: form.groupedWithPlan, vc: form.visitingCustomers, cd: form.closedDeals,
-    sa: selectedSales.value.map(s => s.name + ':' + (s.customers || []).map(c => (c.country || '') + '/' + (c.name || '')).join('|')).join(','),
+    sa: selectedSales.value.map(s => s.name + ':' + (s.customers || []).map(c => (c.country || '') + '/' + (c.name || '') + '/' + (c.detail || '')).join('|')).join(','),
     cc: selectedCountries.value.map(c => c.country + ':' + c.count).join(','),
   }),
   () => { triggerAutoSave() }
