@@ -632,7 +632,7 @@ function buildReportText() {
   const parts = reportDate.value.split('-')
   const dateLabel = parseInt(parts[0]) + '.' + parseInt(parts[1]) + '.' + parseInt(parts[2])
 
-  let text = `${dateLabel} 海外投流数据总结
+  let text = `${dateLabel} ${selectedAccount.value.name} 海外投流数据总结
 
 一、今日海外整体汇总
 
