@@ -3,7 +3,10 @@
     <div class="cs-topbar">
       <div class="cs-top-left">
         <h2><span class="cs-icon-wrap"><el-icon :size="20"><DataAnalysis /></el-icon></span> 客户统计</h2>
-        <el-date-picker v-model="formDate" type="date" value-format="YYYY-MM-DD" size="default" @change="onDateChange" class="cs-date-pick" />
+        <el-date-picker v-model="formDate" type="date" value-format="YYYY-MM-DD" size="default" @change="onDateChange" class="cs-date-pick" :shortcuts="dateShortcuts" popper-class="cs-date-popper" />
+        <el-select v-model="monthPicked" size="default" placeholder="月度汇总" class="cs-month-sel" @change="onMonthPicked">
+          <el-option v-for="m in recentMonths" :key="m.value" :label="m.label" :value="m.value" />
+        </el-select>
         <el-select v-model="accountId" size="default" placeholder="选择广告账号" @change="onAccountChange" class="cs-account-sel">
           <el-option v-for="a in accounts" :key="a.id" :label="a.name" :value="a.id" />
           <el-option label="全部账号" value="all" />
@@ -193,6 +196,60 @@ const accounts = ref(ACCOUNTS)
 const accountId = ref(localStorage.getItem('cs_accountId') || accounts.value[0].id)
 const isAll = computed(() => accountId.value === 'all')
 const formDate = ref(todayStr())
+
+// 日期快捷筛选：本地时区构造，避免 UTC 偏移
+function _d(offsetDays) {
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0')
+  return y + '-' + m + '-' + day
+}
+// 自然月：减 N 个月（上个月的今天；月末自动进位，如 3/31 → 2/28）
+function _m(monthsAgo) {
+  const d = new Date()
+  d.setMonth(d.getMonth() - monthsAgo)
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0')
+  return y + '-' + m + '-' + day
+}
+const dateShortcuts = [
+  { text: '今天', value: () => _d(0) },
+  { text: '昨天', value: () => _d(-1) },
+  { text: '前天', value: () => _d(-2) },
+  { text: '一周前', value: () => _d(-7) },
+  { text: '上个月', value: () => _m(1) },
+  { text: '上上个月', value: () => _m(2) },
+  { text: '三个月前', value: () => _m(3) },
+  { text: '半年前', value: () => _m(6) },
+  { text: '去年', value: () => _m(12) },
+]
+
+// 月份快捷筛选：最近 12 个月，选某月跳转到该月 1 号（历史记录+月度汇总按整月显示）
+const monthPicked = ref('')
+const recentMonths = (() => {
+  const now = new Date()
+  const labels = ['本月', '上个月', '上上个月', '三个月前', '四个月前', '五个月前', '半年前', '七个月前', '八个月前', '九个月前', '十个月前', '去年']
+  const list = []
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+    list.push({ value: val, label: (labels[i] || val) + '（' + val + '）' })
+  }
+  return list
+})()
+function onMonthPicked() {
+  if (!monthPicked.value) return
+  formDate.value = monthPicked.value + '-01'
+  loadData()
+}
+// 月度汇总截止日：选了月份 → 该月最后一天（整月）；否则 → 选中日（月初累计到今天）
+function monthlyEndDate(d) {
+  if (monthPicked.value) {
+    const [y, m] = monthPicked.value.split('-')
+    const lastDay = new Date(+y, +m, 0).getDate()
+    return y + '-' + m + '-' + String(lastDay).padStart(2, '0')
+  }
+  return d
+}
 
 // ====== 拉群名 ======
 const groupCompany = ref(localStorage.getItem('cs_group_company') || 'Misimu furniture')
@@ -429,7 +486,7 @@ async function loadData() {
     form.groupedWithPlan = r.groupedWithPlan; form.visitingCustomers = r.visitingCustomers; form.closedDeals = r.closedDeals
     restoreSalesMap(r.salesAssignments); restoreCountryMap(r.countryBreakdown, !(r.countryBreakdown && r.countryBreakdown.length) /* 有客资则强制同步新客户总数，无客资(老数据)保留手填值 */)
   } else { existingId.value = null; Object.assign(form, defaultForm()); for (const k of Object.keys(salesMap)) delete salesMap[k]; for (const k of Object.keys(countryMap)) delete countryMap[k]; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys([]); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys([]) }) }
-  const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value, d); if (mRes.success) Object.assign(monthly, mRes.data); else resetMonthly()
+  const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value, monthlyEndDate(d)); if (mRes.success) Object.assign(monthly, mRes.data); else resetMonthly()
   // 历史仅加载当月数据
   const hQ = { startDate: d.substring(0, 7) + '-01', endDate: d.substring(0, 7) + '-31' }
   if (!isAllMode) hQ.accountId = accountId.value
@@ -455,7 +512,7 @@ async function loadData() {
 }
 
 let skipAutoLoad = false
-function onDateChange() { if (skipAutoLoad) return; saveMsg.value = ''; loadData() }
+function onDateChange() { if (skipAutoLoad) return; monthPicked.value = ''; saveMsg.value = ''; loadData() }
 function onAccountChange() { localStorage.setItem('cs_accountId', accountId.value); loadData() }
 
 async function saveData(silent) {
@@ -484,7 +541,7 @@ const previewText = computed(() => {
 async function copyPreview() { if (!previewText.value) { ElMessage.warning('请先填写数据'); return }; try { await navigator.clipboard.writeText(previewText.value); ElMessage.success('已复制') } catch { const ta = document.createElement('textarea'); ta.value = previewText.value; ta.style.position = 'fixed'; ta.style.left = '-9999px'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy') } catch {}; document.body.removeChild(ta) } }
 
 function resetMonthly() { Object.assign(monthly, { newCustomers: 0, repliedCustomers: 0, registeredCustomers: 0, groupedWithPlan: 0, visitingCustomers: 0, closedDeals: 0, salesAssignments: [], countryBreakdown: [], records: 0, perAccount: [] }) }
-async function refreshMonthly() { const d = formDate.value; if (!d) return; const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value, d); if (mRes.success) Object.assign(monthly, mRes.data); else resetMonthly() }
+async function refreshMonthly() { const d = formDate.value; if (!d) return; const mRes = await api.customerStats.monthly(d.substring(0, 7), accountId.value, monthlyEndDate(d)); if (mRes.success) Object.assign(monthly, mRes.data); else resetMonthly() }
 
 async function doParsePaste() {
   parseResults.value = []; const raw = pasteInput.value.trim(); if (!raw) { ElMessage.warning('请先粘贴内容'); return }
@@ -572,7 +629,7 @@ function stopRealtime() {
 .cs-top-left{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .cs-top-left h2{font-size:22px;font-weight:700;color:var(--c-text);display:flex;align-items:center;gap:10px;margin:0;letter-spacing:-.3px;}
 .cs-icon-wrap{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:var(--c-accent-light);color:var(--c-accent);}
-.cs-date-pick{width:148px;}.cs-account-sel{width:176px;}
+.cs-date-pick{width:148px;}.cs-account-sel{width:176px;}.cs-month-sel{width:180px;}
 .cs-badge{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;letter-spacing:.2px;}
 .cs-badge::before{content:'●';font-size:8px;}
 .cs-badge--ok{background:#ecfdf3;color:#0e6245;}
@@ -710,4 +767,19 @@ function stopRealtime() {
 .cs-empty{text-align:center;padding:32px 24px;color:var(--c-muted);font-size:13px;display:flex;flex-direction:column;align-items:center;gap:8px;}
 
 @media(max-width:960px){.cs-main{flex-direction:column;}.cs-right{width:100%;position:static;align-self:auto;}.cs-daily-grid{grid-template-columns:1fr;}.cs-ht-row{grid-template-columns:60px repeat(6,1fr) 100px;font-size:12px;padding:10px 8px;}.cs-sales-body{flex-direction:column;}.cs-sales-tree,.cs-sales-body--detail .cs-sales-tree{flex:1 1 auto;width:100%;max-height:220px;}}
+</style>
+
+<style>
+/* 日期快捷面板美化（popper 挂 body，需非 scoped） */
+.cs-date-popper .el-picker-panel__shortcut {
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+  padding: 8px 14px;
+  border-radius: 6px;
+  line-height: 1.4;
+}
+.cs-date-popper .el-picker-panel__shortcut:hover {
+  color: #5b5fe3;
+  background: #f5f3ff;
+}
 </style>
