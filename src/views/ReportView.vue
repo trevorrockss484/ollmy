@@ -595,7 +595,7 @@ async function loadExistingData(d) {
         // 迁移旧 groupDetail → groupEntries
         migrateGroupDetail(fb)
         if (fb.groupEntries) {
-          countryData[c].groupEntries = fb.groupEntries.map(e => ({ ...e }))
+          countryData[c].groupEntries = fb.groupEntries.map(e => ({ id: ++entryIdSeq, ...e }))
         }
         const skipKeys = ['groupDetail', 'groupEntries']
         Object.keys(countryData[c]).forEach(k => {

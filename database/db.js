@@ -736,7 +736,8 @@ function getCustomerStatsMonthly(month, accountId, endDate) {
       for (const r of list) {
         const arr = Array.isArray(r.salesAssignments) ? r.salesAssignments : []
         for (const sa of arr) {
-          if (sa.name) agg[sa.name] = (agg[sa.name] || 0) + (sa.count || 0)
+          const cnt = Array.isArray(sa.customers) ? sa.customers.length : (sa.count || 0)
+          if (sa.name && cnt > 0) agg[sa.name] = (agg[sa.name] || 0) + cnt
         }
       }
       return Object.entries(agg).map(([name, count]) => ({ name, count }))

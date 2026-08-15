@@ -47,9 +47,9 @@
           <div class="cs-bottom-row">
             <div class="cs-sales cs-sales--half">
               <div class="cs-sales-hd"><span class="cs-dnum" style="--c:#a78bfa">7</span><span class="cs-dlabel">国家客资</span><span class="cs-sales-cnt" v-if="selectedCountries.length">{{ totalCountryCount }}个</span></div>
-              <el-input v-model="countryFilterText" placeholder="搜索国家或电话号，如 36" size="small" clearable class="cs-country-search" />
               <div class="cs-sales-body">
                 <div class="cs-sales-tree">
+                  <el-input v-model="countryFilterText" placeholder="搜索国家或电话号，如 36" size="small" clearable class="cs-country-search" />
                   <el-tree ref="countryTreeRef" :data="countryTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children', disabled: () => !authStore.canEdit(PAGE) || isAll }" @check="onCountryTreeCheck" :default-expanded-keys="[]" :filter-node-method="countryFilterNode" />
                 </div>
                 <div class="cs-sales-chips" v-if="selectedCountries.length">
@@ -67,22 +67,39 @@
             </div>
 
             <div class="cs-sales cs-sales--half">
-              <div class="cs-sales-hd"><span class="cs-dnum" style="--c:#f472b6">8</span><span class="cs-dlabel">分配销售</span><span class="cs-sales-cnt" v-if="selectedSales.length">{{ selectedSales.length }}人</span></div>
-              <div class="cs-sales-body">
+              <div class="cs-sales-hd"><span class="cs-dnum" style="--c:#f472b6">8</span><span class="cs-dlabel">分配销售</span><span class="cs-sales-cnt" v-if="totalCustomerCount">{{ totalCustomerCount }}个客户</span>
+                <el-input v-model="groupCompany" placeholder="公司名" size="small" class="cs-gt-company" @change="persistGroupCompany" :disabled="!authStore.canEdit(PAGE) || isAll" />
+              </div>
+              <div v-if="!registeredCountries.length" class="cs-sales-lock"><el-icon :size="14"><Warning /></el-icon> 请先在上方「国家客资」勾选国家，才能分配销售</div>
+              <div class="cs-sales-body cs-sales-body--detail" v-else>
                 <div class="cs-sales-tree">
-                  <el-tree ref="salesTreeRef" :data="salesTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children', disabled: () => !authStore.canEdit(PAGE) || isAll }" default-expand-all @check="onSalesTreeCheck" />
+                  <el-input v-model="salesFilterText" placeholder="搜索销售" size="small" clearable class="cs-sales-search" />
+                  <el-tree ref="salesTreeRef" :data="salesTreeData" show-checkbox node-key="key" :props="{ label: 'label', children: 'children', disabled: () => !authStore.canEdit(PAGE) || isAll }" default-expand-all @check="onSalesTreeCheck" :filter-node-method="salesFilterNode" />
                 </div>
-                <div class="cs-sales-chips" v-if="selectedSales.length">
-                  <div v-for="sa in selectedSales" :key="sa.name" class="cs-chip-row">
-                    <el-tag size="small" effect="dark" :closable="authStore.canEdit(PAGE) && !isAll" @close="removeSalesRow(sa.name)">{{ sa.name }}</el-tag>
-                    <span class="cs-stepper">
-                      <button :disabled="!authStore.canEdit(PAGE) || isAll" class="cs-step-btn" @click="salesMap[sa.name] = Math.max(1, (salesMap[sa.name]||1) - 1)">−</button>
-                      <span class="cs-step-val">{{ salesMap[sa.name] || 0 }}</span>
-                      <button :disabled="!authStore.canEdit(PAGE) || isAll" class="cs-step-btn cs-step-btn--plus" @click="salesMap[sa.name] = (salesMap[sa.name]||0) + 1">+</button>
-                    </span>
+                <div class="cs-sales-detail" v-if="selectedSales.length">
+                  <div v-for="sa in selectedSales" :key="sa.name" class="cs-sales-group">
+                    <div class="cs-sales-group-hd">
+                      <el-tag size="small" effect="dark" :closable="authStore.canEdit(PAGE) && !isAll" @close="removeSalesRow(sa.name)">{{ sa.name }}</el-tag>
+                      <span class="cs-sales-group-cnt">{{ sa.customers.length }}个客户</span>
+                    </div>
+                    <div v-for="c in sa.customers" :key="c.id" class="cs-cust-row">
+                      <div class="cs-cust-row-top">
+                        <el-select v-model="c.country" placeholder="国家" size="small" class="cs-cust-country" clearable :disabled="!authStore.canEdit(PAGE) || isAll" @change="onCustomerCountryChange(sa, c)">
+                          <el-option v-for="ct in registeredCountries" :key="ct" :label="ct + '（剩' + countryRemaining(ct) + '）'" :value="ct" />
+                        </el-select>
+                        <el-button v-if="authStore.canEdit(PAGE) && !isAll" size="small" text type="danger" class="cs-cust-del" @click="removeCustomer(sa.name, c.id)"><el-icon :size="14"><Close /></el-icon></el-button>
+                      </div>
+                      <el-input v-model="c.name" placeholder="客户名，如 Yug Patel" size="small" class="cs-cust-text" :disabled="!authStore.canEdit(PAGE) || isAll" />
+                      <div v-if="c.name && c.country" class="cs-cust-groupname">
+                        <el-icon :size="12"><Link /></el-icon>
+                        <span class="cs-cust-groupname-text">{{ buildGroupName(c.name, c.country) }}</span>
+                        <el-button size="small" text type="primary" class="cs-cust-copy" @click="copyGroupName(buildGroupName(c.name, c.country))">复制</el-button>
+                      </div>
+                    </div>
+                    <el-button v-if="authStore.canEdit(PAGE) && !isAll" size="small" text type="primary" class="cs-cust-add" @click="addCustomer(sa.name)"><el-icon :size="13"><Plus /></el-icon> 添加客户</el-button>
                   </div>
                 </div>
-                <div v-else class="cs-sales-none">勾选销售</div>
+                <div v-else class="cs-sales-none">勾选销售后添加客户</div>
               </div>
             </div>
           </div>
@@ -175,6 +192,27 @@ const accounts = ref(ACCOUNTS)
 const accountId = ref(localStorage.getItem('cs_accountId') || accounts.value[0].id)
 const isAll = computed(() => accountId.value === 'all')
 const formDate = ref(todayStr())
+
+// ====== 拉群名 ======
+const groupCompany = ref(localStorage.getItem('cs_group_company') || 'Misimu furniture')
+function persistGroupCompany() { localStorage.setItem('cs_group_company', groupCompany.value.trim()) }
+// 生成完整拉群名：客户名 & 公司名 国家（YYMMDD），日期跟随所选日期
+function buildGroupName(customerName, country) {
+  const company = groupCompany.value.trim() || '公司名'
+  const d = formDate.value || ''
+  const p = d.split('-')
+  const dateLabel = p.length === 3 ? p[0].slice(2) + p[1] + p[2] : ''
+  return `${(customerName || '').trim()} & ${company} ${country || ''}（${dateLabel}）`
+}
+async function copyGroupName(text) {
+  if (!text) return
+  try { await navigator.clipboard.writeText(text); ElMessage.success('拉群名已复制') }
+  catch {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px'
+    document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); ElMessage.success('拉群名已复制') } catch { ElMessage.error('复制失败') }
+    document.body.removeChild(ta)
+  }
+}
 const existingId = ref(null)
 const saveMsg = ref('')
 const saveOk = ref(true)
@@ -189,6 +227,7 @@ const parseResults = ref([])
 const salesTreeRef = ref(null)
 const countryTreeRef = ref(null)
 const countryFilterText = ref('')
+const salesFilterText = ref('')
 
 // 国家数据（共享模块：src/data/countryTree.js）
 
@@ -198,8 +237,10 @@ const defaultForm = () => ({
   groupedWithPlan: null, visitingCustomers: null, closedDeals: null,
 })
 const form = reactive(defaultForm())
+// salesMap: { 销售名: [{ id, country, text, status }] } — 分配销售的客户详情列表
 const salesMap = reactive({})
 const countryMap = reactive({})
+let custIdSeq = 0
 
 const monthly = reactive({
   newCustomers: 0, repliedCustomers: 0, registeredCustomers: 0,
@@ -218,9 +259,19 @@ const salesTreeData = computed(() => {
 })
 const allSalesKeys = computed(() => salesPersons.value.map(sp => sp.name))
 
+function salesFilterNode(value, data) {
+  if (!value) return true
+  const v = String(value).trim().toLowerCase()
+  if (!v) return true
+  if (data.children) return false
+  return String(data.label || '').toLowerCase().includes(v) || String(data.key || '').toLowerCase().includes(v)
+}
+function onSalesFilter() { salesTreeRef.value?.filter(salesFilterText.value) }
+watch(salesFilterText, () => onSalesFilter())
+
 function onSalesTreeCheck(_n, checked) {
   const leafs = checked.checkedKeys.filter(k => allSalesKeys.value.includes(k))
-  for (const k of leafs) { if (!(k in salesMap)) salesMap[k] = 1 }
+  for (const k of leafs) { if (!(k in salesMap)) salesMap[k] = [] }
   for (const k of Object.keys(salesMap)) { if (!leafs.includes(k)) delete salesMap[k] }
 }
 
@@ -228,7 +279,19 @@ function onCountryTreeCheck(_n, checked) {
   const leafs = checked.checkedKeys.filter(k => allCountryKeys.includes(k))
   for (const k of leafs) { if (!(k in countryMap)) countryMap[k] = 1 }
   for (const k of Object.keys(countryMap)) { if (!leafs.includes(k)) delete countryMap[k] }
+  pruneOrphanCustomers()
   syncCountryTotal()
+}
+// 清除客户详情中「国家」已不在国家客资里的记录（国家被移除后残留的脏数据）
+function pruneOrphanCustomers() {
+  const valid = new Set(Object.keys(countryMap))
+  for (const name of Object.keys(salesMap)) {
+    const list = salesMap[name] || []
+    const kept = list.filter(c => valid.has(c.country))
+    if (kept.length) salesMap[name] = kept
+    else delete salesMap[name]
+  }
+  nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys(Object.keys(salesMap)) })
 }
 function countryFilterNode(value, data) {
   if (!value) return true
@@ -239,17 +302,53 @@ function countryFilterNode(value, data) {
 }
 function onCountryFilter() { countryTreeRef.value?.filter(countryFilterText.value) }
 watch(countryFilterText, () => onCountryFilter())
-const selectedSales = computed(() => Object.entries(salesMap).filter(([_, v]) => v > 0).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count))
+const selectedSales = computed(() => Object.keys(salesMap).map(name => ({ name, customers: salesMap[name] || [] })))
 const selectedCountries = computed(() => Object.entries(countryMap).filter(([_, v]) => v > 0).map(([country, count]) => ({ country, count })))
 const totalCountryCount = computed(() => selectedCountries.value.reduce((s, c) => s + (c.count || 0), 0))
+// 客户详情里「国家」下拉选项 = 已登记的国家客资
+const registeredCountries = computed(() => selectedCountries.value.map(c => c.country))
+const totalCustomerCount = computed(() => selectedSales.value.reduce((s, sa) => s + (sa.customers?.length || 0), 0))
+// 每个国家已分配的客户数（跨所有销售）
+const countryUsage = computed(() => {
+  const usage = {}
+  for (const name of Object.keys(salesMap)) {
+    for (const c of (salesMap[name] || [])) { if (c.country) usage[c.country] = (usage[c.country] || 0) + 1 }
+  }
+  return usage
+})
+function countryRemaining(country) {
+  const total = countryMap[country] || 0
+  const used = countryUsage.value[country] || 0
+  return total - used
+}
 function syncCountryTotal() { nextTick(() => { form.newCustomers = totalCountryCount.value }) }
 
 function shortDate(str) { if (!str) return ''; const p = str.split('-'); return parseInt(p[1]) + '/' + parseInt(p[2]) }
 function dayName(str) { if (!str) return ''; const d = new Date(str + 'T00:00:00'); return ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()] }
-function formatSalesText(arr) { if (!Array.isArray(arr) || !arr.length) return ''; return arr.filter(s => s.name).map(s => s.name + s.count + '个').join(' ') }
+function formatSalesText(arr) { if (!Array.isArray(arr) || !arr.length) return ''; return arr.filter(s => s.name).map(s => s.name + (s.customers ? s.customers.length : (s.count || 0)) + '个').join(' ') }
+
+// 分配销售客户详情操作
+function addCustomer(name) {
+  if (!salesMap[name]) salesMap[name] = []
+  // 默认选第一个仍有余额的国家
+  const defCountry = registeredCountries.value.find(c => countryRemaining(c) > 0) || ''
+  if (!defCountry) { ElMessage.warning('各国家客资已分配完，无法新增客户'); return }
+  salesMap[name].push({ id: ++custIdSeq, country: defCountry, name: '' })
+}
+function onCustomerCountryChange(sa, c) {
+  if (!c.country) return
+  if (countryRemaining(c.country) < 0) {
+    ElMessage.warning(`「${c.country}」客资已分配完`)
+    c.country = ''
+  }
+}
+function removeCustomer(name, id) {
+  if (!salesMap[name]) return
+  salesMap[name] = salesMap[name].filter(c => c.id !== id)
+}
 
 function removeSalesRow(name) { delete salesMap[name]; nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys(Object.keys(salesMap)) }) }
-function removeCountryRow(country) { delete countryMap[country]; nextTick(() => { if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys(Object.keys(countryMap)) }); syncCountryTotal() }
+function removeCountryRow(country) { delete countryMap[country]; pruneOrphanCustomers(); nextTick(() => { if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys(Object.keys(countryMap)) }); syncCountryTotal() }
 function restoreCountryMap(arr, skipTotal) {
   for (const k of Object.keys(countryMap)) delete countryMap[k]
   if (Array.isArray(arr)) for (const s of arr) { if (s.country) countryMap[s.country] = s.count || 1 }
@@ -258,7 +357,18 @@ function restoreCountryMap(arr, skipTotal) {
 }
 function restoreSalesMap(arr) {
   for (const k of Object.keys(salesMap)) delete salesMap[k]
-  if (Array.isArray(arr)) for (const s of arr) { if (s.name) salesMap[s.name] = s.count || 1 }
+  if (Array.isArray(arr)) {
+    for (const s of arr) {
+      if (!s.name) continue
+      if (Array.isArray(s.customers)) {
+        salesMap[s.name] = s.customers.map(c => ({ id: ++custIdSeq, country: c.country || '', name: c.name || c.text || '' }))
+      } else {
+        // 旧结构 { name, count }：生成 count 条空客户详情，待用户补全
+        const n = s.count || 0
+        salesMap[s.name] = Array.from({ length: n }, () => ({ id: ++custIdSeq, country: '', name: '' }))
+      }
+    }
+  }
   nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys(Object.keys(salesMap)) })
 }
 
@@ -303,7 +413,12 @@ async function loadData() {
       // 聚合各账号今日国家客资与分配销售（只读展示）
       for (const r of res.data) {
         for (const cb of (Array.isArray(r.countryBreakdown) ? r.countryBreakdown : [])) { if (cb.country) countryMap[cb.country] = (countryMap[cb.country] || 0) + (cb.count || 0) }
-        for (const sa of (Array.isArray(r.salesAssignments) ? r.salesAssignments : [])) { if (sa.name) salesMap[sa.name] = (salesMap[sa.name] || 0) + (sa.count || 0) }
+        for (const sa of (Array.isArray(r.salesAssignments) ? r.salesAssignments : [])) {
+          if (!sa.name) continue
+          if (!salesMap[sa.name]) salesMap[sa.name] = []
+          const customers = Array.isArray(sa.customers) ? sa.customers : []
+          for (const c of customers) salesMap[sa.name].push({ id: ++custIdSeq, country: c.country || '', name: c.name || c.text || '' })
+        }
       }
     } else { Object.assign(form, defaultForm()) }
     nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys(Object.keys(salesMap)); if (countryTreeRef.value) countryTreeRef.value.setCheckedKeys(Object.keys(countryMap)) })
@@ -327,7 +442,7 @@ async function loadData() {
         const t = byDate[key]
         t.newCustomers += (r.newCustomers || 0); t.repliedCustomers += (r.repliedCustomers || 0); t.registeredCustomers += (r.registeredCustomers || 0)
         t.groupedWithPlan += (r.groupedWithPlan || 0); t.visitingCustomers += (r.visitingCustomers || 0); t.closedDeals += (r.closedDeals || 0)
-        for (const sa of (Array.isArray(r.salesAssignments) ? r.salesAssignments : [])) { if (sa.name) t.salesAssignments[sa.name] = (t.salesAssignments[sa.name] || 0) + (sa.count || 0) }
+        for (const sa of (Array.isArray(r.salesAssignments) ? r.salesAssignments : [])) { const cnt = Array.isArray(sa.customers) ? sa.customers.length : (sa.count || 0); if (sa.name && cnt > 0) t.salesAssignments[sa.name] = (t.salesAssignments[sa.name] || 0) + cnt }
       }
       for (const r of hRes.data) add(r.date, r)
       history.value = Object.values(byDate).map(t => ({ ...t, salesAssignments: Object.entries(t.salesAssignments).map(([name, count]) => ({ name, count })) })).sort((a, b) => b.date.localeCompare(a.date))
@@ -348,7 +463,7 @@ async function saveData(silent) {
   const acc = accounts.value.find(a => a.id === accountId.value) || accounts.value[0]
   if (!silent) { saveMsg.value = '保存中...'; saveOk.value = true }
   try {
-    const payload = { date: d, accountId: accountId.value, accountName: acc.name, newCustomers: form.newCustomers || 0, repliedCustomers: form.repliedCustomers || 0, registeredCustomers: form.registeredCustomers || 0, groupedWithPlan: form.groupedWithPlan || 0, visitingCustomers: form.visitingCustomers || 0, closedDeals: form.closedDeals || 0, salesAssignments: selectedSales.value.filter(s => s.name), countryBreakdown: selectedCountries.value.filter(c => c.country), clientId }
+    const payload = { date: d, accountId: accountId.value, accountName: acc.name, newCustomers: form.newCustomers || 0, repliedCustomers: form.repliedCustomers || 0, registeredCustomers: form.registeredCustomers || 0, groupedWithPlan: form.groupedWithPlan || 0, visitingCustomers: form.visitingCustomers || 0, closedDeals: form.closedDeals || 0, salesAssignments: Object.keys(salesMap).filter(n => (salesMap[n] || []).length > 0).map(n => ({ name: n, customers: (salesMap[n] || []).map(c => { const cname = (c.name || '').trim(); return { country: c.country || '', name: cname, text: cname ? buildGroupName(cname, c.country || '') : '' } }) })), countryBreakdown: selectedCountries.value.filter(c => c.country), clientId }
     const res = await api.customerStats.save(payload)
     if (res.success) { existingId.value = res.data.id; saveMsg.value = silent ? '已自动保存' : '已保存'; saveOk.value = true; autoSaveSkip = true; await refreshMonthly(); autoSaveSkip = false } else { saveMsg.value = '❌ ' + (res.error || '未知错误'); saveOk.value = false }
     const currentMsg = saveMsg.value
@@ -362,7 +477,7 @@ function editRecord(r) { skipAutoLoad = true; if (r.accountId && r.accountId !==
 
 const previewText = computed(() => {
   const d = formDate.value; if (!d) return ''
-  const salesText = selectedSales.value.map(s => s.name + s.count + '个').join(' ')
+  const salesText = selectedSales.value.map(s => s.name + (s.customers?.length || 0) + '个').join(' ')
   return `${dailyLabel.value}总结：\n⭐本日数据：\n1.本日新客户：${form.newCustomers || 0}个\n2.本日有回复的客户：${form.repliedCustomers || 0}个\n3.本日已登记客户：${form.registeredCustomers || 0}个\n4.本日已拉群且有平面图客户：${form.groupedWithPlan || 0}个\n5.本日来访客户：${form.visitingCustomers || 0}\n6.本日成交客户：${form.closedDeals || 0}\n7.拉群客户分配销售：${salesText || '无'}\n\n⭐月度数据：\n1.本月总询盘客户：${monthly.newCustomers}个\n2.本月有回复的客户：${monthly.repliedCustomers}个\n3.本月已登记客户：${monthly.registeredCustomers}个\n4.本月已拉群且有平面图客户：${monthly.groupedWithPlan}个\n5.本月来访客户：${monthly.visitingCustomers}\n6.本月成交客户：${monthly.closedDeals}\n7.拉群客户分配销售：${monthly.salesAssignments.length ? [...monthly.salesAssignments].sort((a,b) => b.count - a.count).map(s => s.name + s.count + '个').join(' ') : '无'}`
 })
 async function copyPreview() { if (!previewText.value) { ElMessage.warning('请先填写数据'); return }; try { await navigator.clipboard.writeText(previewText.value); ElMessage.success('已复制') } catch { const ta = document.createElement('textarea'); ta.value = previewText.value; ta.style.position = 'fixed'; ta.style.left = '-9999px'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy') } catch {}; document.body.removeChild(ta) } }
@@ -385,7 +500,7 @@ async function doParsePaste() {
   const m5 = daySection.match(/来访客户[:\s]*(\d+)/); if (m5) { form.visitingCustomers = parseInt(m5[1]) || 0; parseResults.value.push('来访: ' + m5[1]) }
   const m6 = daySection.match(/成交客户[:\s]*(\d+)/); if (m6) { form.closedDeals = parseInt(m6[1]) || 0; parseResults.value.push('成交: ' + m6[1]) }
   const saLine = daySection.match(/拉群客户分配销售[:\s]*([^\n]*)/)
-  if (saLine && saLine[1] && saLine[1].trim() !== '无') { const saRe = /([^\s,，、\d]+?)(\d+)个/g; let sm; while ((sm = saRe.exec(saLine[1])) !== null) { salesMap[sm[1]] = parseInt(sm[2]); parseResults.value.push('销售: ' + sm[1] + sm[2] + '个') } }
+  if (saLine && saLine[1] && saLine[1].trim() !== '无') { const saRe = /([^\s,，、\d]+?)(\d+)个/g; let sm; while ((sm = saRe.exec(saLine[1])) !== null) { const n = parseInt(sm[2]); salesMap[sm[1]] = Array.from({ length: n }, () => ({ id: ++custIdSeq, country: '', name: '' })); parseResults.value.push('销售: ' + sm[1] + sm[2] + '个') } }
   pasteVisible.value = false; pasteInput.value = ''
   parseResults.value.length ? ElMessage.success('识别 ' + parseResults.value.length + ' 个字段') : ElMessage.warning('未识别到数据')
   nextTick(() => { if (salesTreeRef.value) salesTreeRef.value.setCheckedKeys(Object.keys(salesMap)) })
@@ -414,7 +529,7 @@ watch(
   () => JSON.stringify({
     nc: form.newCustomers, rc: form.repliedCustomers, reg: form.registeredCustomers,
     gp: form.groupedWithPlan, vc: form.visitingCustomers, cd: form.closedDeals,
-    sa: selectedSales.value.map(s => s.name + ':' + s.count).join(','),
+    sa: selectedSales.value.map(s => s.name + ':' + (s.customers || []).map(c => (c.country || '') + '/' + (c.name || '')).join('|')).join(','),
     cc: selectedCountries.value.map(c => c.country + ':' + c.count).join(','),
   }),
   () => { triggerAutoSave() }
@@ -474,6 +589,9 @@ function stopRealtime() {
 .cs-fade-enter-active,.cs-fade-leave-active{transition:opacity .2s;}
 .cs-fade-enter-from,.cs-fade-leave-to{opacity:0;}
 
+/* 分配销售标题栏的公司名输入 */
+.cs-sales-hd .cs-gt-company{width:150px;flex-shrink:0;margin-left:auto;}
+
 /* Layout */
 .cs-left{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;}
 .cs-right{width:480px;flex-shrink:0;align-self:flex-start;position:sticky;top:18px;display:flex;flex-direction:column;gap:14px;}
@@ -502,14 +620,34 @@ function stopRealtime() {
 /* Sales */
 .cs-sales-hd{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
 .cs-country-search{margin-bottom:8px;}
+.cs-sales-search{margin-bottom:8px;}
 .cs-sales-cnt{font-size:12px;font-weight:600;color:var(--c-accent);margin-left:auto;}
-.cs-bottom-row{display:flex;gap:16px;border-top:1px solid var(--c-accent-light);padding-top:14px;}
-.cs-sales--half{flex:1;min-width:0;border-top:none;padding-top:0;}
-.cs-sales-body{display:flex;gap:10px;}
-.cs-sales-tree{flex:1;min-width:0;border:1px solid var(--c-border);border-radius:var(--rs);padding:4px;background:var(--c-bg);max-height:200px;overflow-y:auto;}
+.cs-bottom-row{display:flex;gap:20px;border-top:1px solid var(--c-accent-light);padding-top:18px;align-items:stretch;}
+.cs-sales--half{flex:1;min-width:0;border-top:none;padding-top:0;display:flex;flex-direction:column;}
+.cs-sales-body{display:flex;gap:12px;align-items:stretch;flex:1;min-height:0;}
+.cs-sales-tree{flex:1;min-width:0;border:1px solid var(--c-border);border-radius:var(--rs);padding:6px;background:var(--c-bg);max-height:360px;overflow-y:auto;}
 .cs-sales-tree :deep(.el-tree-node__label){overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cs-sales-chips{flex:1;display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto;}
-.cs-sales-none{display:flex;align-items:center;justify-content:center;padding:16px;color:var(--c-muted);font-size:12px;border:1px dashed var(--c-border);border-radius:var(--rs);text-align:center;}
+.cs-sales-chips{flex:1;display:flex;flex-direction:column;gap:6px;max-height:360px;overflow-y:auto;padding:2px;}
+.cs-sales-none{display:flex;align-items:center;justify-content:center;padding:20px 16px;color:var(--c-muted);font-size:12px;border:1px dashed var(--c-border);border-radius:var(--rs);text-align:center;}
+
+/* 分配销售客户详情 */
+.cs-sales-lock{display:flex;align-items:center;gap:6px;padding:14px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--rs);color:#c2410c;font-size:13px;font-weight:600;}
+.cs-sales-body--detail .cs-sales-tree{flex:0 0 38%;max-height:360px;}
+.cs-sales-detail{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;max-height:360px;overflow-y:auto;padding-right:4px;}
+.cs-sales-group{display:flex;flex-direction:column;gap:8px;border:1px solid var(--c-border);border-radius:var(--rs);padding:10px 12px;background:#fbfbfd;}
+.cs-sales-group-hd{display:flex;align-items:center;gap:8px;margin-bottom:2px;}
+.cs-sales-group-cnt{font-size:12px;font-weight:600;color:var(--c-muted);}
+.cs-cust-row{display:flex;flex-direction:column;gap:6px;border:1px solid #eef0f4;border-radius:8px;padding:6px 8px;background:#fff;}
+.cs-cust-row-top{display:flex;align-items:center;gap:8px;}
+.cs-cust-country{flex:1;min-width:0;}
+.cs-cust-text{width:100%;}
+.cs-cust-groupname{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--c-accent);background:#f5f3ff;border:1px dashed #c7d2fe;border-radius:6px;padding:4px 8px;flex-wrap:wrap;}
+.cs-cust-groupname-text{font-weight:600;word-break:break-all;flex:1;min-width:0;}
+.cs-cust-copy{flex-shrink:0;}
+.cs-cust-del{flex-shrink:0;opacity:.45;}
+.cs-cust-del:hover{opacity:1;}
+.cs-cust-add{align-self:flex-start;padding:5px 12px;border:1px dashed var(--c-border);border-radius:8px;font-size:12px;font-weight:600;color:var(--c-soft);transition:all .12s;background:#fff;}
+.cs-cust-add:hover{border-color:var(--c-accent);color:var(--c-accent);background:var(--c-accent-light);}
 
 .cs-chip-row{display:flex;align-items:center;gap:4px;flex-shrink:0;justify-content:space-between;width:100%;}
 .cs-stepper{display:inline-flex;align-items:center;gap:0;border-radius:6px;overflow:hidden;border:1px solid var(--c-border);flex-shrink:0;}
@@ -570,5 +708,5 @@ function stopRealtime() {
 
 .cs-empty{text-align:center;padding:32px 24px;color:var(--c-muted);font-size:13px;display:flex;flex-direction:column;align-items:center;gap:8px;}
 
-@media(max-width:960px){.cs-main{flex-direction:column;}.cs-right{width:100%;position:static;align-self:auto;}.cs-daily-grid{grid-template-columns:1fr;}.cs-ht-row{grid-template-columns:60px repeat(6,1fr) 100px;font-size:12px;padding:10px 8px;}}
+@media(max-width:960px){.cs-main{flex-direction:column;}.cs-right{width:100%;position:static;align-self:auto;}.cs-daily-grid{grid-template-columns:1fr;}.cs-ht-row{grid-template-columns:60px repeat(6,1fr) 100px;font-size:12px;padding:10px 8px;}.cs-sales-body{flex-direction:column;}.cs-sales-tree,.cs-sales-body--detail .cs-sales-tree{flex:1 1 auto;width:100%;max-height:220px;}}
 </style>
