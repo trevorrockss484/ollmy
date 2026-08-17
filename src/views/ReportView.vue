@@ -469,31 +469,15 @@ function migrateGroupDetail(d) {
 }
 const countryData = reactive({})
 
-function initCountryData(countries) {
-  // 以周计划国家为底，保留用户手动添加的国家
-  const merged = new Set([...countries])
-  for (const c of activeCountries.value) {
-    if (!merged.has(c) && countryData[c] !== undefined) merged.add(c)
-  }
-  activeCountries.value = [...merged]
-  for (const c of activeCountries.value) {
-    if (!(c in countryData)) countryData[c] = defaultCountryFb()
-  }
-  for (const k of Object.keys(countryData)) {
-    if (!activeCountries.value.includes(k)) delete countryData[k]
-  }
-}
-
 function resetFormData() {
   for (const c of Object.keys(countryData)) countryData[c] = defaultCountryFb()
   existingData.value = false
 }
 
-// 完全重置为周计划国家（用于切换账号无数据时，避免串到其他账号）
+// 完全重置为空（切换账号/日期无数据时，国家列表为空，以客户统计为唯一源头，可手动添加或从统计同步）
 function resetToWeekCountries() {
   for (const k of Object.keys(countryData)) delete countryData[k]
-  activeCountries.value = [...(weekStore.currentWeek?.countries || [])]
-  for (const c of activeCountries.value) countryData[c] = defaultCountryFb()
+  activeCountries.value = []
   expandedCountries.value = new Set()
 }
 
@@ -512,17 +496,15 @@ let autoSaveTimer = null
 watch(() => weekStore.currentWeek?.countries, async (countries) => {
   if (!countries?.length) return
   weekReady.value = true
-  // 优先加载已保存数据，没有则用周计划国家初始化
+  // 优先加载已保存数据，没有则国家列表为空（不再用周计划国家预填）
   const hasDate = !!reportDate.value
   if (hasDate) {
-    // 尝试加载已有数据
     await loadExistingData(reportDate.value)
-    // 如果加载后仍无数据，用周计划国家初始化
     if (!existingData.value) {
-      initCountryData(countries)
+      resetToWeekCountries()
     }
   } else {
-    initCountryData(countries)
+    resetToWeekCountries()
   }
 }, { immediate: true })
 
