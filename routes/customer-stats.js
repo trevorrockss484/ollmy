@@ -34,14 +34,9 @@ router.get('/monthly/:month', (req, res) => {
   }
 });
 
-// 共享：以客户统计为源头，将国家客资 + 分配销售客户详情同步回日报（重算，清除统计外国家的残留拉群）
+// 共享：以客户统计为源头，将国家客资 + 分配销售客户详情同步回日报（重算，统计外国家整条删除）
 function syncToDailyReport(date, accountId, countryBreakdown, salesAssignments) {
   if (!date || !accountId) return
-
-  // 空保护：既无客资又无分配销售时跳过同步，避免误清空日报已有的客资/拉群数据
-  const hasBreakdown = Array.isArray(countryBreakdown) && countryBreakdown.some(cb => cb && cb.country)
-  const hasAssign = Array.isArray(salesAssignments) && salesAssignments.some(sa => sa && Array.isArray(sa.customers) && sa.customers.some(c => c && c.country))
-  if (!hasBreakdown && !hasAssign) return
 
   const existing = db.getDailyData(date, { accountId }) || { countries: {}, summary: '', optimize: '' }
   const countries = { ...(existing.countries || {}) }
