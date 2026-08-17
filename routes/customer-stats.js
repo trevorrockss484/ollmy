@@ -71,7 +71,7 @@ function syncToDailyReport(date, accountId, countryBreakdown, salesAssignments) 
   // 3. 统计涉及的全部国家 = 客资国家 ∪ 拉群国家
   const allStatCountries = new Set([...Object.keys(customerCountByCountry), ...Object.keys(groupedByCountry)])
 
-  // 4. 对统计内的国家：重算客资、拉群；对统计外的国家：清空客资与拉群（保留费用等日报独有字段）
+  // 4. 以统计为准重建国家列表：统计内的国家重算客资/拉群；统计外的国家整个删除（客户统计是唯一源头）
   for (const country of allStatCountries) {
     if (!countries[country]) countries[country] = emptyCountry()
     countries[country].newCustomer = customerCountByCountry[country] || 0
@@ -80,11 +80,7 @@ function syncToDailyReport(date, accountId, countryBreakdown, salesAssignments) 
     countries[country].groupEntries = entries
   }
   for (const country of Object.keys(countries)) {
-    if (!allStatCountries.has(country)) {
-      countries[country].newCustomer = 0
-      countries[country].grouped = 0
-      countries[country].groupEntries = []
-    }
+    if (!allStatCountries.has(country)) delete countries[country]
   }
 
   db.saveDailyData(date, { countries, summary: existing.summary || '', optimize: existing.optimize || '' }, { accountId })
@@ -99,17 +95,10 @@ function syncStatToDaily(date, accountId) {
   return true
 }
 
-// 清空日报里该账号所有国家的客资/拉群（删除统计记录时调用；保留费用等日报独有字段）
+// 删除统计记录时，清空日报里该账号所有国家（客户统计是唯一源头，源头没了日报同步清空）
 function clearDailyFromStat(date, accountId) {
   if (!date || !accountId) return
-  const existing = db.getDailyData(date, { accountId }) || { countries: {}, summary: '', optimize: '' }
-  const countries = { ...(existing.countries || {}) }
-  for (const country of Object.keys(countries)) {
-    countries[country].newCustomer = 0
-    countries[country].grouped = 0
-    countries[country].groupEntries = []
-  }
-  db.saveDailyData(date, { countries, summary: existing.summary || '', optimize: existing.optimize || '' }, { accountId })
+  db.saveDailyData(date, { countries: {} }, { accountId })
 }
 
 // 手动触发同步（日报页「从统计同步」按钮）
