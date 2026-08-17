@@ -12,24 +12,11 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// 生成唯一 ID（时间戳毫秒 + 随机后缀，保持数字类型兼容存量数据）
+// 生成唯一 ID（时间戳毫秒 + 进程内递增序号，保持数字类型兼容存量数据，避免同毫秒随机碰撞）
+let uidSeq = 0;
 function uid() {
-  return Date.now() + Math.floor(Math.random() * 10000);
-}
-
-// 写锁：防止并发读改写覆盖
-let writeQueue = Promise.resolve();
-function withWriteLock(fn) {
-  return new Promise((resolve, reject) => {
-    writeQueue = writeQueue.then(() => {
-      try {
-        const result = fn();
-        resolve(result);
-      } catch (e) {
-        reject(e);
-      }
-    }).catch(() => {});
-  });
+  uidSeq = (uidSeq + 1) % 10000;
+  return Date.now() + uidSeq;
 }
 
 // 默认广告账号
@@ -157,15 +144,20 @@ function read() {
   return defaultData();
 }
 
+// 自动备份节流：上次备份时间，避免每次写都全量 copy 大文件
+let lastAutoBackup = 0;
+const AUTO_BACKUP_INTERVAL = 5 * 60 * 1000; // 5分钟
+
 // 原子写入：先写临时文件，再 rename 替换主文件
 function write(data) {
   try {
-    if (fs.existsSync(DB_FILE)) {
-      // 备份 — 加入毫秒防同一秒覆盖
+    // 备份节流：距上次备份超过间隔才 copy 到 backups（主文件始终实时写入，不丢数据）
+    const now = Date.now();
+    if (fs.existsSync(DB_FILE) && now - lastAutoBackup >= AUTO_BACKUP_INTERVAL) {
+      lastAutoBackup = now;
       const backupDir = path.join(DATA_DIR, 'backups');
       if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
-      const now = new Date();
-      const ts = now.toISOString().replace(/[:.]/g, '-').substring(0, 19) + '-' + String(now.getMilliseconds()).padStart(3, '0');
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19) + '-' + String(new Date().getMilliseconds()).padStart(3, '0');
       fs.copyFileSync(DB_FILE, path.join(backupDir, 'db-' + ts + '.json'));
       const files = fs.readdirSync(backupDir).sort().reverse();
       files.slice(30).forEach(f => fs.unlinkSync(path.join(backupDir, f)));
@@ -379,6 +371,14 @@ function _migrateDailyRecord(record) {
     }
   }
 
+  // 顶层汇率：优先顶层，否则从任一账号兜底（兼容旧 account 级数据）
+  let topExchangeRate = base.exchangeRate ?? null
+  if (topExchangeRate == null) {
+    for (const acc of Object.values(accounts)) {
+      if (acc.exchangeRate != null) { topExchangeRate = acc.exchangeRate; break }
+    }
+  }
+
   const defaultAcc = accounts[getDefaultAccountId()] || Object.values(accounts)[0]
   return {
     ...base,
@@ -386,6 +386,7 @@ function _migrateDailyRecord(record) {
     countries: base.countries || defaultAcc?.countries || {},
     summary: base.summary || defaultAcc?.summary || '',
     optimize: base.optimize || defaultAcc?.optimize || '',
+    exchangeRate: topExchangeRate,
     savedAt
   }
 }
@@ -401,7 +402,7 @@ function pickAccountRecord(record, accountId) {
     countries: acc.countries || {},
     summary: acc.summary || '',
     optimize: acc.optimize || '',
-    exchangeRate: acc.exchangeRate ?? null,
+    exchangeRate: migrated.exchangeRate ?? null,
     accountId: acc.accountId || id,
     accountName: acc.accountName || getAccountMeta(id).name,
     businessLine: acc.businessLine || '',
@@ -456,7 +457,6 @@ function saveDailyData(date, dailyRecord, options = {}) {
   const meta = getAccountMeta(accountId)
   const existing = _migrateDailyRecord(data.dailyData[date]) || { accounts: {}, savedAt: null }
   existing.accounts = existing.accounts || {}
-  const prevAcc = existing.accounts[accountId] || {}
   existing.accounts[accountId] = {
     accountId,
     accountName: dailyRecord.accountName || meta.name,
@@ -464,7 +464,6 @@ function saveDailyData(date, dailyRecord, options = {}) {
     countries: dailyRecord.countries || {},
     summary: dailyRecord.summary || '',
     optimize: dailyRecord.optimize || '',
-    exchangeRate: dailyRecord.exchangeRate != null ? dailyRecord.exchangeRate : (prevAcc.exchangeRate != null ? prevAcc.exchangeRate : null),
     savedAt: new Date().toISOString()
   }
 
@@ -475,6 +474,7 @@ function saveDailyData(date, dailyRecord, options = {}) {
     countries: defaultAcc.countries || {},
     summary: defaultAcc.summary || '',
     optimize: defaultAcc.optimize || '',
+    exchangeRate: dailyRecord.exchangeRate != null ? dailyRecord.exchangeRate : (existing.exchangeRate != null ? existing.exchangeRate : null),
     savedAt: new Date().toISOString()
   };
   write(data);
@@ -859,6 +859,7 @@ module.exports = {
   },
   queryCustomerStats,
   getCustomerStat(id) { return customerStatsDb.get(id); },
+  findCustomerStatByDate,
   upsertCustomerStat,
   deleteCustomerStat(id) { return customerStatsDb.delete(id); },
   getCustomerStatsMonthly,

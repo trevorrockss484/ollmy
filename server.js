@@ -5,9 +5,8 @@ const app = express();
 const PORT = process.env.PORT || 3456;
 
 // ===== 数据自动备份 =====
-const DATA_DIR = path.join(__dirname, 'database');
 const BACKUP_DIR = path.join(__dirname, 'backup');
-const DATA_FILE = path.join(DATA_DIR, 'data.json');
+const DATA_FILE = path.join(__dirname, 'database', 'data', 'database.json');
 const BACKUP_INTERVAL = 60 * 60 * 1000; // 每小时备份
 
 function ensureBackupDir() {

@@ -12,7 +12,6 @@
           <div class="rate-box" title="输入今日汇率，填写美金后自动换算费用">
             <span class="rate-label">汇率</span>
             <el-input-number v-model="exchangeRate" :min="0" :precision="4" :controls="false" size="default" style="width:104px;" placeholder="今日汇率" :disabled="!authStore.canEdit(PAGE)" />
-            <el-button v-if="authStore.canEdit(PAGE)" size="default" text type="primary" @click="applyRateAll" :disabled="!exchangeRate">一键换算</el-button>
           </div>
           <el-tag v-if="existingData" type="success" effect="dark" size="small" round>已有数据</el-tag>
           <el-tag v-else type="info" effect="plain" size="small" round>新日期</el-tag>
@@ -540,16 +539,29 @@ function onUsdChange(c) {
   if (usd > 0) d.budget = Math.round(usd * r * 100) / 100
 }
 
-function applyRateAll() {
+let suppressRateWatch = false
+function applyRateAllAuto() {
   const r = exchangeRate.value
-  if (!r || r <= 0) { ElMessage.warning('请先填写今日汇率'); return }
-  let count = 0
+  if (!r || r <= 0) return
   for (const c of activeCountries.value) {
     const d = countryData[c]; if (!d) continue
     const usd = n(d.usdBudget)
-    if (usd > 0) { d.budget = Math.round(usd * r * 100) / 100; count++ }
+    if (usd > 0) d.budget = Math.round(usd * r * 100) / 100
   }
-  count ? ElMessage.success('已按汇率换算 ' + count + ' 个国家费用') : ElMessage.warning('无美金数据可换算')
+}
+
+// 汇率变化时自动换算所有已有美金的费用（无需手动按钮）
+watch(exchangeRate, (v) => {
+  if (suppressRateWatch) return
+  if (!v || v <= 0) return
+  applyRateAllAuto()
+})
+
+// 程序赋值汇率（加载/重置）时抑制自动换算，避免覆盖已换算好的费用
+function setExchangeRate(v) {
+  suppressRateWatch = true
+  exchangeRate.value = v
+  nextTick(() => { suppressRateWatch = false })
 }
 
 const overallTotal = computed(() => {
@@ -581,7 +593,7 @@ async function loadExistingData(d) {
     const res = await api.daily.get(d, { accountId: selectedAccountId.value }); if (seq !== loadSeq) return
     existingData.value = !!(res.success && res.data)
     if (res.success && res.data && res.data.countries) {
-      exchangeRate.value = res.data.exchangeRate ?? null
+      setExchangeRate(res.data.exchangeRate ?? null)
       const savedCountries = Object.keys(res.data.countries)
       // 以已保存数据为准，替换初始的周计划国家列表
       activeCountries.value = [...savedCountries]
@@ -605,10 +617,10 @@ async function loadExistingData(d) {
       }
     } else {
       // 无保存数据 → 重置为周计划国家，避免串到其他账号的国家列表
-      exchangeRate.value = null
+      setExchangeRate(null)
       resetToWeekCountries()
     }
-  } catch(e) { existingData.value = false; exchangeRate.value = null; resetToWeekCountries() }
+  } catch(e) { existingData.value = false; setExchangeRate(null); resetToWeekCountries() }
   autoSaveSkip = false; dataLoading.value = false
 }
 
@@ -783,38 +795,19 @@ function parsePasted() {
   parseDetail.value.length ? ElMessage.success('识别 '+parseDetail.value.length+' 个字段') : ElMessage.warning('未识别到数据')
 }
 
-// 从客户统计同步国家客资（替换国家列表）
+// 从客户统计同步（委托后端 sync-to-daily，与保存时同一套同步逻辑）
 async function syncFromStats() {
   const d = reportDate.value; if (!d) return
   try {
-    const res = await api.customerStats.list({ startDate: d, endDate: d, accountId: selectedAccountId.value })
-    if (!res.success || !res.data.length) { ElMessage.warning('当日无客户统计数据'); return }
-    const breakdown = res.data[0].countryBreakdown || []
-    if (!breakdown.length) { ElMessage.warning('客户统计中无国家客资数据'); return }
-    const statCountries = breakdown.filter(cb => cb.country && cb.count > 0).map(cb => cb.country)
-    if (!statCountries.length) { ElMessage.warning('客户统计中无有效国家数据'); return }
-    let count = 0
-    // 清理不在统计中的国家数据
-    for (const c of Object.keys(countryData)) {
-      if (!statCountries.includes(c)) delete countryData[c]
+    const res = await api.customerStats.syncToDaily(d, selectedAccountId.value)
+    if (!res.success) { ElMessage.error(res.error || '同步失败'); return }
+    if (res.synced) {
+      // 同步成功后重新加载，展示后端重算的客资与拉群
+      await loadExistingData(d)
+      ElMessage.success('已从统计同步')
+    } else {
+      ElMessage.warning('当日无客户统计数据')
     }
-    // 用统计中的国家替换当前列表，同步客资数
-    for (const cb of breakdown) {
-      if (cb.country && cb.count > 0) {
-        if (!(cb.country in countryData)) countryData[cb.country] = defaultCountryFb()
-        countryData[cb.country].newCustomer = cb.count
-        count++
-      }
-    }
-    activeCountries.value = statCountries
-    // 清理展开状态中已移除的国家
-    for (const c of [...expandedCountries.value]) {
-      if (!statCountries.includes(c)) expandedCountries.value.delete(c)
-    }
-    expandedCountries.value = new Set(expandedCountries.value)
-    // 立即保存，避免离开页面后数据丢失
-    await saveData(true)
-    ElMessage.success('已从统计同步 ' + count + ' 个国家，国家列表已替换')
   } catch(e) { ElMessage.error('同步失败') }
 }
 

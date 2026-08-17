@@ -1,6 +1,7 @@
 node_modules/
 dist/
 database/data/
+backup/
 uploads/
 *.log
 .DS_Store

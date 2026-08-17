@@ -101,6 +101,7 @@ export const api = {
     list: (params) => request('/customer-stats?' + new URLSearchParams(params)),
     save: (data) => request('/customer-stats', { method: 'POST', body: JSON.stringify(data) }),
     delete: (id) => request('/customer-stats/' + id, { method: 'DELETE' }),
+    syncToDaily: (date, accountId) => request('/customer-stats/sync-to-daily', { method: 'POST', body: JSON.stringify({ date, accountId }) }),
     monthly: (month, accountId, endDate) => {
       const q = new URLSearchParams()
       if (accountId) q.set('accountId', accountId)
