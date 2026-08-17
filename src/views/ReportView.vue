@@ -341,7 +341,6 @@ function addCountry(c) {
 }
 
 function removeCountry(c) {
-  if (activeCountries.value.length <= 1) { ElMessage.warning('至少保留一个国家'); return }
   const d = countryData[c]
   const hasData = d && (n(d.budget) > 0 || n(d.newCustomer) > 0 || n(d.grouped) > 0 || (d.groupEntries || []).some(e => e.text))
   const doRemove = () => { activeCountries.value = activeCountries.value.filter(x => x !== c); delete countryData[c]; expandedCountries.value.delete(c) }
