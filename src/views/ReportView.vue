@@ -7,11 +7,12 @@
           <h2><el-icon :size="24"><Edit /></el-icon> 每日汇报</h2>
           <el-date-picker v-model="reportDate" type="date" value-format="YYYY-MM-DD" size="default" style="width:148px;" />
           <el-select v-model="selectedAccountId" size="default" style="width:180px;" placeholder="选择广告账号" @change="onAccountChange">
+            <el-option label="全部账号" value="all" />
             <el-option v-for="a in accounts" :key="a.id" :label="a.name" :value="a.id" />
           </el-select>
           <div class="rate-box" title="输入今日汇率，填写美金后自动换算费用">
             <span class="rate-label">汇率</span>
-            <el-input-number v-model="exchangeRate" :min="0" :precision="4" :controls="false" size="default" style="width:104px;" placeholder="今日汇率" :disabled="!authStore.canEdit(PAGE)" />
+            <el-input-number v-model="exchangeRate" :min="0" :precision="4" :controls="false" size="default" style="width:104px;" placeholder="今日汇率" :disabled="!editable" />
           </div>
           <el-tag v-if="existingData" type="success" effect="dark" size="small" round>已有数据</el-tag>
           <el-tag v-else type="info" effect="plain" size="small" round>新日期</el-tag>
@@ -65,9 +66,9 @@
     <div class="action-bar">
       <el-button type="success" size="default" @click="copyReport" :disabled="!reportText"><el-icon :size="15"><DocumentCopy /></el-icon> 一键复制</el-button>
       <el-button size="default" @click="pasteVisible = true"><el-icon :size="15"><Files /></el-icon> 粘贴识别</el-button>
-      <el-button v-if="authStore.canAdd(PAGE)" size="default" @click="syncFromStats"><el-icon :size="15"><Refresh /></el-icon> 从统计同步</el-button>
-      <el-button v-if="authStore.canEdit(PAGE)" size="default" @click="saveData"><el-icon :size="15"><Check /></el-icon> 保存</el-button>
-      <el-button v-if="authStore.canEdit(PAGE)" size="default" @click="clearForm" type="danger" plain><el-icon :size="15"><Delete /></el-icon> 清空</el-button>
+      <el-button v-if="canAddEditable" size="default" @click="syncFromStats"><el-icon :size="15"><Refresh /></el-icon> 从统计同步</el-button>
+      <el-button v-if="editable" size="default" @click="saveData"><el-icon :size="15"><Check /></el-icon> 保存</el-button>
+      <el-button v-if="editable" size="default" @click="clearForm" type="danger" plain><el-icon :size="15"><Delete /></el-icon> 清空</el-button>
       <span v-if="saveMsg" class="save-msg" :class="{ ok: saveOk, err: !saveOk }">{{ saveMsg }}</span>
     </div>
 
@@ -159,7 +160,7 @@
             <div class="cc-inputs">
               <div class="cc-input-item">
                 <label class="cc-input-label">费用(元)</label>
-                <el-input-number v-model="countryData[c].budget" :min="0" :precision="2" :controls="false" placeholder="0" class="cc-input-num" :disabled="!authStore.canEdit(PAGE)" />
+                <el-input-number v-model="countryData[c].budget" :min="0" :precision="2" :controls="false" placeholder="0" class="cc-input-num" :disabled="!editable" />
               </div>
               <div class="cc-input-item" :class="{ collapsed: usdCollapsed }">
                 <label class="cc-input-label">
@@ -168,15 +169,15 @@
                     <el-icon :size="10"><ArrowRight v-if="usdCollapsed" /><ArrowDown v-else /></el-icon>
                   </button>
                 </label>
-                <el-input-number v-model="countryData[c].usdBudget" :min="0" :precision="2" :controls="false" placeholder="$" class="cc-input-num cc-input-num--usd" :disabled="!authStore.canEdit(PAGE)" @change="onUsdChange(c)" />
+                <el-input-number v-model="countryData[c].usdBudget" :min="0" :precision="2" :controls="false" placeholder="$" class="cc-input-num cc-input-num--usd" :disabled="!editable" @change="onUsdChange(c)" />
               </div>
               <div class="cc-input-item">
                 <label class="cc-input-label">客资</label>
-                <el-input-number v-model="countryData[c].newCustomer" :min="0" :controls="false" placeholder="0" class="cc-input-num" :disabled="!authStore.canEdit(PAGE)" />
+                <el-input-number v-model="countryData[c].newCustomer" :min="0" :controls="false" placeholder="0" class="cc-input-num" :disabled="!editable" />
               </div>
               <div class="cc-input-item">
                 <label class="cc-input-label">拉群 <span v-if="n(countryData[c].grouped) > 0 && n(countryData[c].grouped) !== validEntryCount(c)" class="cc-required-tag">待补全</span></label>
-                <el-input-number v-model="countryData[c].grouped" :min="0" :controls="false" placeholder="0" class="cc-input-num" @change="onGroupedChange(c)" :disabled="!authStore.canEdit(PAGE)" />
+                <el-input-number v-model="countryData[c].grouped" :min="0" :controls="false" placeholder="0" class="cc-input-num" @change="onGroupedChange(c)" :disabled="!editable" />
               </div>
               <div class="cc-input-item cc-input-item--cost">
                 <label class="cc-input-label">客价(询盘/有效)</label>
@@ -198,20 +199,20 @@
                 </span>
               </div>
               <div v-for="entry in countryData[c].groupEntries" :key="entry.id" class="cc-detail-row">
-                <el-input v-model="entry.text" placeholder="如：印度x2，平面图" size="small" class="cc-detail-text" :disabled="!authStore.canEdit(PAGE)" />
-                <el-select v-model="entry.status" placeholder="状态" size="small" class="cc-detail-status" clearable :disabled="!authStore.canEdit(PAGE)">
+                <el-input v-model="entry.text" placeholder="如：印度x2，平面图" size="small" class="cc-detail-text" :disabled="!editable" />
+                <el-select v-model="entry.status" placeholder="状态" size="small" class="cc-detail-status" clearable :disabled="!editable">
                   <el-option label="到现场" value="到现场" />
                   <el-option label="未到现场" value="未到现场" />
                   <el-option label="待确认" value="待确认" />
                 </el-select>
-                <el-button v-if="authStore.canEdit(PAGE)" size="small" text type="danger" class="cc-detail-del" @click="removeGroupEntry(c, entry.id)">
+                <el-button v-if="editable" size="small" text type="danger" class="cc-detail-del" @click="removeGroupEntry(c, entry.id)">
                   <el-icon :size="14"><Close /></el-icon>
                 </el-button>
               </div>
-              <el-button v-if="authStore.canEdit(PAGE) && n(countryData[c].grouped) > 0 && (countryData[c].groupEntries||[]).length >= n(countryData[c].grouped)" size="small" text type="info" class="cc-detail-add" disabled>
+              <el-button v-if="editable && n(countryData[c].grouped) > 0 && (countryData[c].groupEntries||[]).length >= n(countryData[c].grouped)" size="small" text type="info" class="cc-detail-add" disabled>
                 已达 {{ n(countryData[c].grouped) }} 条上限
               </el-button>
-              <el-button v-else-if="authStore.canEdit(PAGE)" size="small" text type="primary" class="cc-detail-add" @click="addGroupEntry(c)">
+              <el-button v-else-if="editable" size="small" text type="primary" class="cc-detail-add" @click="addGroupEntry(c)">
                 <el-icon :size="13"><Plus /></el-icon> 添加客户详情
               </el-button>
             </div>
@@ -429,7 +430,10 @@ const existingData = ref(false)
 const accounts = ref(ACCOUNTS)
 const exchangeRate = ref(null)
 const selectedAccountId = ref('lisa-office')
-const selectedAccount = computed(() => accounts.value.find(a => a.id === selectedAccountId.value) || accounts.value[0])
+const isAllAccount = computed(() => selectedAccountId.value === 'all')
+const selectedAccount = computed(() => isAllAccount.value ? { id: 'all', name: '全部账号' } : (accounts.value.find(a => a.id === selectedAccountId.value) || accounts.value[0]))
+const editable = computed(() => authStore.canEdit(PAGE) && !isAllAccount.value)
+const canAddEditable = computed(() => authStore.canAdd(PAGE) && !isAllAccount.value)
 
 let entryIdSeq = 0
 const defaultCountryFb = () => ({ budget:null, usdBudget:null, newCustomer:null, grouped:null, groupEntries:[], catNoReply:null, msgIgnore:null, lowBudget:null, competitor:null, harass:null, visitPending:null })
@@ -566,6 +570,31 @@ function fmtNum(v) { if (v == null) return '0.00'; const r = Math.round(v * 100)
 
 // ====== 数据加载 ======
 
+// 汇总所有账号同日期数据（全部账号模式）
+function aggregateAllAccounts(record) {
+  const merged = {}
+  const accounts = record?.accounts || {}
+  for (const acc of Object.values(accounts)) {
+    const cs = acc?.countries || {}
+    for (const [c, fb] of Object.entries(cs)) {
+      if (!merged[c]) merged[c] = defaultCountryFb()
+      const m = merged[c]
+      m.budget = n(m.budget) + n(fb.budget)
+      m.usdBudget = n(m.usdBudget) + n(fb.usdBudget)
+      m.newCustomer = n(m.newCustomer) + n(fb.newCustomer)
+      m.grouped = n(m.grouped) + n(fb.grouped)
+      m.catNoReply = n(m.catNoReply) + n(fb.catNoReply)
+      m.msgIgnore = n(m.msgIgnore) + n(fb.msgIgnore)
+      m.lowBudget = n(m.lowBudget) + n(fb.lowBudget)
+      m.competitor = n(m.competitor) + n(fb.competitor)
+      m.harass = n(m.harass) + n(fb.harass)
+      m.visitPending = n(m.visitPending) + n(fb.visitPending)
+      if (Array.isArray(fb.groupEntries)) m.groupEntries.push(...fb.groupEntries)
+    }
+  }
+  return merged
+}
+
 async function loadExistingData(d) {
   if (!d || !weekReady.value) return
   const seq = ++loadSeq; autoSaveSkip = true; dataLoading.value = true
@@ -573,9 +602,11 @@ async function loadExistingData(d) {
   try {
     const res = await api.daily.get(d, { accountId: selectedAccountId.value }); if (seq !== loadSeq) return
     existingData.value = !!(res.success && res.data)
-    if (res.success && res.data && res.data.countries) {
-      setExchangeRate(res.data.exchangeRate ?? null)
-      const savedCountries = Object.keys(res.data.countries)
+    // 全部账号模式：合并所有账号的国家数据
+    const payload = isAllAccount.value ? { exchangeRate: res.data?.exchangeRate ?? null, countries: aggregateAllAccounts(res.data) } : (res.data || {})
+    if (res.success && payload && Object.keys(payload.countries || {}).length) {
+      setExchangeRate(payload.exchangeRate ?? null)
+      const savedCountries = Object.keys(payload.countries)
       // 以已保存数据为准，替换初始的周计划国家列表
       activeCountries.value = [...savedCountries]
       // 清理不在保存数据中的 countryData
@@ -584,7 +615,7 @@ async function loadExistingData(d) {
       }
       for (const c of savedCountries) {
         if (!(c in countryData)) countryData[c] = defaultCountryFb()
-        const fb = res.data.countries[c]
+        const fb = payload.countries[c]
         // 迁移旧 groupDetail → groupEntries
         migrateGroupDetail(fb)
         if (fb.groupEntries) {
@@ -643,22 +674,27 @@ function buildReportText() {
   activeCountries.value.forEach((c) => {
     const d = countryData[c]; if (!d) return
     const budget = n(d.budget), customer = n(d.newCustomer), grouped = n(d.grouped)
-    const avg = (budget && customer) ? (budget / customer).toFixed(1) : '0'
-    const eff = (budget && grouped) ? (budget / grouped).toFixed(1) : '0'
     const entries = (d.groupEntries || []).filter(e => e.text)
-    text += `
-----------
 
-▌${c}
+    // 无消耗：压成单行摘要，客价全 0 无意义
+    if (budget === 0) {
+      const bits = []
+      if (customer > 0) bits.push(`客资 ${customer} 个`)
+      if (grouped > 0) bits.push(`拉群 ${grouped} 个`)
+      text += `\n----------\n\n▌${c}${bits.length ? '：' + bits.join('，') : '：无数据'}\n`
+      return
+    }
 
-1. 费用：${fmtNum(budget)} 元
-2. 客资：${customer} 个
-3. 总拉群及客户详情：${grouped} 个`
-    if (entries.length) text += `\n▷\n${entries.map(e => '【' + e.text + (e.status ? '，' + e.status : '') + '】').join('\n')}\n▷`
-    text += `
-4. 询盘客价：${avg} / 元
-5. 有效客价：${eff} / 元
-`
+    // 有消耗：完整明细，客价/拉群详情随数值为 0 省略
+    text += `\n----------\n\n▌${c}\n\n1. 费用：${fmtNum(budget)} 元\n`
+    text += `2. 客资：${customer} 个\n`
+    if (grouped > 0) {
+      text += `3. 总拉群及客户详情：${grouped} 个`
+      if (entries.length) text += `\n▷\n${entries.map(e => '【' + e.text + (e.status ? '，' + e.status : '') + '】').join('\n')}\n▷`
+      text += `\n`
+    }
+    if (customer > 0) text += `4. 询盘客价：${(budget / customer).toFixed(1)} / 元\n`
+    if (grouped > 0) text += `5. 有效客价：${(budget / grouped).toFixed(1)} / 元\n`
   })
   text += `
 ----------`
@@ -679,6 +715,7 @@ async function copyReport() {
 
 async function saveData(silent) {
   const date = reportDate.value; if (!date) { if (!silent) ElMessage.warning('请选择日期'); return }
+  if (isAllAccount.value) return // 全部账号模式只读，不保存
 
   if (!silent) {
   // ====== 保存前校验 ======
@@ -756,8 +793,9 @@ function parsePasted() {
     if (bm) {
       const b = bm[0]
       const feeM = b.match(/费用\s*[:]\s*(\d+\.?\d*)\s*元?/i); if (feeM) { countryData[c].budget = parseFloat(feeM[1])||0; parseDetail.value.push(c+' 费用: '+feeM[1]) }
-      const custM = b.match(/客资\s*[:]\s*(\d+\.?\d*)\s*个?/i); if (custM) { countryData[c].newCustomer = parseFloat(custM[1])||0; parseDetail.value.push(c+' 客资: '+custM[1]) }
-      const grpM = b.match(/总拉群及客户详情\s*[:]\s*(\d+\.?\d*)/i)
+      const custM = b.match(/客资\s*[:：]?\s*(\d+\.?\d*)\s*个?/i); if (custM) { countryData[c].newCustomer = parseFloat(custM[1])||0; parseDetail.value.push(c+' 客资: '+custM[1]) }
+      let grpM = b.match(/总拉群及客户详情\s*[:]\s*(\d+\.?\d*)/i)
+      if (!grpM) grpM = b.match(/拉群\s*[:：]?\s*(\d+\.?\d*)/i)
       if (grpM) { countryData[c].grouped = parseFloat(grpM[1])||0; parseDetail.value.push(c+' 拉群: '+grpM[1]) }
       const detailM = b.match(/【[^】]*】/g)
       if (detailM) {
@@ -798,6 +836,7 @@ async function syncFromStats() {
 function triggerAutoSave() {
   if (autoSaveSkip) return
   if (!autoSaveReady) return
+  if (isAllAccount.value) return
   if (autoSaveTimer) clearTimeout(autoSaveTimer)
   autoSaveTimer = setTimeout(() => {
     autoSaveTimer = null
@@ -833,7 +872,7 @@ function startRealtime() {
         if (p.type !== 'daily-changed') return
         if (p.clientId === clientId) return
         if (p.date !== reportDate.value) return
-        if (p.accountId && p.accountId !== selectedAccountId.value) return
+        if (p.accountId && !isAllAccount.value && p.accountId !== selectedAccountId.value) return
         if (autoSaveTimer) return // 本地有未保存修改，等本地先保存
         loadExistingData(reportDate.value)
       } catch {}
