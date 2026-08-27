@@ -676,12 +676,13 @@ function buildReportText() {
     const budget = n(d.budget), customer = n(d.newCustomer), grouped = n(d.grouped)
     const entries = (d.groupEntries || []).filter(e => e.text)
 
-    // 无消耗：压成单行摘要，客价全 0 无意义
+    // 无消耗：压成单行摘要，客价全 0 无意义；但若有拉群需展开详情
     if (budget === 0) {
       const bits = []
       if (customer > 0) bits.push(`客资 ${customer} 个`)
       if (grouped > 0) bits.push(`拉群 ${grouped} 个`)
       text += `\n----------\n\n▌${c}${bits.length ? '：' + bits.join('，') : '：无数据'}\n`
+      if (grouped > 0 && entries.length) text += `▷\n${entries.map(e => '【' + e.text + (e.status ? '，' + e.status : '') + '】').join('\n')}\n▷\n`
       return
     }
 
