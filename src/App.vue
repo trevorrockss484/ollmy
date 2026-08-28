@@ -1,4 +1,5 @@
 <template>
+ <el-config-provider :locale="zhCn">
  <!-- 登录页全屏独立 -->
  <div v-if="route.path === '/login'" style="height:100vh;">
  <router-view />
@@ -137,11 +138,13 @@
  </el-main>
  </el-container>
  </el-container>
+ </el-config-provider>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, onErrorCaptured } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { useWeekStore } from './stores/week'
 import { useAuthStore } from './stores/auth'
 import { ElMessage } from 'element-plus'

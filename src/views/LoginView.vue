@@ -51,7 +51,6 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
-import * as THREE from 'three'
 
 const authStore = useAuthStore()
 const loading = ref(false)
@@ -101,123 +100,34 @@ async function doLogin() {
   loading.value = false
 }
 
-// ====== Three.js 场景 ======
-let scene, camera, renderer, particles, linesMesh, orb, orbGlow
+// ====== Canvas 2D 粒子网络背景（替代 three.js，省 ~500KB） ======
+let ctx, particles2d, animationId
 let mouseX = 0, mouseY = 0
 let targetMouseX = 0, targetMouseY = 0
-let animationId
+const LINK_DIST = 130
 
-function initThree() {
+function initParticles() {
   const canvas = threeCanvas.value
   if (!canvas) return
+  ctx = canvas.getContext('2d')
 
-  const w = window.innerWidth
-  const h = window.innerHeight
-
-  // 渲染器
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
-  renderer.setSize(w, h)
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-
-  // 场景 + 相机
-  scene = new THREE.Scene()
-  camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 100)
-  camera.position.z = 30
-
-  // ====== 光粒子 ======
-  const particleCount = 200
-  const positions = new Float32Array(particleCount * 3)
-  const colors = new Float32Array(particleCount * 3)
-  const sizes = new Float32Array(particleCount)
-
-  for (let i = 0; i < particleCount; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 50
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 40
-    positions[i * 3 + 2] = (Math.random() - 0.5) * 20
-
-    // 紫-蓝渐变
-    const t = Math.random()
-    colors[i * 3] = 0.35 + t * 0.25       // R
-    colors[i * 3 + 1] = 0.1 + t * 0.3      // G
-    colors[i * 3 + 2] = 0.6 + t * 0.4       // B
-
-    sizes[i] = Math.random() * 0.15 + 0.03
+  const resize = () => {
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
   }
+  resize()
 
-  const particleGeo = new THREE.BufferGeometry()
-  particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-  particleGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-  particleGeo.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
+  const count = Math.min(150, Math.floor(window.innerWidth * window.innerHeight / 14000))
+  particles2d = Array.from({ length: count }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    vx: (Math.random() - .5) * .3,
+    vy: (Math.random() - .5) * .3,
+    r: Math.random() * 1.6 + .6,
+    t: Math.random(),          // 颜色插值参数：indigo → violet
+    tw: Math.random() * Math.PI * 2,  // 闪烁相位
+  }))
 
-  const particleMat = new THREE.PointsMaterial({
-    size: 0.18,
-    vertexColors: true,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    transparent: true,
-    opacity: 0.85,
-  })
-  particles = new THREE.Points(particleGeo, particleMat)
-  scene.add(particles)
-
-  // ====== 连线（最近邻） ======
-  const linePositions = []
-  const pts = Array.from({ length: particleCount }, (_, i) => new THREE.Vector3(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]))
-  for (let i = 0; i < pts.length; i++) {
-    for (let j = i + 1; j < pts.length; j++) {
-      if (pts[i].distanceTo(pts[j]) < 4.5) {
-        linePositions.push(pts[i].x, pts[i].y, pts[i].z)
-        linePositions.push(pts[j].x, pts[j].y, pts[j].z)
-      }
-    }
-  }
-  if (linePositions.length) {
-    const lineGeo = new THREE.BufferGeometry()
-    lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3))
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.06, blending: THREE.AdditiveBlending, depthWrite: false })
-    linesMesh = new THREE.LineSegments(lineGeo, lineMat)
-    scene.add(linesMesh)
-  }
-
-  // ====== 中心光球 ======
-  const orbGeo = new THREE.IcosahedronGeometry(1.2, 3)
-  const orbMat = new THREE.MeshBasicMaterial({
-    color: 0x6366f1,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.12,
-    depthWrite: false,
-  })
-  orb = new THREE.Mesh(orbGeo, orbMat)
-  scene.add(orb)
-
-  // 光球光晕
-  const glowGeo = new THREE.SphereGeometry(2.5, 32, 32)
-  const glowMat = new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color('#6366f1') } },
-    vertexShader: `varying vec3 vNormal; varying vec3 vPosition; void main() { vNormal = normalize(normalMatrix * normal); vPosition = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-    fragmentShader: `varying vec3 vNormal; varying vec3 vPosition; uniform float uTime; uniform vec3 uColor; void main() { float intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0); gl_FragColor = vec4(uColor, intensity * 0.25); }`,
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  })
-  orbGlow = new THREE.Mesh(glowGeo, glowMat)
-  scene.add(orbGlow)
-
-  // ====== 浮动几何体 ======
-  const geos = [new THREE.OctahedronGeometry(0.5), new THREE.TetrahedronGeometry(0.4), new THREE.TorusKnotGeometry(0.3, 0.08, 64, 8)]
-  for (let i = 0; i < 6; i++) {
-    const geo = geos[i % 3]
-    const mat = new THREE.MeshBasicMaterial({ color: 0x6366f1, wireframe: true, transparent: true, opacity: 0.08 + Math.random() * 0.06, depthWrite: false })
-    const mesh = new THREE.Mesh(geo, mat)
-    mesh.position.set((Math.random() - 0.5) * 35, (Math.random() - 0.5) * 28, (Math.random() - 0.5) * 15)
-    mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0)
-    mesh.userData = { speed: 0.003 + Math.random() * 0.01, axis: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(), offset: Math.random() * Math.PI * 2 }
-    mesh.name = 'floater'
-    scene.add(mesh)
-  }
-
-  // 事件监听
   window.addEventListener('mousemove', onMouseMove)
   window.addEventListener('resize', onResize)
   animate()
@@ -229,60 +139,82 @@ function onMouseMove(e) {
 }
 
 function onResize() {
-  if (!camera || !renderer) return
-  camera.aspect = window.innerWidth / window.innerHeight
-  camera.updateProjectionMatrix()
-  renderer.setSize(window.innerWidth, window.innerHeight)
+  const canvas = threeCanvas.value
+  if (!canvas || !ctx) return
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
 }
 
 function animate() {
+  const canvas = threeCanvas.value
+  if (!canvas || !ctx) return
   animationId = requestAnimationFrame(animate)
 
-  // 平滑鼠标跟随
+  const w = canvas.width, h = canvas.height
+  // 平滑鼠标视差
   mouseX += (targetMouseX - mouseX) * 0.03
   mouseY += (targetMouseY - mouseY) * 0.03
+  const offX = mouseX * 14, offY = -mouseY * 10
 
-  // 整体缓慢旋转
-  particles.rotation.y += 0.0003
-  particles.rotation.x += 0.0001
-  if (linesMesh) { linesMesh.rotation.y += 0.0003; linesMesh.rotation.x += 0.0001 }
+  ctx.clearRect(0, 0, w, h)
 
-  // 光球呼吸
+  // 中心呼吸光晕
   const t = Date.now() * 0.001
-  const scale = 1 + Math.sin(t * 0.8) * 0.15
-  orb.scale.setScalar(scale)
-  orb.rotation.y += 0.004
-  orb.rotation.x += 0.002
-  orbGlow.scale.setScalar(scale * 1.2)
-  orbGlow.material.uniforms.uTime.value = t
+  const glowR = (Math.min(w, h) * 0.28) * (1 + Math.sin(t * 0.8) * 0.12)
+  const glow = ctx.createRadialGradient(w / 2 + offX, h / 2 + offY, 0, w / 2 + offX, h / 2 + offY, glowR)
+  glow.addColorStop(0, 'rgba(99,102,241,.14)')
+  glow.addColorStop(1, 'rgba(99,102,241,0)')
+  ctx.fillStyle = glow
+  ctx.fillRect(0, 0, w, h)
 
-  // 浮动几何体自转
-  scene.children.forEach(child => {
-    if (child.name === 'floater') {
-      child.rotation.x += child.userData.speed
-      child.rotation.y += child.userData.speed * 0.7
+  // 粒子漂移 + 边缘环绕
+  for (const p of particles2d) {
+    p.x += p.vx; p.y += p.vy
+    if (p.x < -20) p.x = w + 20; else if (p.x > w + 20) p.x = -20
+    if (p.y < -20) p.y = h + 20; else if (p.y > h + 20) p.y = -20
+  }
+
+  // 连线（近距离）
+  ctx.lineWidth = 1
+  for (let i = 0; i < particles2d.length; i++) {
+    const a = particles2d[i]
+    for (let j = i + 1; j < particles2d.length; j++) {
+      const b = particles2d[j]
+      const dx = a.x - b.x, dy = a.y - b.y
+      const d2 = dx * dx + dy * dy
+      if (d2 < LINK_DIST * LINK_DIST) {
+        const alpha = (1 - Math.sqrt(d2) / LINK_DIST) * 0.14
+        ctx.strokeStyle = `rgba(129,140,248,${alpha})`
+        ctx.beginPath()
+        ctx.moveTo(a.x + offX, a.y + offY)
+        ctx.lineTo(b.x + offX, b.y + offY)
+        ctx.stroke()
+      }
     }
-  })
+  }
 
-  // 鼠标视差
-  camera.position.x += (mouseX * 3 - camera.position.x) * 0.02
-  camera.position.y += (mouseY * 2 - camera.position.y) * 0.02
-  camera.lookAt(0, 0, 0)
-
-  renderer.render(scene, camera)
+  // 粒子（indigo→violet 渐变 + 轻微闪烁）
+  for (const p of particles2d) {
+    const flicker = .55 + Math.sin(t * 1.4 + p.tw) * .3
+    const r = Math.round(99 + p.t * 39)
+    const g = Math.round(102 + p.t * 41)
+    const b = Math.round(241 + p.t * 15)
+    ctx.fillStyle = `rgba(${r},${g},${b},${flicker})`
+    ctx.beginPath()
+    ctx.arc(p.x + offX, p.y + offY, p.r, 0, Math.PI * 2)
+    ctx.fill()
+  }
 }
 
-function destroyThree() {
+function destroyParticles() {
   if (animationId) cancelAnimationFrame(animationId)
   window.removeEventListener('mousemove', onMouseMove)
   window.removeEventListener('resize', onResize)
-  if (renderer) { renderer.dispose(); renderer = null }
-  if (scene) { scene.traverse(obj => { if (obj.geometry) obj.geometry.dispose(); if (obj.material) { if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose()); else obj.material.dispose() } }); scene = null }
-  particles = null; linesMesh = null; orb = null; orbGlow = null; camera = null
+  ctx = null; particles2d = null
 }
 
-onMounted(() => { initThree() })
-onUnmounted(() => { destroyThree() })
+onMounted(() => { initParticles() })
+onUnmounted(() => { destroyParticles() })
 </script>
 
 <style scoped>

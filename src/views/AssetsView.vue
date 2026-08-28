@@ -76,6 +76,9 @@
           <el-button type="primary" round size="default" @click="batchDownload">
             <el-icon :size="15"><Download /></el-icon> 一键下载 ({{ selectedIds.size }})
           </el-button>
+          <el-button v-if="authStore.canEdit(PAGE)" round size="default" @click="openBatchEdit">
+            <el-icon :size="15"><Edit /></el-icon> 批量编辑 ({{ selectedIds.size }})
+          </el-button>
           <el-button v-if="authStore.canDelete(PAGE)" type="danger" round size="default" plain @click="batchDelete">
             <el-icon :size="15"><Delete /></el-icon> 一键删除 ({{ selectedIds.size }})
           </el-button>
@@ -93,11 +96,12 @@
       <!-- 资产卡片分组 -->
       <div v-else class="asset-groups">
         <section v-for="g in assetGroups" :key="g.key" class="asset-group">
-          <div class="asset-group-hd">
+          <div class="asset-group-hd" @click="toggleGroup(g.key)" :title="isGroupCollapsed(g.key) ? '展开分组' : '收起分组'">
+            <el-icon :size="12" class="group-chevron" :class="{ collapsed: isGroupCollapsed(g.key) }"><ArrowDown /></el-icon>
             <span class="asset-group-title"><el-icon :size="16"><component :is="g.icon" /></el-icon> {{ g.label }}</span>
             <span class="asset-group-n">{{ g.items.length }} {{ g.unit || '项' }}</span>
           </div>
-          <div :class="['asset-grid', 'asset-grid--' + g.key]">
+          <div v-show="!isGroupCollapsed(g.key)" :class="['asset-grid', 'asset-grid--' + g.key]">
         <div v-for="a in g.items" :key="a.id"
           :class="['asset-card', { selected: selectedIds.has(a.id), 'is-audio': isAudio(a) }]"
           @click.ctrl="toggleSelect(a.id)"
@@ -127,6 +131,15 @@
             <div class="card-type-badge" :style="{ background: typeColor(a.type) }">
               {{ typeLabelShort(a.type) }}
             </div>
+            <!-- 悬浮操作（hover 显示） -->
+            <div class="card-footer" @click.stop>
+              <button class="card-btn" title="查看" @click.stop="preview(a)"><el-icon :size="15"><View /></el-icon></button>
+              <a :href="authUrl(api.assets.downloadUrl(a.id))" class="card-btn card-btn-dl" title="下载" @click.stop>
+                <el-icon :size="15"><Download /></el-icon>
+              </a>
+              <button v-if="authStore.canEdit(PAGE)" class="card-btn" title="编辑" @click.stop="openEdit(a)"><el-icon :size="15"><Edit /></el-icon></button>
+              <button v-if="authStore.canDelete(PAGE)" class="card-btn card-btn-del" title="删除" @click.stop="doDelete(a)"><el-icon :size="15"><Delete /></el-icon></button>
+            </div>
           </div>
           <!-- 信息区 -->
           <div class="card-info">
@@ -140,15 +153,6 @@
               <span v-else class="card-size">{{ formatSize(a.fileSize) }}</span>
             </div>
             <span v-if="authStore.isAdmin() && a.userId && a.userId !== 'admin'" class="card-owner-tag" :title="'创建者: ' + a.userId">{{ a.userId }}</span>
-          </div>
-          <!-- 操作 -->
-          <div class="card-footer">
-            <button class="card-btn" title="查看" @click="preview(a)"><el-icon :size="16"><View /></el-icon></button>
-            <a :href="authUrl(api.assets.downloadUrl(a.id))" class="card-btn card-btn-dl" title="下载" @click.stop>
-              <el-icon :size="16"><Download /></el-icon>
-            </a>
-            <button v-if="authStore.canEdit(PAGE)" class="card-btn" title="编辑" @click="openEdit(a)"><el-icon :size="16"><Edit /></el-icon></button>
-            <button v-if="authStore.canDelete(PAGE)" class="card-btn card-btn-del" title="删除" @click.stop="doDelete(a)"><el-icon :size="16"><Delete /></el-icon></button>
           </div>
         </div>
           </div>
@@ -197,52 +201,83 @@
       </teleport>
 
       <!-- 上传弹窗 -->
-      <el-dialog v-model="uploadOpen" title="上传资产" width="620px" class="asset-dialog" destroy-on-close>
-        <div class="drop-zone" :class="{ dragover: dragOver }"
-          @dragover.prevent="dragOver = true" @dragleave="dragOver = false" @drop.prevent="onDrop">
-          <div class="drop-icon"><el-icon :size="40"><Upload /></el-icon></div>
-          <p class="drop-text">拖拽文件到此处</p>
-          <el-button size="small" @click.stop="triggerFileInput">或点击选择文件</el-button>
-          <p class="drop-hint">支持图片 / 视频 / 音频，单个文件最大 200MB</p>
-        </div>
-        <input ref="fileInput" type="file" multiple accept="image/*,video/*,audio/*" style="display:none" @change="onFileSelect" />
-        <div v-if="uploadFiles.length" class="file-list">
-          <div v-for="(item, i) in uploadPreviews" :key="i" class="file-item">
-            <template v-if="item.file.type.startsWith('video/')">
-              <video :src="item.url" class="file-thumb" preload="metadata" />
-            </template>
-            <template v-else-if="item.file.type.startsWith('audio/')">
-              <span class="file-icon"><el-icon :size="20"><Microphone /></el-icon></span>
-            </template>
-            <img v-else :src="item.url" class="file-thumb" />
-            <div class="file-info">
-              <span class="file-name">{{ item.file.name }}</span>
-              <span class="file-size">{{ formatSize(item.file.size) }}</span>
+      <el-dialog v-model="uploadOpen" width="min(95vw, 580px)" class="asset-dialog" destroy-on-close align-center :close-on-click-modal="false">
+        <template #header>
+          <div class="dlg-hd">
+            <div class="dlg-hd-icon dlg-hd-icon--green"><el-icon :size="18"><UploadFilled /></el-icon></div>
+            <div>
+              <p class="dlg-hd-title">上传资产</p>
+              <p class="dlg-hd-sub">支持图片 / 视频 / 音频，单个文件 ≤ 200MB</p>
             </div>
-            <el-button size="small" circle text @click="removeFile(i)"><el-icon :size="14"><Close /></el-icon></el-button>
           </div>
+        </template>
+        <div class="up-zone" :class="{ 'drag-in': dragOver }"
+          @dragover.prevent="dragOver = true" @dragleave="dragOver = false" @drop.prevent="onDrop">
+          <template v-if="!uploadFiles.length">
+            <div class="upz-icon"><el-icon :size="44"><UploadFilled /></el-icon></div>
+            <p class="upz-title">拖拽文件到此处</p>
+            <p class="upz-hint">图片 / 视频 / 音频 · 单个 ≤ 200MB</p>
+            <input ref="fileInput" type="file" multiple accept="image/*,video/*,audio/*" hidden @change="onFileSelect" />
+            <el-button type="primary" size="large" round @click.stop="triggerFileInput">
+              <el-icon><FolderAdd /></el-icon> 选择文件
+            </el-button>
+          </template>
+          <template v-else>
+            <div class="upz-with-files">
+              <div class="upz-top">
+                <div class="upz-badge">
+                  <span class="upz-num">{{ uploadFiles.length }}</span>
+                  <span class="upz-label">个文件</span>
+                </div>
+                <div class="upz-actions">
+                  <input ref="fileInput" type="file" multiple accept="image/*,video/*,audio/*" hidden @change="onFileSelect" />
+                  <el-button size="default" round @click.stop="triggerFileInput">添加</el-button>
+                  <el-button size="default" round type="danger" plain @click="clearUploadFiles">清空</el-button>
+                </div>
+              </div>
+              <div class="upz-files">
+                <div v-for="(item, i) in uploadPreviews" :key="i" class="upz-chip">
+                  <video v-if="item.file.type.startsWith('video/')" :src="item.url" class="upz-chip-thumb" preload="metadata" />
+                  <span v-else-if="item.file.type.startsWith('audio/')" class="upz-chip-audio"><el-icon :size="16"><Microphone /></el-icon></span>
+                  <img v-else :src="item.url" class="upz-chip-thumb" />
+                  <div class="upz-chip-info">
+                    <span class="upz-chip-name">{{ item.file.name }}</span>
+                    <span class="upz-chip-size">{{ formatSize(item.file.size) }}</span>
+                  </div>
+                  <button class="upz-chip-del" @click="removeFile(i)">✕</button>
+                </div>
+              </div>
+            </div>
+          </template>
         </div>
-        <el-form label-width="80px" size="default" style="margin-top:16px;">
-          <el-form-item label="资产名称">
-            <el-input v-model="uploadForm.name" placeholder="例如：陈凡人物图" size="large" />
-          </el-form-item>
-          <el-form-item label="类型">
-            <el-select v-model="uploadForm.type" size="large" style="width:100%;">
-              <el-option v-for="t in assetTypes" :key="t.value" :label="t.label" :value="t.value" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="标签">
-            <el-input v-model="uploadForm.tagsStr" placeholder="逗号分隔，如: 男主, 欧美" size="large" />
-          </el-form-item>
-          <el-form-item v-if="uploadForm.type === 'character'" label="人物服装">
+        <div class="up-form">
+          <div class="dlg-field">
+            <label>资产名称</label>
+            <el-input v-model="uploadForm.name" placeholder="留空使用原文件名" size="large" maxlength="60" clearable />
+          </div>
+          <div class="dlg-field-row">
+            <div class="dlg-field">
+              <label>类型</label>
+              <el-select v-model="uploadForm.type" size="large" style="width:100%;">
+                <el-option v-for="t in assetTypes" :key="t.value" :label="t.label" :value="t.value" />
+              </el-select>
+            </div>
+            <div class="dlg-field">
+              <label>标签</label>
+              <el-input v-model="uploadForm.tagsStr" placeholder="逗号分隔，如: 男主, 欧美" size="large" clearable />
+            </div>
+          </div>
+          <div v-if="uploadForm.type === 'character'" class="dlg-field">
+            <label>人物服装</label>
             <div class="asset-link-select">
               <el-select v-model="uploadForm.characterName" placeholder="人物名（可搜索/新建）" size="large" style="flex:1;" filterable allow-create default-first-option>
                 <el-option v-for="cn in characterNames" :key="cn" :label="cn" :value="cn" />
               </el-select>
               <el-input v-model="uploadForm.outfit" placeholder="服装名，如：日常装" size="large" style="flex:1;" />
             </div>
-          </el-form-item>
-          <el-form-item label="所属剧集">
+          </div>
+          <div class="dlg-field">
+            <label>所属剧集</label>
             <div class="asset-link-select">
               <el-select v-model="uploadForm.showName" placeholder="选择剧（可选）" clearable size="large" style="flex:1;" @change="onUploadShowChange">
                 <el-option v-for="show in showList" :key="show" :label="show" :value="show" />
@@ -251,35 +286,55 @@
                 <el-option v-for="ep in episodesOfShow(uploadForm.showName)" :key="ep" :label="'第' + ep + '集'" :value="ep" />
               </el-select>
             </div>
-          </el-form-item>
-        </el-form>
+          </div>
+        </div>
         <template #footer>
-          <el-button @click="uploadOpen = false">取消</el-button>
-          <el-button type="primary" @click="doUpload" :disabled="!uploadFiles.length" :loading="uploading">
-            <el-icon :size="14"><Upload /></el-icon> 上传 ({{ uploadFiles.length }})
-          </el-button>
+          <div class="dlg-footer">
+            <el-button size="large" round @click="uploadOpen = false">取消</el-button>
+            <el-button size="large" round type="primary" @click="doUpload" :disabled="!uploadFiles.length" :loading="uploading">
+              <el-icon v-if="!uploading"><Check /></el-icon> 上传 {{ uploadFiles.length || '' }}
+            </el-button>
+          </div>
         </template>
       </el-dialog>
 
       <!-- 编辑弹窗 -->
-      <el-dialog v-model="editOpen" title="编辑资产" width="520px" class="asset-dialog" destroy-on-close>
-        <el-form label-width="80px" size="default">
-          <el-form-item label="名称"><el-input v-model="editForm.name" size="large" /></el-form-item>
-          <el-form-item label="类型">
+      <el-dialog v-model="editOpen" width="min(95vw, 540px)" class="asset-dialog" destroy-on-close align-center :close-on-click-modal="false">
+        <template #header>
+          <div class="dlg-hd">
+            <div class="dlg-hd-icon"><el-icon :size="18"><Edit /></el-icon></div>
+            <div>
+              <p class="dlg-hd-title">编辑资产</p>
+              <p class="dlg-hd-sub">修改名称、类型或归属信息</p>
+            </div>
+          </div>
+        </template>
+        <div class="up-form">
+          <div class="dlg-field">
+            <label>资产名称</label>
+            <el-input v-model="editForm.name" size="large" maxlength="60" clearable />
+          </div>
+          <div class="dlg-field">
+            <label>类型</label>
             <el-select v-model="editForm.type" size="large" style="width:100%;">
               <el-option v-for="t in assetTypes" :key="t.value" :label="t.label" :value="t.value" />
             </el-select>
-          </el-form-item>
-          <el-form-item label="标签"><el-input v-model="editForm.tagsStr" placeholder="逗号分隔" size="large" /></el-form-item>
-          <el-form-item v-if="editForm.type === 'character'" label="人物服装">
+          </div>
+          <div class="dlg-field">
+            <label>标签</label>
+            <el-input v-model="editForm.tagsStr" placeholder="逗号分隔" size="large" clearable />
+          </div>
+          <div v-if="editForm.type === 'character'" class="dlg-field">
+            <label>人物服装</label>
             <div class="asset-link-select">
               <el-select v-model="editForm.characterName" placeholder="人物名（可搜索/新建）" size="large" style="flex:1;" filterable allow-create default-first-option>
                 <el-option v-for="cn in characterNames" :key="cn" :label="cn" :value="cn" />
               </el-select>
               <el-input v-model="editForm.outfit" placeholder="服装名，如：日常装" size="large" style="flex:1;" />
             </div>
-          </el-form-item>
-          <el-form-item label="所属剧集">
+          </div>
+          <div class="dlg-field">
+            <label>所属剧集</label>
             <div class="asset-link-select">
               <el-select v-model="editForm.showName" placeholder="选择剧（可选）" clearable size="large" style="flex:1;" @change="onEditShowChange">
                 <el-option v-for="show in showList" :key="show" :label="show" :value="show" />
@@ -288,11 +343,57 @@
                 <el-option v-for="ep in episodesOfShow(editForm.showName)" :key="ep" :label="'第' + ep + '集'" :value="ep" />
               </el-select>
             </div>
-          </el-form-item>
-        </el-form>
+          </div>
+        </div>
         <template #footer>
-          <el-button @click="editOpen = false">取消</el-button>
-          <el-button type="primary" @click="doUpdate"><el-icon :size="14"><Check /></el-icon> 保存</el-button>
+          <div class="dlg-footer">
+            <el-button size="large" round @click="editOpen = false">取消</el-button>
+            <el-button size="large" round type="primary" @click="doUpdate"><el-icon><Check /></el-icon> 保存修改</el-button>
+          </div>
+        </template>
+      </el-dialog>
+
+      <!-- 批量编辑弹窗 -->
+      <el-dialog v-model="batchEditOpen" width="min(95vw, 520px)" class="asset-dialog" destroy-on-close align-center :close-on-click-modal="false">
+        <template #header>
+          <div class="dlg-hd">
+            <div class="dlg-hd-icon"><el-icon :size="18"><Edit /></el-icon></div>
+            <div>
+              <p class="dlg-hd-title">批量编辑</p>
+              <p class="dlg-hd-sub">对已选 {{ selectedIds.size }} 个资产应用修改，留空 / 不选的字段不改动</p>
+            </div>
+          </div>
+        </template>
+        <div class="up-form">
+          <div class="dlg-field">
+            <label>类型</label>
+            <el-select v-model="batchEditForm.type" placeholder="不修改" clearable size="large" style="width:100%;">
+              <el-option v-for="t in assetTypes" :key="t.value" :label="t.label" :value="t.value" />
+            </el-select>
+          </div>
+          <div class="dlg-field">
+            <label>标签（覆盖原有标签）</label>
+            <el-input v-model="batchEditForm.tagsStr" placeholder="留空不修改，如: 男主, 欧美" size="large" clearable />
+          </div>
+          <div class="dlg-field">
+            <label>归属剧集</label>
+            <div class="asset-link-select">
+              <el-select v-model="batchEditForm.showName" placeholder="不修改" clearable size="large" style="flex:1;" @change="onBatchEditShowChange">
+                <el-option v-for="show in showList" :key="show" :label="show" :value="show" />
+              </el-select>
+              <el-select v-model="batchEditForm.episode" placeholder="选择集" clearable size="large" style="width:120px;" :disabled="!batchEditForm.showName">
+                <el-option v-for="ep in episodesOfShow(batchEditForm.showName)" :key="ep" :label="'第' + ep + '集'" :value="ep" />
+              </el-select>
+            </div>
+          </div>
+        </div>
+        <template #footer>
+          <div class="dlg-footer">
+            <el-button size="large" round @click="batchEditOpen = false">取消</el-button>
+            <el-button size="large" round type="primary" :loading="batchEditLoading" :disabled="!selectedIds.size" @click="doBatchEdit">
+              <el-icon v-if="!batchEditLoading"><Check /></el-icon> 应用到 {{ selectedIds.size }} 个资产
+            </el-button>
+          </div>
         </template>
       </el-dialog>
     </div>
@@ -968,6 +1069,12 @@ function removeFile(i) {
   if (previewCache.has(f)) { URL.revokeObjectURL(previewCache.get(f)); previewCache.delete(f) }
   uploadFiles.value.splice(i, 1)
 }
+function clearUploadFiles() {
+  previewCache.forEach(url => URL.revokeObjectURL(url))
+  previewCache.clear()
+  uploadFiles.value = []
+  seenFiles.clear()
+}
 const uploadForm = reactive({ name: '', type: 'character', tagsStr: '', showName: '', episode: null, characterName: '', outfit: '' })
 const editForm = reactive({ name: '', type: 'character', tagsStr: '', showName: '', episode: null, characterName: '', outfit: '' })
 const editingId = ref(null)
@@ -1031,6 +1138,17 @@ const assetGroups = computed(() => {
 function countByType(key) { return key ? scopeList.value.filter(a => a.type === key).length : scopeList.value.length }
 function assetUrl(a) { return api.assets.getUrl(a.fileName) }
 
+// 分组折叠状态（localStorage 记忆）
+const collapsedGroups = ref(new Set())
+try { collapsedGroups.value = new Set(JSON.parse(localStorage.getItem('assets_collapsed_groups') || '[]')) } catch { }
+function isGroupCollapsed(key) { return collapsedGroups.value.has(key) }
+function toggleGroup(key) {
+  const s = new Set(collapsedGroups.value)
+  if (s.has(key)) s.delete(key); else s.add(key)
+  collapsedGroups.value = s
+  localStorage.setItem('assets_collapsed_groups', JSON.stringify([...s]))
+}
+
 // 某剧的集号列表（从剧本记录派生）
 function episodesOfShow(show) {
   if (!show) return []
@@ -1087,6 +1205,40 @@ async function batchDelete() {
   const res = await api.assets.batchDelete(ids)
   if (res.success) { ElMessage.success(`已删除 ${res.data.count} 个资产`); selectedIds.value = new Set(); loadAssets() }
   else ElMessage.error('删除失败')
+}
+
+// ===== 批量编辑 =====
+const batchEditOpen = ref(false)
+const batchEditLoading = ref(false)
+const batchEditForm = reactive({ type: '', tagsStr: '', showName: '', episode: null })
+function openBatchEdit() {
+  batchEditForm.type = ''; batchEditForm.tagsStr = ''; batchEditForm.showName = ''; batchEditForm.episode = null
+  batchEditOpen.value = true
+}
+function onBatchEditShowChange() { if (!batchEditForm.showName) batchEditForm.episode = null }
+async function doBatchEdit() {
+  const ids = [...selectedIds.value]
+  if (!ids.length || batchEditLoading.value) return
+  const tags = batchEditForm.tagsStr.trim() ? batchEditForm.tagsStr.split(',').map(t => t.trim()).filter(Boolean) : null
+  batchEditLoading.value = true
+  let ok = 0
+  try {
+    for (const id of ids) {
+      const a = assets.value.find(x => x.id === id)
+      if (!a) continue
+      const patch = {}
+      if (batchEditForm.type) patch.type = batchEditForm.type
+      if (tags) patch.tags = tags
+      if (batchEditForm.showName) { patch.showName = batchEditForm.showName; patch.episode = batchEditForm.episode ?? null }
+      if (!Object.keys(patch).length) continue
+      const res = await api.assets.update(id, { ...a, ...patch })
+      if (res.success) ok++
+    }
+    ElMessage.success(`已更新 ${ok} 个资产`)
+    batchEditOpen.value = false
+    await loadAssets()
+  } catch { ElMessage.error('批量更新失败') }
+  finally { batchEditLoading.value = false }
 }
 
 function openUpload() { uploadForm.name = ''; uploadForm.type = 'character'; uploadForm.tagsStr = ''; uploadForm.showName = ''; uploadForm.episode = null; uploadForm.characterName = ''; uploadForm.outfit = ''; previewCache.forEach(url => URL.revokeObjectURL(url)); previewCache.clear(); uploadFiles.value = []; seenFiles.clear(); uploadOpen.value = true }
@@ -2125,17 +2277,21 @@ onUnmounted(() => { localStorage.setItem('script_activeShow', activeShow.value |
 .asset-group-title { display:inline-flex; align-items:center; gap:6px; font-size:14px; font-weight:800; color:#1f2937; letter-spacing:-.2px; }
 .asset-group-title .el-icon { color:#6366f1; }
 .asset-group-n { font-size:12px; font-weight:600; color:#9ca3af; }
-.asset-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:14px; }
+.asset-group-hd { cursor:pointer; user-select:none; border-radius:6px; }
+.asset-group-hd:hover .asset-group-title { color:#4338ca; }
+.group-chevron { color:#9ca3af; transition:transform .2s; margin-right:-2px; }
+.group-chevron.collapsed { transform:rotate(-90deg); }
+.asset-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px; }
 .asset-card {
-  position:relative; background:var(--surface-card); border:1.5px solid var(--border-default); border-radius:16px;
+  position:relative; background:var(--surface-card); border:1.5px solid var(--border-default); border-radius:12px;
   overflow:hidden; transition:all 0.2s; box-shadow:0 1px 3px rgba(0,0,0,.04);
 }
 .asset-card:hover { border-color:#c7d2fe; box-shadow:0 8px 25px rgba(0,0,0,.08); transform:translateY(-2px); }
 .asset-card.selected { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.12); }
 
-.card-check { position:absolute; top:10px; left:10px; z-index:5; cursor:pointer; }
+.card-check { position:absolute; top:8px; left:8px; z-index:5; cursor:pointer; }
 .check-box {
-  width:22px; height:22px; border-radius:6px; border:2px solid #d1d5db; background:rgba(255,255,255,.85);
+  width:20px; height:20px; border-radius:6px; border:2px solid #d1d5db; background:rgba(255,255,255,.85);
   display:flex; align-items:center; justify-content:center; transition:all 0.15s;
 }
 .check-box.checked { background:#6366f1; border-color:#6366f1; color:#fff; }
@@ -2144,12 +2300,12 @@ onUnmounted(() => { localStorage.setItem('script_activeShow', activeShow.value |
 .card-img-wrap { position:relative; width:100%; aspect-ratio:4/3; background:#f3f4f6; overflow:hidden; cursor:pointer; }
 .card-img { width:100%; height:100%; object-fit:cover; transition:transform 0.35s; }
 .asset-card:hover .card-img { transform:scale(1.06); }
-.card-type-badge { position:absolute; top:10px; right:10px; padding:4px 10px; border-radius:8px; font-size:11px; font-weight:700; color:#fff; letter-spacing:.5px; box-shadow:0 2px 6px rgba(0,0,0,.15); }
+.card-type-badge { position:absolute; top:8px; right:8px; padding:2px 7px; border-radius:6px; font-size:10px; font-weight:700; color:#fff; letter-spacing:.5px; box-shadow:0 2px 6px rgba(0,0,0,.15); }
 
-.card-info { padding:10px 12px 6px; }
-.card-name { font-size:13px; font-weight:700; color:#1f2937; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.3; }
-.card-char-name { font-size:11px; font-weight:600; color:#6366f1; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.card-tags-row { display:flex; align-items:center; justify-content:space-between; margin-top:4px; min-height:18px; }
+.card-info { padding:8px 10px 9px; }
+.card-name { font-size:12px; font-weight:700; color:#1f2937; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.3; }
+.card-char-name { font-size:10.5px; font-weight:600; color:#6366f1; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.card-tags-row { display:flex; align-items:center; justify-content:space-between; margin-top:3px; min-height:16px; }
 .card-tags { display:flex; gap:3px; flex-wrap:wrap; }
 .card-tag { font-size:9px; padding:1px 6px; border-radius:4px; background:#eef2ff; color:#6366f1; font-weight:600; cursor:pointer; }
 .card-tag:hover { background:#dbeafe; }
@@ -2161,11 +2317,18 @@ onUnmounted(() => { localStorage.setItem('script_activeShow', activeShow.value |
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-.card-footer { display:flex; gap:3px; padding:6px 12px 12px; border-top:1px solid #f3f4f6; }
-.card-btn { width:30px; height:30px; border-radius:8px; border:1px solid var(--border-default); background:var(--surface-card); color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
-.card-btn:hover { background:#f3f4f6; color:#6366f1; border-color:#c7d2fe; }
+/* 悬浮操作条（hover 显示，覆盖在图片底部） */
+.card-footer {
+  position:absolute; left:0; right:0; bottom:0; z-index:4;
+  display:flex; justify-content:flex-end; gap:4px; padding:14px 8px 6px;
+  background:linear-gradient(to top, rgba(0,0,0,.5), transparent);
+  opacity:0; transform:translateY(6px); transition:all .18s;
+}
+.asset-card:hover .card-footer { opacity:1; transform:translateY(0); }
+.card-btn { width:28px; height:28px; border-radius:8px; border:none; background:rgba(255,255,255,.92); color:#374151; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+.card-btn:hover { background:#fff; color:#6366f1; }
 .card-btn-dl { text-decoration:none; }
-.card-btn-del:hover { background:#fef2f2; color:#ef4444; border-color:#fecaca; }
+.card-btn-del:hover { background:#fff; color:#ef4444; }
 
 /* 卡片视频/音频覆盖层 */
 .card-play-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.3); pointer-events:none; color:#fff; }
@@ -2205,16 +2368,55 @@ onUnmounted(() => { localStorage.setItem('script_activeShow', activeShow.value |
 .drop-zone { border:2px dashed #d1d5db; border-radius:14px; padding:32px 20px; text-align:center; transition:all 0.2s; background:#f9fafb; }
 .drop-zone:hover, .drop-zone.dragover { border-color:#6366f1; background:#eef2ff; }
 .drop-icon { margin-bottom:8px; color:#9ca3af; }
-.drop-text { font-size:14px; color:#6b7280; margin:0 0 8px; }
-.drop-hint { font-size:11px; color:#b0b0b0; margin:8px 0 0; }
-.file-list { margin-top:12px; max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+
+/* ===== 弹窗通用头部 ===== */
+.dlg-hd { display:flex; align-items:center; gap:12px; }
+.dlg-hd-icon { width:40px; height:40px; border-radius:12px; background:linear-gradient(135deg, #6366f1, #8b5cf6); display:flex; align-items:center; justify-content:center; color:#fff; flex-shrink:0; }
+.dlg-hd-icon--green { background:linear-gradient(135deg, #10b981, #34d399); }
+.dlg-hd-title { font-size:17px; font-weight:800; color:#111827; margin:0; line-height:1.2; }
+.dlg-hd-sub { font-size:12px; color:#9ca3af; margin:2px 0 0; }
+.dlg-footer { display:flex; justify-content:flex-end; gap:10px; }
+
+/* ===== 上传拖拽区（新） ===== */
+.up-zone {
+  border:2px dashed #d1d5db; border-radius:16px;
+  padding:40px 24px; text-align:center; transition:all 0.2s; background:#fafafa;
+  margin-bottom:18px;
+}
+.up-zone.drag-in { border-color:#6366f1; background:#eef2ff; }
+.upz-icon { color:#6366f1; margin-bottom:14px; }
+.upz-title { font-size:17px; font-weight:700; color:#374151; margin:0 0 4px; }
+.upz-hint { font-size:13px; color:#9ca3af; margin:0 0 18px; }
+.upz-with-files { text-align:left; }
+.upz-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.upz-badge { display:flex; align-items:baseline; gap:6px; }
+.upz-num { font-size:22px; font-weight:800; color:#6366f1; }
+.upz-label { font-size:14px; color:#374151; font-weight:600; }
+.upz-actions { display:flex; gap:8px; }
+.upz-files { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; }
+.upz-files::-webkit-scrollbar { height:4px; }
+.upz-files::-webkit-scrollbar-thumb { background:#e5e7eb; border-radius:4px; }
+.upz-chip {
+  display:flex; align-items:center; gap:10px; padding:8px 14px 8px 8px;
+  border-radius:12px; background:#fff; border:1px solid #e5e7eb;
+  min-width:220px; flex-shrink:0; box-shadow:0 1px 2px rgba(0,0,0,.03);
+}
+.upz-chip-thumb { width:40px; height:40px; border-radius:8px; object-fit:cover; flex-shrink:0; background:#f3f4f6; }
+.upz-chip-audio { width:40px; height:40px; border-radius:8px; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#10b981; background:#ecfdf5; }
+.upz-chip-info { flex:1; min-width:0; }
+.upz-chip-name { display:block; font-size:12px; font-weight:600; color:#1f2937; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.upz-chip-size { font-size:11px; color:#9ca3af; }
+.upz-chip-del {
+  width:24px; height:24px; border-radius:50%; border:none; background:#e5e7eb;
+  color:#6b7280; cursor:pointer; font-size:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.upz-chip-del:hover { background:#fecaca; color:#dc2626; }
+
+/* ===== 弹窗表单 ===== */
+.dlg-field-row { display:flex; gap:14px; flex-wrap:wrap; }
+.dlg-field-row .dlg-field { flex:1; min-width:160px; }
+.dlg-field label { display:block; font-size:13px; font-weight:700; color:#374151; margin-bottom:8px; }
 .asset-link-select { display:flex; gap:8px; width:100%; }
-.file-item { display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:8px; background:#f9fafb; font-size:13px; }
-.file-thumb { width:40px; height:40px; border-radius:6px; object-fit:cover; }
-.file-info { flex:1; min-width:0; }
-.file-name { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#374151; }
-.file-size { font-size:11px; color:#9ca3af; }
-.file-icon { font-size:20px; }
 
 .upload-two-cols { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
 .upload-slot { cursor:pointer; min-width:0; }

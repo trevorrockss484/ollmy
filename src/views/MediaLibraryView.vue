@@ -402,7 +402,7 @@ watch([search, filterCat, sortBy], () => {})
 .ml-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(5, 1fr); gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 12px;
   align-content: start;
 }
 
@@ -424,14 +424,15 @@ watch([search, filterCat, sortBy], () => {})
 }
 .ml-img img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s ease; }
 .ml-card:hover .ml-img img { transform: scale(1.06); }
-.ml-body { padding: 12px 14px; }
-.ml-name { display: block; font-size: 13px; font-weight: 700; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+.ml-card { border-radius: 12px; }
+.ml-body { padding: 8px 10px 9px; }
+.ml-name { display: block; font-size: 12px; font-weight: 700; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
 .ml-cat {
-  display: inline-block; font-size: 11px; font-weight: 600; color: #6366f1;
+  display: inline-block; font-size: 10px; font-weight: 600; color: #6366f1;
   background: rgba(99,102,241,.08);
-  padding: 2px 8px; border-radius: 4px; margin-bottom: 2px;
+  padding: 1px 6px; border-radius: 4px; margin-right: 5px;
 }
-.ml-dims { display: block; font-size: 12px; color: #9ca3af; }
+.ml-dims { display: inline; font-size: 11px; color: #9ca3af; }
 
 /* ===== 通用弹窗部件 ===== */
 .dlg-header { display: flex; align-items: center; gap: 12px; }

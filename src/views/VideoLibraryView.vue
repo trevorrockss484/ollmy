@@ -59,7 +59,7 @@
           <img v-if="item.coverUrl" :src="item.coverUrl" loading="lazy" />
           <template v-else>
             <video :src="item.previewUrl" preload="metadata" muted class="vl-card-thumb-video" />
-            <div class="vl-card-play-icon"><el-icon :size="42"><VideoPlay /></el-icon></div>
+            <div class="vl-card-play-icon"><el-icon :size="30"><VideoPlay /></el-icon></div>
           </template>
           <span class="vl-img-dur">{{ formatDuration(item.duration) }}</span>
         </div>
@@ -413,10 +413,10 @@ watch([search, sortBy], () => {})
 /* 卡片 */
 .vl-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr); gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px;
 }
 .vl-card {
-  background: #fff; border: 1px solid #e5e7eb; border-radius: 16px;
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
   overflow: hidden; cursor: pointer; position: relative; border: none; transition: transform 0.2s ease, box-shadow 0.2s ease; box-shadow: 0 0 0 1px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.06); will-change: transform; content-visibility: auto;
 }
 .vl-card:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(99,102,241,.12), 0 6px 20px rgba(99,102,241,.12); }
@@ -430,17 +430,18 @@ watch([search, sortBy], () => {})
 .vl-card-thumb-video { width: 100%; height: 100%; object-fit: cover; display: block; opacity: .6; }
 .vl-card:hover .vl-card-thumb-video { opacity: .9; }
 .vl-card-play-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.8); z-index: 2; }
+.vl-card-play-icon :deep(.el-icon) { font-size: 30px; }
 .vl-card:hover .vl-card-play-icon { transform: scale(1.15); color: #fff; }
 .vl-img-dur {
-  position: absolute; bottom: 6px; right: 8px; z-index: 3;
-  font-size: 12px; font-weight: 700; color: #fff;
-  background: rgba(0,0,0,.65); backdrop-filter: blur(8px); padding: 3px 9px; border-radius: 6px;
+  position: absolute; bottom: 5px; right: 7px; z-index: 3;
+  font-size: 11px; font-weight: 700; color: #fff;
+  background: rgba(0,0,0,.65); backdrop-filter: blur(8px); padding: 2px 7px; border-radius: 5px;
 }
 
-.vl-card-body { padding: 12px 14px; }
-.vl-card-name { display: block; font-size: 14px; font-weight: 700; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
-.vl-card-cat { display: inline-block; font-size: 11px; font-weight: 600; color: #6366f1; background: rgba(99,102,241,.08); padding: 2px 8px; border-radius: 4px; margin-bottom: 2px; }
-.vl-card-line { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #6b7280; margin-top: 3px; }
+.vl-card-body { padding: 9px 11px 10px; }
+.vl-card-name { display: block; font-size: 13px; font-weight: 700; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+.vl-card-cat { display: inline-block; font-size: 10px; font-weight: 600; color: #6366f1; background: rgba(99,102,241,.08); padding: 1px 6px; border-radius: 4px; margin-bottom: 3px; }
+.vl-card-line { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #6b7280; margin-top: 2px; }
 .vl-card-line .sep { margin: 0 3px; color: #d1d5db; font-size: 10px; }
 .vl-card-size { font-weight: 700; color: #374151; margin-left: auto; }
 

@@ -271,7 +271,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 const authStore = useAuthStore()
 const PAGE = '/plan'
-import * as echarts from 'echarts'
+import echarts from '../utils/echarts-core'
 import { api, formatDate, formatDateCN, getDateRange, getDayName, todayStr } from '../api'
 import { countryTreeData, allLeafKeys, flagMap } from '../data/countryTree'
 
@@ -925,6 +925,6 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); donutChart?.
 @media (max-width:900px) {
   .overview-strip { grid-template-columns:repeat(2,1fr); }
   .mid-layout { grid-template-columns:1fr; }
-  .dv-head, .dv-row { grid-template-columns: 80px repeat(6, 1fr); padding: 10px 12px; }
+  .dv-head, .dv-row { grid-template-columns: 80px repeat(4, 1fr); padding: 10px 12px; }
 }
 </style>

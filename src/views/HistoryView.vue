@@ -141,7 +141,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import * as echarts from 'echarts'
+import echarts from '../utils/echarts-core'
 import { api, formatDateCN, todayStr } from '../api'
 import { axisTheme } from '../utils/echarts-theme'
 import { ACCOUNTS, getAccountLabel as acLabel } from '../data/accounts'

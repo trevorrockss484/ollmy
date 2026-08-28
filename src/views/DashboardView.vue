@@ -189,7 +189,7 @@ import {
   Monitor, DataAnalysis, TrendCharts, Calendar, PictureFilled, Document,
   ArrowRight, Close
 } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
+import echarts from '../utils/echarts-core'
 import { useWeekStore } from '../stores/week'
 import { useAuthStore } from '../stores/auth'
 import { api, formatDateCN, todayStr, daysBetween, formatDate, getDateRange } from '../api'
